@@ -56,7 +56,9 @@ ad-hoc package identity are recorded in `/tmp/paddr-refinement-8a0553bb/HANDOFF.
 See [the validation record](../PADDR_BESPOKE_CONTROLS_VALIDATION.md) for commands,
 failed-before regressions, capture provenance and all remaining gaps. The source
 `6b0551f` had a clean external Codex review after its prior Sol tuning-switch RTL
-finding was repaired; **new candidate review is pending**. Full assistive-technology,
+finding was repaired. Fresh Sol review at `e83a0c3` found one minor stale-hover issue
+during mode dragging, repaired with a failing-before/passing-after event regression;
+current-head external review remains separate. Full assistive-technology,
 live hardware, inactive pointer feel, physical Retina and macOS 26 runtime checks
 remain unverified. The key-window-dependent SwiftUI map focus test remains skipped
 with its assertions intact; the earlier reconnect-pressure timeout remains unexplained.

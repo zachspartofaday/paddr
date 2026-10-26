@@ -656,3 +656,34 @@ runtime remain unverified. The map-focus test still cannot obtain a key SwiftUI
 window. The earlier reconnect-pressure timeout remains unexplained despite later
 passing suites; it is not erased or reclassified by this successful run. No live
 hardware smoke, personal profile access or production app launch was performed.
+
+## Independent shared-edge review and drag-feedback repair
+
+A fresh independent GPT-6.1 Sol/high reviewer inspected clean candidate
+`e83a0c3da50e8582bea447802ad256ccbe7d12b7`, primarily its delta from `6b0551f`
+plus implicated cumulative consumers. The source and retained-render review found
+one P3: the mode track updated its pressed segment during dragging but left hover
+on the old segment. No other actionable defect was found. The reviewer inspected
+the reported validation and package evidence without rerunning tests or builds.
+
+The repair synchronizes hover with the hit segment on initial press and every
+tracked drag/release. The new mounted regression posts actual `.leftMouseDragged`
+events in LTR and RTL, observes initial and mid-drag feedback in AppKit's tracking
+loop, and checks one commit on segment release and zero commits over gaps/outside.
+Selection is unchanged before release; focus remains on the same control and the
+pressed state clears afterward. The test fails 18 hover assertions before the
+two-line repair (`/tmp/paddr-mode-drag-red.log`) and the full interaction suite
+passes afterward (`/tmp/paddr-mode-drag-green.log`, 19 passes and the existing focus
+skip). These event-injection tests do not certify physical pointer feel or a full
+manual interaction walk. No layout or material rendering code changed in this fix.
+
+This records a bounded, validated fix of the review finding; it does not label a
+later commit Sol-reviewed. Current-head external Codex review and all previously
+recorded manual/platform uncertainties remain separate.
+
+Final validation on the repaired source: **533 tests, 532 passed, one existing
+map-focus skip**, both exporters enabled. Command:
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer PADDR_UI_EVIDENCE_DIR=/tmp/paddr-mode-drag-final swift test -Xswiftc -warnings-as-errors`.
+Receipt: `/tmp/paddr-mode-drag-full.log`. Canonical localization, warnings-as-errors
+arm64 release app/CLI builds, CLI checks, and release identity/production fixtures
+also pass; logs are `/tmp/paddr-mode-drag-{localization,build,cli-build,cli,identity,production}.log`.

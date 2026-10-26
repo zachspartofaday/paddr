@@ -435,6 +435,7 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
         guard let window, let initial = segment(at: convert(event.locationInWindow, from: nil)) else { return }
         window.makeFirstResponder(self)
         pressedSegment = initial
+        hoveredSegment = initial
         needsDisplay = true
         defer { pressedSegment = nil; needsDisplay = true }
         // NSSegmentedCell tracks full equal-width slots, including the visible
@@ -443,6 +444,7 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
         while let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp],
             until: .distantFuture, inMode: .eventTracking, dequeue: true) {
             pressedSegment = segment(at: convert(next.locationInWindow, from: nil))
+            hoveredSegment = pressedSegment
             needsDisplay = true
             if next.type == .leftMouseUp {
                 if let index = pressedSegment {

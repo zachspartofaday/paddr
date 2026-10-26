@@ -227,6 +227,63 @@ final class BespokeControlInteractionTests: XCTestCase {
         }
     }
 
+    func testModeDragMovesHoverWithPressAndCancelsInGapsOrOutside() async throws {
+        for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+            for destination in ["segment", "gap", "outside"] {
+                var value = PadMode.mouse
+                var writes = 0
+                let host = NSHostingView(rootView: PadModePicker(selection: Binding(get: { value },
+                    set: { value = $0; writes += 1 }), accessibilityIdentifier: "paddr.pad-mode.left")
+                    .environment(\.layoutDirection, direction))
+                let window = window(host, width: 240, height: 32)
+                defer { window.close() }
+                await settle(host)
+                let control = try XCTUnwrap(descendants(PaddrModeSegmentedControl.self, host).first)
+                let start = CGPoint(x: control.segmentRect(1).midX, y: 16)
+                let end = destination == "segment" ? CGPoint(x: control.segmentRect(2).midX, y: 16)
+                    : CGPoint(x: destination == "gap" ? 120 : -2, y: 16)
+                let expectedHit: Int? = destination == "segment" ? 2 : nil
+                func event(_ type: NSEvent.EventType, _ point: CGPoint) throws -> NSEvent {
+                    try XCTUnwrap(NSEvent.mouseEvent(with: type, location: control.convert(point, to: nil),
+                        modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                        windowNumber: window.windowNumber, context: nil, eventNumber: 0,
+                        clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1))
+                }
+                let drag = try event(.leftMouseDragged, end)
+                let up = try event(.leftMouseUp, end)
+                // A stationary hover can be stale when native tracking starts.
+                control.updateHover(at: CGPoint(x: control.segmentRect(3).midX, y: 16))
+                var observations = 0
+                let observer = NativePressObserver {
+                    if observations == 0 {
+                        XCTAssertEqual(control.hoveredSegment, 1)
+                        XCTAssertEqual(control.pressedSegment, 1)
+                        NSApplication.shared.postEvent(drag, atStart: true)
+                    } else {
+                        XCTAssertEqual(control.hoveredSegment, expectedHit, "\(direction)/\(destination)")
+                        XCTAssertEqual(control.pressedSegment, expectedHit)
+                        XCTAssertEqual(value, .mouse, "Dragging must not commit before release")
+                        XCTAssertEqual(writes, 0)
+                        NSApplication.shared.postEvent(up, atStart: true)
+                    }
+                    observations += 1
+                }
+                let timer = Timer(timeInterval: 0.02, target: observer, selector: #selector(NativePressObserver.fire),
+                    userInfo: nil, repeats: true)
+                RunLoop.main.add(timer, forMode: .eventTracking)
+                RunLoop.main.add(timer, forMode: .default)
+                control.mouseDown(with: try event(.leftMouseDown, start))
+                timer.invalidate()
+                XCTAssertEqual(observations, 2, "Observe both initial press and an actual dragged event")
+                XCTAssertEqual(control.hoveredSegment, expectedHit)
+                XCTAssertNil(control.pressedSegment)
+                XCTAssertEqual(value, destination == "segment" ? .scroll : .mouse)
+                XCTAssertEqual(writes, destination == "segment" ? 1 : 0)
+                XCTAssertTrue(window.firstResponder === control)
+            }
+        }
+    }
+
     func testPadSurroundStaysContinuousPastCornerTangenciesAtBothRasterScales() async throws {
         let host = NSHostingView(rootView: PadModePreview(mode: .mouse, deadzone: 0)
             .frame(width: 190, height: 182).background(PaddrStyle.workspace))
