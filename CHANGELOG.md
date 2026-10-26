@@ -2,54 +2,63 @@
 
 User-visible changes to Paddr are recorded here. Release entries describe confirmed behavior at the time of each release; later entries may supersede earlier limitations.
 
-## Unreleased
+## 1.1.0 — 2026-10-26
+
+### Redesigned mapping workspace
+
+- Give Paddr its own native light/dark interface, with both trackpads independently
+  editable and common controls visible beside their maps. Advanced pointer settings
+  live in per-pad Pointer tuning disclosures with summaries of enabled settings.
+- Keep profile selection and Save & Apply above the scrolling workspace, with a
+  persistent **Enable output** switch and separate output readiness below it.
+  Explain when enabling output will save pending edits.
+- Automatically grow and shrink the configuration window to fit its contents,
+  including expanded tuning. Preserve its position, fit the current screen, and
+  scroll when necessary. Manual resizing is disabled.
+- Align profile, zone, touch-tap, and rear-button selectors at a shared width, and
+  correct battery-percentage alignment in the footer.
+- Consolidate missing-permission guidance into an actionable Open setup notice,
+  share permission controls with the guide, and make Duplicate to Edit a direct
+  action for the built-in Default profile.
+- Introduce the grey/teal Compass icon with native Liquid Glass layers and adaptive
+  appearances, plus flattened fallbacks for earlier system rendering.
+
+### Pointer controls and output feedback
+
+- Add a per-pad Pointer acceleration switch that remembers its strength while
+  disabled. Existing profiles retain their effective acceleration; CLI numeric
+  options continue to enable nonzero acceleration and disable zero.
+- Prevent brief orange guidance flashes and footer resizing when output is enabled
+  or disabled. Sustained preparation, neutral-input, and output-release waits show
+  matching guidance after 250 ms; errors and permission guidance remain immediate.
+- Describe profile preparation accurately when enabling during a pending save.
+  Profile operations alongside an enabled session preserve neutral-input guidance
+  while that session can still arm.
+
+### Safety and reliability
+
+- Keep CLI cleanup alive until macOS accepts releases for held keys and mouse
+  buttons, retrying failed releases and reporting pending and recovered cleanup.
+- Prevent cooperating GUI and CLI writers from overwriting profiles changed since
+  they were loaded. Compare the loaded file under a shared lock before replacing
+  it; conflicts preserve external changes and the GUI's unsaved draft. Explicit
+  exports still deliberately replace their destination.
+- Make release-package startup checks inert: they verify executable startup and
+  built-in configuration encoding without reading personal profiles, requesting
+  permissions, or probing the controller.
+- Correct lifecycle test fixtures to require explicit neutral-input arming and
+  cover both startup orderings while preserving stop/save/start serialization.
 
 ### Compatibility and documentation
 
-- Record maintainer-confirmed operation with a puck-connected Steam Controller 2 on
-  released macOS 27 and macOS 27.2 release candidate, superseding the historical
-  beta-only compatibility notes below. Bluetooth and direct USB remain unvalidated.
-- Replace every README screenshot with a complete native window capture. Configuration
-  captures use content-driven sizing, including the shorter access-granted workspace
-  and expanded Pointer tuning. Workspace examples have permissions granted; the
-  access guide retains its permission-needed state. These inert fixtures are
-  separate from hardware confirmation.
-- Update local build instructions for Xcode 27 at its standard application path.
-
-### Native mapping workspace
-
-- Align the footer battery label with the adjacent controller status by matching
-  their vertical insets.
-- Avoid flashing transition guidance and resizing the footer during normal output
-  activation or disabling. Show it after a sustained 250 ms neutral or output-release
-  wait; output readiness, release safety gates, errors, and permission guidance remain immediate.
-- When enabling output during a pending profile save, describe profile preparation
-  instead of asking for neutral input. Footer text, delayed display, and announcements
-  now share the same readiness result. Renames and saves alongside an already-enabled
-  session preserve neutral guidance because they do not block that session from arming.
-
-- Add a per-pad Pointer acceleration switch, retaining its strength when disabled.
-  Existing profiles keep their effective acceleration; the CLI's numeric options
-  continue to enable nonzero acceleration and disable zero.
-- Give native profile, zone, touch-tap, and rear-button selectors a shared 192-point
-  width so short and long selections keep aligned edges.
-
-- Give Paddr an independent interface that follows macOS light and dark appearance,
-  with native pickers, sliders, switches, menus, and sheets around the paired pad maps.
-- Keep profile selection and Save & Apply visible while the mappings scroll. Keep
-  both pads independently editable, with common settings visible and advanced
-  pointer settings in per-pad Pointer tuning disclosures.
-- Use a persistent **Enable output** switch with separate output readiness. When
-  output is off and edits are pending, explain that turning it on saves those edits.
-- Consolidate missing-permission guidance into Open setup, share permission controls
-  with the guide, and make Duplicate to Edit a direct action for Default.
-- Group permission setup into one actionable footer notice. Keep output state and
-  pending-save guidance beside Enable output; omit unavailable battery data from the summary.
-- Let Paddr manage the configuration window size. Expand and shrink with Pointer
-  tuning and other content changes, keeping the top edge steady where space permits.
-  Disable manual resizing and remove Reset Window Size. Fit the screen and scroll
-  only when needed; saved position is retained but saved size no longer controls layout.
-  Profile storage and controller/output behavior are unchanged.
+- Record maintainer-confirmed operation with a puck-connected Steam Controller 2
+  on released macOS 27 and macOS 27.2 release candidate. Bluetooth and direct USB
+  remain unvalidated; historical beta-only caveats below no longer describe the
+  current release.
+- Replace all twelve README screenshots with live native captures, including both
+  appearances and content-fitted window sizes. Ordinary workspace captures have
+  permissions granted; only the dedicated setup capture shows missing access.
+- Add Compass branding to the README and update local build instructions for Xcode 27.
 
 ## 1.0.0 — 2026-09-07
 
