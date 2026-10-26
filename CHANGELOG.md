@@ -20,9 +20,9 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
 
 - Align the footer battery label with the adjacent controller status by matching
   their vertical insets.
-- Avoid flashing orange release-controls guidance and resizing the footer during
-  normal output activation. Show it after a sustained 250 ms neutral wait; output
-  readiness, errors, and permission guidance remain immediate.
+- Avoid flashing transition guidance and resizing the footer during normal output
+  activation or disabling. Show it after a sustained 250 ms neutral or output-release
+  wait; output readiness, release safety gates, errors, and permission guidance remain immediate.
 
 - Add a per-pad Pointer acceleration switch, retaining its strength when disabled.
   Existing profiles keep their effective acceleration; the CLI's numeric options

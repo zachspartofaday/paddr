@@ -17,7 +17,7 @@ struct ApplyBarView: View {
     @State private var availableWidth: CGFloat = 0
     @State private var showsConnectionDetails = false
     @State private var showsPermissionSetup = false
-    @State private var showsNeutralGuidance = false
+    @State private var revealedTransitionGuidance: PaddrReadinessNextAction?
 
     var outputValue: LocalizedStringResource {
         switch model.readiness.output {
@@ -89,12 +89,24 @@ struct ApplyBarView: View {
         }
     }
 
+    // Normal activation and release settle within a few controller reports.
+    // Key the delay by the specific transition so switching between them starts
+    // a fresh wait, while failures and permission instructions bypass the delay.
+    private var pendingTransitionGuidance: PaddrReadinessNextAction? {
+        if model.status == .waitingForNeutral { return .releaseTrackpads }
+        if model.status.messageState == nil, model.hasSystemAccess,
+           model.readiness.nextAction == .waitForOutputRelease {
+            return .waitForOutputRelease
+        }
+        return nil
+    }
+
     // Setup is the actionable next step while permissions are missing. Preserve
     // explicit failures and system-prompt instructions, without competing advice.
     var showsStatusMessage: Bool {
-        // Neutral confirmation normally arrives with the next controller report.
-        // Avoid flashing a warning and resizing the window during that brief wait.
-        if model.status == .waitingForNeutral { return showsNeutralGuidance }
+        if let pendingTransitionGuidance {
+            return revealedTransitionGuidance == pendingTransitionGuidance
+        }
         return model.status.messageState != nil
             || (model.hasSystemAccess && model.readiness.nextAction != .none
                 && model.readiness.nextAction != .enableOutput)
@@ -156,15 +168,16 @@ struct ApplyBarView: View {
             availableWidth = width
         }
         .sheet(isPresented: $showsPermissionSetup) { PermissionSetupView(model: model) }
-        .task(id: model.status == .waitingForNeutral) {
-            showsNeutralGuidance = false
-            guard model.status == .waitingForNeutral else { return }
+        .task(id: pendingTransitionGuidance) {
+            revealedTransitionGuidance = nil
+            guard let guidance = pendingTransitionGuidance else { return }
             do {
                 try await Task.sleep(for: .milliseconds(250))
             } catch { return }
-            guard !Task.isCancelled, model.status == .waitingForNeutral else { return }
-            showsNeutralGuidance = true
-            AccessibilityNotification.Announcement(String(localized: model.status.message)).post()
+            guard !Task.isCancelled, pendingTransitionGuidance == guidance else { return }
+            revealedTransitionGuidance = guidance
+            let message = guidance == .releaseTrackpads ? model.status.message : guidance.title
+            AccessibilityNotification.Announcement(String(localized: message)).post()
         }
         .onChange(of: model.status) { _, status in
             guard status.messageState != nil, status != .waitingForNeutral else { return }

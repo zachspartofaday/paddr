@@ -2,7 +2,7 @@
 
 All twelve README images were replaced on 2026-10-26 using production SwiftUI/AppKit
 views on macOS 27.2, build `26B118`, with Xcode 27.0. The views come from merged PR #92
-(`c211657d3dcff3e38e7835508993ce0cef966172`), with the footer alignment and activation-guidance
+(`c211657d3dcff3e38e7835508993ce0cef966172`), with the footer alignment and transition-guidance
 corrections in PR #93. The README exporter
 is `FamilyConsoleLayoutEvidenceTests.testExportReadmeWindowEvidence`.
 

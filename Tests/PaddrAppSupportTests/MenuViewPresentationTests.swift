@@ -1355,7 +1355,7 @@ final class MenuViewPresentationTests: XCTestCase {
         _ = await session.stop()
     }
 
-    func testNeutralGuidanceAvoidsBriefActivationFlashButShowsPersistentWaitsAndErrors() async throws {
+    func testOutputTransitionGuidanceAvoidsBriefFlashesButShowsPersistentWaitsAndErrors() async throws {
         for armsQuickly in [true, false] {
             let store = BlockingProfileStore()
             let session = PresentationSession()
@@ -1400,6 +1400,31 @@ final class MenuViewPresentationTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(300))
             await settle(host)
             XCTAssertEqual(host.fittingSize.height, idleHeight, accuracy: 1)
+
+            model.isEnabled = false
+            XCTAssertTrue(model.isReleasingOutput)
+            XCTAssertFalse(model.canToggleOutput, "Release safety gating must remain immediate")
+            XCTAssertEqual(ApplyBarView(model: model).outputValue, LocalizedStringResource("Releasing"))
+            await settle(host)
+            XCTAssertEqual(host.fittingSize.height, idleHeight, accuracy: 1,
+                "A normal output release must not insert a flashing footer row")
+            if !armsQuickly {
+                let releaseGuidanceAppeared = await waitUntil {
+                    await self.settle(host)
+                    return host.fittingSize.height > idleHeight + 5
+                }
+                XCTAssertTrue(releaseGuidanceAppeared, "A sustained release must still explain the wait")
+            }
+            await session.send(.outputReleased(revision: .max))
+            let released = await waitUntil { !model.isReleasingOutput }
+            XCTAssertTrue(released)
+            XCTAssertTrue(model.canToggleOutput)
+            await settle(host)
+            XCTAssertEqual(host.fittingSize.height, idleHeight, accuracy: 1)
+            try await Task.sleep(for: .milliseconds(300))
+            await settle(host)
+            XCTAssertEqual(host.fittingSize.height, idleHeight, accuracy: 1,
+                "Canceled guidance must not appear after releases complete")
 
             await session.send(.failed("Fixture output failure"))
             let failed = await waitUntil { model.status.messageState == .failure }
