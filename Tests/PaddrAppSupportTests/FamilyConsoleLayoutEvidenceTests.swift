@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import ScreenCaptureKit
 import SwiftUI
 import XCTest
 
@@ -16,7 +17,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         }
         let directory = URL(fileURLWithPath: path, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let model = try makeEditableMenuModel(hasSystemAccess: false)
+        let model = try makeEditableMenuModel(hasSystemAccess: true)
         let initialized = await waitUntil { model.isInitialized }
         XCTAssertTrue(initialized)
         model.configuration.rearButtons = .init(l4: "F1", l5: "F2", r4: "F3", r5: "F4")
@@ -199,6 +200,36 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 to: directory.appendingPathComponent("readme-access-ready-\(theme).png")
             )
             model.configuration.left.mode = .dpad
+            model.configuration.right.mode = .dpad
+            model.configuration.left.zoneLayout = .fourCorners
+            model.configuration.right.zoneLayout = .fourCorners
+            model.configuration.left.dpadDeadzone = 0
+            model.configuration.right.dpadDeadzone = 0
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-both-zones-\(theme).png"))
+            for (state, index) in [("hover-other", 1), ("hover-selected", 3)] {
+                try await exportReadmeWindow(
+                    ConfigurationView(model: model, managesWindowSize: true),
+                    scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("readme-both-zones-\(state)-\(theme).png"),
+                    prepare: { view in
+                        for mode in self.descendants(of: PaddrModeSegmentedControl.self, in: view) {
+                            let rect = mode.segmentRect(index)
+                            mode.updateHover(at: CGPoint(x: rect.midX, y: rect.midY))
+                        }
+                    })
+            }
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true)
+                    .environment(\._accessibilityReduceTransparency, true)
+                    .environment(\._colorSchemeContrast, .increased)
+                    .environment(\._accessibilityReduceMotion, true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-both-zones-opaque-\(theme).png"))
+            model.configuration.right.mode = .mouse
+            model.configuration.left.mode = .dpad
             for layout in PadZoneLayout.allCases {
                 model.configuration.left.zoneLayout = layout
                 try await exportReadmeWindow(
@@ -222,6 +253,12 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 scheme: scheme, appearance: appearance,
                 to: directory.appendingPathComponent("readme-shorter-\(theme).png")
             )
+            model.configuration.left.mode = .mouse
+            model.configuration.right.mode = .mouse
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true, initialTuningExpanded: true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-both-tuning-\(theme).png"))
             try await exportReadmeWindow(
                 OnboardingGuideView(model: model, onSkip: {}, onComplete: {}),
                 isGuide: true, scheme: scheme, appearance: appearance,
@@ -243,7 +280,8 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         isGuide: Bool = false,
         scheme: ColorScheme,
         appearance: NSAppearance.Name,
-        to url: URL
+        to url: URL,
+        prepare: ((NSView) -> Void)? = nil
     ) async throws {
         let size = isGuide ? PaddrStyle.Metrics.guideWindowSize : PaddrStyle.Metrics.defaultWindowSize
         let window = NSWindow(
@@ -287,7 +325,33 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         // Include the actual titlebar instead of leaving its reserved area blank.
         let frameView = try XCTUnwrap(window.contentView?.superview)
         frameView.layoutSubtreeIfNeeded()
+        prepare?(controller.view)
         try exportPNG(frameView, to: url)
+        // Cached display exports don't include WindowServer's native glass pass.
+        // Capture only this inert fixture window when access is already granted.
+        // Never request or change Screen Recording/TCC permissions for evidence.
+        if CGPreflightScreenCaptureAccess() {
+            window.orderFront(nil)
+            await settle(controller.view, passes: 12)
+            prepare?(controller.view)
+            controller.view.displayIfNeeded()
+            let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: false)
+            let fixture = try XCTUnwrap(content.windows.first { $0.windowID == CGWindowID(window.windowNumber) })
+            let filter = SCContentFilter(desktopIndependentWindow: fixture)
+            let configuration = SCStreamConfiguration()
+            configuration.width = Int(filter.contentRect.width * CGFloat(filter.pointPixelScale))
+            configuration.height = Int(filter.contentRect.height * CGFloat(filter.pointPixelScale))
+            configuration.showsCursor = false
+            configuration.scalesToFit = true
+            configuration.ignoreShadowsSingleWindow = true
+            configuration.captureResolution = .best
+            let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
+            let bitmap = NSBitmapImageRep(cgImage: image)
+            let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+            try png.write(to: url.deletingPathExtension().appendingPathExtension("composited.png"))
+        } else {
+            print("Composited capture unavailable: Screen Recording is not already granted; no permission requested")
+        }
     }
 
     private func exportEvidence<Content: View>(

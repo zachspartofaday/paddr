@@ -162,7 +162,7 @@ enum PaddrStyle {
     static let textSecondary = adaptiveColor(light: 0x52616E, dark: 0xBAC6D2)
     static let textTertiary = textSecondary
     static let boundary = adaptiveColor(light: 0xCBD3DB, dark: 0x536372)
-    static let action = adaptiveColor(light: 0x2859CF, dark: 0x8BB0FF)
+    static let action = adaptiveColor(light: 0x2859CF, dark: 0x78C7BD)
     static let successGreen = adaptiveColor(light: 0x206644, dark: 0x70D4A7)
     static let cautionAmber = adaptiveColor(light: 0x855000, dark: 0xFFD080)
     static let errorText = adaptiveColor(light: 0xB3261E, dark: 0xFFAAA3)
@@ -183,10 +183,13 @@ enum PaddrStyle {
     static let elevatedSurface = workspace
     static let surfaceStroke = boundary
 
-    // Prominent controls preserve the existing blue/white contrast pair.
-    static let controlTint = adaptiveColor(light: 0x2859CF, dark: 0x2859CF)
-    static let controlForeground = Color.white
-    static let selectedZoneFillTop = adaptiveColor(light: 0xDDE8FF, dark: 0x334E78)
+    // One accent for primary actions, selections, switches and native sliders.
+    static let controlTint = action
+    static let controlForeground = adaptiveColor(light: 0xFFFFFF, dark: 0x1C2630)
+    /// Local neutral feedback; never a competing selection color.
+    static let controlHover = textPrimary.opacity(0.07)
+    static let controlPressed = textPrimary.opacity(0.12)
+    static let selectedZoneFillTop = adaptiveColor(light: 0xDDE8FF, dark: 0x254C48)
     static let selectedZoneFillBottom = selectedZoneFillTop
     static let selectedTapFill = selectedZoneFillTop
     static let selectionBoundary = action

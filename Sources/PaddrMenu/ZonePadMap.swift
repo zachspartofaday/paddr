@@ -240,7 +240,7 @@ struct ZonePadMap: View {
         let plate = Path(roundedRect: plateRect, cornerRadius: PaddrStyle.Control.bindingPlateRadius)
         if selected {
             context.fill(plate, with: .color(PaddrStyle.selectedZoneCaptionFill))
-            context.stroke(plate, with: .color(PaddrStyle.selectedZoneCaptionForeground.opacity(0.42)), lineWidth: 0.75)
+            // The filled key plate already carries selection; avoid a fractional bright rim.
         } else {
             context.fill(plate, with: .color(appearance.surface(elevated: true)))
             context.stroke(

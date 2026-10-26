@@ -18,7 +18,8 @@ enum PaddrControlDrawing {
 
     static func stroke(_ rect: CGRect, radius: CGFloat, color: Color, width: CGFloat = 1) {
         guard let context = NSGraphicsContext.current?.cgContext else { return }
-        context.addPath(shape(rect.insetBy(dx: width / 2, dy: width / 2), radius: radius))
+        context.setShouldAntialias(true)
+        context.addPath(shape(rect.insetBy(dx: width / 2, dy: width / 2), radius: max(0, radius - width / 2)))
         context.setStrokeColor(NSColor(color).cgColor)
         context.setLineWidth(width)
         context.strokePath()
@@ -60,7 +61,7 @@ struct PaddrMenuOption<Value: Equatable>: Equatable {
 
 /// A native pop-up button with bespoke closed chrome. Its NSMenu and selected item
 /// remain native (including checkmarks, raw values, Escape and responder restoration).
-struct PaddrMenuPicker<Value: Equatable>: NSViewRepresentable {
+struct PaddrNativeMenuPicker<Value: Equatable>: NSViewRepresentable {
     @ScaledMetric(relativeTo: .body) private var textScale: CGFloat = 1
     let title: LocalizedStringResource
     @Binding var selection: Value
@@ -71,8 +72,8 @@ struct PaddrMenuPicker<Value: Equatable>: NSViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject {
-        var parent: PaddrMenuPicker
-        init(_ parent: PaddrMenuPicker) { self.parent = parent }
+        var parent: PaddrNativeMenuPicker
+        init(_ parent: PaddrNativeMenuPicker) { self.parent = parent }
         @objc func changed(_ sender: NSPopUpButton) {
             guard sender.isEnabled, parent.options.indices.contains(sender.indexOfSelectedItem),
                   let value = parent.options[sender.indexOfSelectedItem].value else { return }
@@ -118,7 +119,7 @@ struct PaddrMenuPicker<Value: Equatable>: NSViewRepresentable {
             item.state = index == selected ? .on : .off
         }
         control.isEnabled = context.environment.isEnabled
-        control.increasedContrast = context.environment.colorSchemeContrast == .increased
+        control.controlAppearance = PaddrAppearance(environment: context.environment)
         control.userInterfaceLayoutDirection = context.environment.layoutDirection == .rightToLeft ? .rightToLeft : .leftToRight
         control.setAccessibilityLabel(String(localized: title))
         control.cell?.setAccessibilityLabel(String(localized: title))
@@ -141,7 +142,9 @@ final class PaddrPopUpButton: NSPopUpButton {
     var optionTitles: [String] = []
     var actionSignature: [String] = []
     var isHovered = false
-    var increasedContrast = false
+    var controlAppearance = PaddrAppearance() { didSet { needsDisplay = true } }
+    var increasedContrast: Bool { controlAppearance.hasIncreasedContrast }
+
     override func updateTrackingAreas() { super.updateTrackingAreas(); paddrUpdateHoverTracking() }
     override func mouseEntered(with event: NSEvent) { isHovered = true; needsDisplay = true }
     override func mouseExited(with event: NSEvent) { isHovered = false; needsDisplay = true }
@@ -167,9 +170,18 @@ final class PaddrPopUpButton: NSPopUpButton {
         userInterfaceLayoutDirection == .rightToLeft ? .right : .left
     }
     override func draw(_ dirtyRect: NSRect) {
-        PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius, color: (isHovered || isHighlighted) && isEnabled ? PaddrStyle.canvas : PaddrStyle.workspace)
+        drawChrome()
+    }
+    private func drawChrome() {
+        if !controlAppearance.usesControlGlass {
+            PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius, color: PaddrStyle.workspace)
+        }
+        if (isHovered || isHighlighted) && isEnabled {
+            PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius,
+                color: isHighlighted ? PaddrStyle.controlPressed : PaddrStyle.controlHover)
+        }
         PaddrControlDrawing.stroke(bounds, radius: PaddrStyle.Control.radius,
-            color: isEnabled ? PaddrStyle.textSecondary : PaddrStyle.boundary, width: increasedContrast ? 1.5 : 1)
+            color: isEnabled ? PaddrStyle.textSecondary : PaddrStyle.boundary, width: increasedContrast ? 2 : 1.5)
         if let iconName {
             drawSymbol(iconName, in: CGRect(x: bounds.midX - 7, y: bounds.midY - 7, width: 14, height: 14))
         } else {
@@ -194,7 +206,7 @@ final class PaddrPopUpButton: NSPopUpButton {
 
 /// NSButton's switch cell supplies a real binary AXCheckBox, integer state,
 /// Space/press activation and disabled handling; only its drawing is replaced.
-struct PaddrTuningSwitch: NSViewRepresentable {
+struct PaddrNativeTuningSwitch: NSViewRepresentable {
     let title: LocalizedStringResource
     @Binding var isOn: Bool
     let accessibilityIdentifier: String
@@ -227,7 +239,7 @@ struct PaddrTuningSwitch: NSViewRepresentable {
         context.coordinator.binding = $isOn
         control.state = isOn ? .on : .off
         control.isEnabled = context.environment.isEnabled
-        control.increasedContrast = context.environment.colorSchemeContrast == .increased
+        control.controlAppearance = PaddrAppearance(environment: context.environment)
         control.setAccessibilityLabel(String(localized: title))
         control.cell?.setAccessibilityLabel(String(localized: title))
         control.setAccessibilityIdentifier(accessibilityIdentifier)
@@ -241,7 +253,9 @@ struct PaddrTuningSwitch: NSViewRepresentable {
 
 final class PaddrTuningSwitchButton: NSButton {
     var isHovered = false
-    var increasedContrast = false
+    var controlAppearance = PaddrAppearance() { didSet { needsDisplay = true } }
+    var increasedContrast: Bool { controlAppearance.hasIncreasedContrast }
+
     override func updateTrackingAreas() { super.updateTrackingAreas(); paddrUpdateHoverTracking() }
     override func mouseEntered(with event: NSEvent) { isHovered = true; needsDisplay = true }
     override func mouseExited(with event: NSEvent) { isHovered = false; needsDisplay = true }
@@ -279,22 +293,29 @@ final class PaddrTuningSwitchButton: NSButton {
                                       y: trackRect.minY + metrics.inset), size: metrics.thumb)
     }
     override func draw(_ dirtyRect: NSRect) {
+        drawChrome()
+        // Focus belongs outside the material/track and must not be clipped by it.
+        PaddrControlDrawing.focus(self, rect: trackRect.insetBy(dx: -3, dy: -3), radius: 7)
+    }
+    private func drawChrome() {
         let context = NSGraphicsContext.current?.cgContext
         context?.saveGState()
         defer { context?.restoreGState() }
         context?.setAlpha(isEnabled ? 1 : 0.5)
-        PaddrControlDrawing.fill(trackRect, radius: PaddrStyle.Control.radius, color: state == .on ? PaddrStyle.action : PaddrStyle.canvas)
+        if state == .on || !controlAppearance.usesControlGlass {
+            PaddrControlDrawing.fill(trackRect.insetBy(dx: 1, dy: 1), radius: 6,
+                color: state == .on ? PaddrStyle.controlTint : PaddrStyle.workspace)
+        }
         PaddrControlDrawing.stroke(trackRect, radius: PaddrStyle.Control.radius,
-            color: isEnabled ? PaddrStyle.textSecondary : PaddrStyle.boundary, width: increasedContrast ? 1.5 : 1)
+            color: isEnabled ? PaddrStyle.textSecondary : PaddrStyle.boundary, width: increasedContrast ? 2 : 1.5)
         if (isHovered || isHighlighted) && isEnabled {
-            PaddrControlDrawing.fill(trackRect, radius: PaddrStyle.Control.radius, color: PaddrStyle.textPrimary.opacity(isHighlighted ? 0.12 : 0.05))
+            PaddrControlDrawing.fill(trackRect, radius: PaddrStyle.Control.radius, color: isHighlighted ? PaddrStyle.controlPressed : PaddrStyle.controlHover)
         }
         PaddrControlDrawing.fill(thumbRect, radius: PaddrStyle.Control.TuningSwitch.thumbRadius,
             color: state == .on ? PaddrStyle.selectedZoneCaptionForeground : PaddrStyle.textSecondary)
         if !isEnabled {
             PaddrControlDrawing.stroke(thumbRect, radius: PaddrStyle.Control.TuningSwitch.thumbRadius, color: PaddrStyle.boundary)
         }
-        PaddrControlDrawing.focus(self, rect: trackRect.insetBy(dx: -3, dy: -3), radius: 7)
     }
 }
 
@@ -303,7 +324,7 @@ extension NSControl {
     func paddrUpdateHoverTracking() {
         for area in trackingAreas where area.owner === self { removeTrackingArea(area) }
         addTrackingArea(NSTrackingArea(rect: .zero,
-            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self))
+            options: [.mouseEnteredAndExited, .mouseMoved, .activeInKeyWindow, .inVisibleRect], owner: self))
     }
 }
 
@@ -317,7 +338,7 @@ struct PaddrMenuAction {
 }
 
 /// A pull-down system action menu uses the same chrome as selection menus.
-struct PaddrActionMenu: NSViewRepresentable {
+struct PaddrNativeActionMenu: NSViewRepresentable {
     let title: LocalizedStringResource
     let systemImage: String
     let actions: [PaddrMenuAction]
@@ -326,8 +347,8 @@ struct PaddrActionMenu: NSViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject {
-        var parent: PaddrActionMenu
-        init(_ parent: PaddrActionMenu) { self.parent = parent }
+        var parent: PaddrNativeActionMenu
+        init(_ parent: PaddrNativeActionMenu) { self.parent = parent }
         @objc func invoke(_ sender: NSMenuItem) {
             guard sender.isEnabled, parent.actions.indices.contains(sender.tag), parent.actions[sender.tag].isEnabled else { return }
             parent.actions[sender.tag].action()
@@ -372,7 +393,7 @@ struct PaddrActionMenu: NSViewRepresentable {
             control.actionSignature = signature
         }
         control.isEnabled = context.environment.isEnabled
-        control.increasedContrast = context.environment.colorSchemeContrast == .increased
+        control.controlAppearance = PaddrAppearance(environment: context.environment)
         control.userInterfaceLayoutDirection = context.environment.layoutDirection == .rightToLeft ? .rightToLeft : .leftToRight
         control.setAccessibilityLabel(String(localized: title))
         control.cell?.setAccessibilityLabel(String(localized: title))
@@ -385,5 +406,44 @@ struct PaddrActionMenu: NSViewRepresentable {
     }
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: PaddrPopUpButton, context: Context) -> CGSize? {
         CGSize(width: PaddrStyle.Control.height, height: PaddrStyle.Control.height)
+    }
+}
+
+// Glass is composed behind the existing native hit/AX owners. SwiftUI owns the
+// material's layout; no decorative NSView is inserted into an NSControl's internals.
+struct PaddrMenuPicker<Value: Equatable>: View {
+    let title: LocalizedStringResource
+    @Binding var selection: Value
+    let options: [PaddrMenuOption<Value>]
+    var width: CGFloat = PaddrStyle.Width.control
+    var accessibilityIdentifier: String?
+    var accessibilityValue: String?
+    var body: some View {
+        PaddrNativeMenuPicker(title: title, selection: $selection, options: options, width: width,
+            accessibilityIdentifier: accessibilityIdentifier, accessibilityValue: accessibilityValue)
+            .paddrControlMaterial()
+    }
+}
+
+struct PaddrTuningSwitch: View {
+    let title: LocalizedStringResource
+    @Binding var isOn: Bool
+    let accessibilityIdentifier: String
+    var body: some View {
+        PaddrNativeTuningSwitch(title: title, isOn: $isOn, accessibilityIdentifier: accessibilityIdentifier)
+            .paddrControlMaterial(isSwitch: true)
+    }
+}
+
+struct PaddrActionMenu: View {
+    let title: LocalizedStringResource
+    let systemImage: String
+    let actions: [PaddrMenuAction]
+    let accessibilityIdentifier: String
+    let accessibilityValue: String
+    var body: some View {
+        PaddrNativeActionMenu(title: title, systemImage: systemImage, actions: actions,
+            accessibilityIdentifier: accessibilityIdentifier, accessibilityValue: accessibilityValue)
+            .paddrControlMaterial()
     }
 }

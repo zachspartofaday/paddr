@@ -1,8 +1,42 @@
 # Paddr bespoke controls implementation plan
 
-Status: Operator-approved on 2026-10-26; implemented candidate awaiting fresh independent review. Frozen 1.1.0 remains a separate release, pending Apple notarization; this work does not alter it.
+Status: Operator-approved on 2026-10-26; implemented candidate awaiting fresh independent review. Published 1.1.0 remains a separate immutable release; this work does not alter it.
 Date: 2026-10-26
 Implementation baseline: `d0c99d8d079e24c6ecf727b9a8d4247921ba0b06` (merged PR #95, frozen v1.1.0). Original council baseline: PR #92.
+
+## Operator refinement — 2026-10-26
+
+This update supersedes the earlier flat/no-material and outline-only selection
+recommendations below. The source candidate is `095fede96d07b4e22cbb0126661efed15ba52d59`.
+The supplied dark screenshot shows a weak outline-only Zones selection, whole-row
+hover that competes with selection, mixed dark accents, and fragile thin rims.
+
+Keep the compact geometry, system typography, paired editors and neutral surfaces.
+Light retains action `#2859CF`, canvas `#F3F5F7`, workspace `#FFFFFF` and white
+prominent text. Dark uses the Compass North teal `#78C7BD` for action/selection/focus,
+`#254C48` for selected pad fill, `#1C2630` for text on teal, and the existing neutral
+canvas `#20262D` / workspace `#2B333C`. The source logo also uses South `#56AFA7`;
+North provides the stronger readable dark action role. Warning/error/success roles
+remain separate. Native output/slider controls keep their interaction behavior.
+
+- Persistent filled mode selection, with secondary hover/press on the individual
+  segment. Selection and keyboard focus remain separate cues.
+- Actual native Liquid Glass beneath button, selector, mode and switch content.
+  Use the SDK's macOS 26 SwiftUI `glassEffect`/`Glass.interactive` composition;
+  keep native AppKit controls in front as the input and accessibility owners.
+  Reduce Transparency and Increased Contrast use opaque surfaces; Reduce Motion
+  suppresses interactive material motion without disabling controls.
+- Stronger inset antialiased outlines, with no fractional .75-point pad-shell
+  padding or bright hairline around selected key plates. Pads retain stable opaque
+  content and exact sensor/zone geometry; no optical distortion or invented gaps.
+
+Critique against the screenshot: filling the mode makes the current setting legible
+before hover; local neutral feedback answers the pointer without changing the shell.
+The logo teal resolves the operator's revised dark-mode preference while preserving
+the light palette they liked. Glass is restrained to control surfaces, retaining the
+recognizable paired maps and density rather than adding decorative panels/gradients.
+Validate the actual native renders, contrast pairs, input/AX owners, fallbacks, RTL,
+and 1x/2x outlines before claiming completion. Prior reviews predate this refinement.
 
 ## Recommendation
 

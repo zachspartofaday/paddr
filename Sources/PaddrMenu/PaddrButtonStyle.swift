@@ -9,7 +9,7 @@ struct PaddrButtonStyle: ButtonStyle {
     private struct Chrome: View {
         @Environment(\.isEnabled) private var isEnabled
         @Environment(\.isFocused) private var isFocused
-        @Environment(\.colorSchemeContrast) private var contrast
+        @Environment(\.self) private var environment
         @State private var isHovered = false
         let configuration: ButtonStyle.Configuration
         let role: PaddrButtonRole
@@ -24,17 +24,22 @@ struct PaddrButtonStyle: ButtonStyle {
                        minHeight: PaddrStyle.Control.height)
                 .foregroundStyle(role == .primary && isEnabled
                     ? PaddrStyle.controlForeground : PaddrStyle.textPrimary)
-                .background(role == .primary && isEnabled ? PaddrStyle.controlTint : PaddrStyle.workspace,
-                            in: RoundedRectangle(cornerRadius: PaddrStyle.Control.radius, style: .continuous))
+                .background {
+                    PaddrButtonSurface(prominent: role == .primary && isEnabled, enabled: isEnabled,
+                        appearance: PaddrAppearance(environment: environment))
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
                 .overlay {
                     RoundedRectangle(cornerRadius: PaddrStyle.Control.radius, style: .continuous)
-                        .fill(PaddrStyle.textPrimary.opacity(configuration.isPressed ? 0.12 : isHovered && isEnabled ? 0.05 : 0))
+                        .fill(isEnabled && configuration.isPressed ? PaddrStyle.controlPressed
+                            : isHovered && isEnabled ? PaddrStyle.controlHover : .clear)
                         .allowsHitTesting(false)
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: PaddrStyle.Control.radius, style: .continuous)
                         .strokeBorder(isEnabled ? PaddrStyle.textSecondary : PaddrStyle.boundary,
-                                      lineWidth: contrast == .increased ? 1.5 : 1)
+                                      lineWidth: environment.colorSchemeContrast == .increased ? 2 : 1.5)
                         .allowsHitTesting(false)
                 }
                 .overlay {
