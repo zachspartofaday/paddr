@@ -838,3 +838,37 @@ verified**. Keep the existing six-step manual checklist above; additionally veri
 rear L4/L5/R4/R5 order, all four readable choices on one ordinary row, whole-pair
 wrapping with enlarged text, stable keyboard focus and one native menu selection
 changing only its named binding. Fresh independent review remains pending.
+
+## Independent flat-accent review and pressure-fixture repair
+
+Fresh independent GPT-6.1 Sol/high review of `3e956378a9d78863675e8d86b809205ccae26673`
+found no actionable interface regression in the production delta and implicated
+consumers. It inspected the native captures and validation receipts without running
+tests or builds. Long rear values are source-supported; a dedicated long-value
+capture at 180 points and the previously listed manual/platform checks remain gaps.
+
+The reviewer established a pre-existing P2 fixture flaw in `ProgressPressureSession`:
+an idle `stop()` signaled a counting semaphore, leaving a permit for the next runtime
+to consume and exit prematurely. The repair gives each admitted run one release
+obligation, claimed before suspension; idle/repeated stops no longer signal it.
+Startup waits for that run's production count instead of accepting a prior marker.
+Production session, model, output and persistence code are unchanged.
+
+The deterministic regression calls stop twice before each of two successive runs,
+checks actual runtime release calls, consumes the 80-report burst, confirms the
+stream remains active until its own stop, and awaits termination. The initial
+regression failed six release-count assertions before the fix
+(`/tmp/paddr-pressure-red.log`); the repaired regression and original reconnect
+pressure test pass (`/tmp/paddr-pressure-green.log`). This establishes and repairs
+the fixture mechanism. It does not reconstruct the precise ordering of the earlier
+failed run; its original receipt remains retained, rather than erased by reruns.
+
+The interface review covers `3e95637`; this later test-only repair has its own
+regression evidence and is not represented as an exact-head Sol review. External
+Codex review is requested on the final candidate separately.
+
+Final repaired-source validation: **537 tests, 536 passed, one existing map-focus
+skip**, with both exporters, passes in `/tmp/paddr-flat-final-tests.log`. Command:
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer PADDR_UI_EVIDENCE_DIR=/tmp/paddr-flat-final-evidence swift test -Xswiftc -warnings-as-errors`.
+Canonical localization, arm64 release app/CLI builds, CLI checks, and identity/production
+fixtures pass: `/tmp/paddr-flat-final-{localization,build,cli-build,cli,identity,production}.log`.

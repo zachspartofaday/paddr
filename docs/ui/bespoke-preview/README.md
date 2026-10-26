@@ -52,7 +52,10 @@ candidate because this secondary control is unchanged. They are not new-candidat
 capture evidence. Before images retain their original cached-release provenance.
 See [the current validation record](../PADDR_BESPOKE_CONTROLS_VALIDATION.md) for
 commands, failures/reruns, source/settings receipts, limits and manual follow-up.
-Fresh independent review remains pending. Full manual accessibility/keyboard,
+Fresh Sol review at `3e95637` found no actionable interface regression. Its
+pre-existing pressure-fixture finding is repaired with a deterministic regression;
+see the validation record for scope and receipts. Full manual accessibility/keyboard,
 hardware/output/disconnect, inactive pointer feel, physical Retina and macOS 26
-runtime proof remain unverified; the map-focus key-window skip and unexplained
-reconnect-pressure timeout remain explicit.
+runtime proof remain unverified. The map-focus key-window skip remains, and the
+earlier reconnect-timeout receipt is retained without claiming its precise ordering
+was reconstructed by the fixture repair.
