@@ -23,17 +23,7 @@ struct PadModePreview: View {
                 roundedRect: bounds,
                 cornerRadius: PaddrStyle.Radius.pad
             )
-            context.fill(
-                padShape,
-                with: .linearGradient(
-                    Gradient(colors: [
-                        appearance.surface(elevated: true),
-                        appearance.surface(elevated: false)
-                    ]),
-                    startPoint: CGPoint(x: bounds.midX, y: bounds.minY),
-                    endPoint: CGPoint(x: bounds.midX, y: bounds.maxY)
-                )
-            )
+            context.fill(padShape, with: .color(appearance.surface(elevated: false)))
 
             switch mode {
             case .mouse:

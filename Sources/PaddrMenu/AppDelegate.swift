@@ -35,6 +35,7 @@ enum PaddrMenuBarPalette {
 @MainActor
 enum PaddrFamilyWindowChrome {
     static let configurationTitlePointSize: CGFloat = 16
+    static let configurationAutosaveName = "PaddrConfigurationWindow.v10"
 
     static let styleMask: NSWindow.StyleMask = [
         .titled,
@@ -43,6 +44,8 @@ enum PaddrFamilyWindowChrome {
         .resizable,
         .fullSizeContentView
     ]
+
+    static let configurationStyleMask = styleMask.subtracting(.resizable)
 
     static func apply(to window: NSWindow) {
         window.titlebarAppearsTransparent = true
@@ -129,6 +132,43 @@ enum PaddrFamilyWindowChrome {
         window.center()
         if let visibleFrame {
             window.setFrame(WindowFrameGeometry.constrainedFrame(window.frame, to: visibleFrame), display: false)
+        }
+    }
+
+    static func restoreConfigurationFrame(
+        for window: NSWindow, autosaveName: String = configurationAutosaveName
+    ) {
+        window.styleMask.remove(.resizable)
+        window.contentMinSize = .zero
+        window.standardWindowButton(.zoomButton)?.isEnabled = false
+        // Keep the chosen screen and position, but no saved size controls the layout.
+        let restored = window.setFrameUsingName(autosaveName)
+        if !restored { setFreshDefaultUsableFrame(for: window) }
+        fitConfigurationWindow(window, preferredHeight: PaddrStyle.Metrics.defaultWindowSize.height)
+        window.setFrameAutosaveName(autosaveName)
+    }
+
+    static func fitConfigurationWindow(
+        _ window: NSWindow, preferredHeight: CGFloat, visibleFrame: NSRect? = nil
+    ) {
+        window.contentView?.layoutSubtreeIfNeeded()
+        let screen = visibleFrame ?? (window.screen ?? NSScreen.main)?.visibleFrame
+        let requested = NSSize(width: PaddrStyle.Metrics.defaultWindowSize.width, height: preferredHeight)
+        let size = screen.map {
+            WindowFrameGeometry.contentDrivenUsableSize(
+                requestedSize: requested, currentFrame: window.frame,
+                currentLayoutRect: window.contentLayoutRect, visibleFrame: $0)
+        } ?? requested
+        let topLeft = NSPoint(x: window.frame.minX, y: window.frame.maxY)
+        if !window.contentLayoutRect.size.isApproximatelyEqual(to: size) {
+            setUsableLayoutSize(size, for: window)
+            window.setFrameTopLeftPoint(topLeft)
+        }
+        if let screen {
+            let constrained = WindowFrameGeometry.constrainedFrame(window.frame, to: screen)
+            if window.frame != constrained {
+                window.setFrame(constrained, display: true)
+            }
         }
     }
 
@@ -544,11 +584,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             action: #selector(NSWindow.performMiniaturize(_:)),
             keyEquivalent: "m"
         )
-        windowMenu.addItem(
-            withTitle: String(localized: "Zoom"),
-            action: #selector(NSWindow.performZoom(_:)),
-            keyEquivalent: ""
-        )
         windowMenu.addItem(.separator())
         windowMenu.addItem(
             withTitle: String(localized: "Bring All to Front"),
@@ -615,7 +650,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         statusMenu.addItem(.separator())
 
         let outputItem = NSMenuItem(
-            title: String(localized: "Mapped output"),
+            title: String(localized: "Enable output"),
             action: #selector(toggleEnabled),
             keyEquivalent: ""
         )
@@ -624,15 +659,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         outputItem.state = model.isEnabled ? .on : .off
         outputItem.image = NSImage(
             systemSymbolName: model.isEnabled ? "wave.3.right.circle.fill" : "pause.circle",
-            accessibilityDescription: String(localized: "Mapped output")
+            accessibilityDescription: String(localized: "Enable output")
         )
         outputItem.identifier = NSUserInterfaceItemIdentifier(
             PaddrAccessibility.identifier("menu", "output-toggle")
         )
         if let reason = model.readiness.outputDisabledReason {
             outputItem.toolTip = String(localized: reason.message)
+        } else if !model.isEnabled && model.hasUnsavedChanges {
+            outputItem.toolTip = String(localized: "Turning on saves your pending changes.")
         }
         statusMenu.addItem(outputItem)
+        if !model.isEnabled && model.hasUnsavedChanges {
+            addStatusSummary(
+                String(localized: "Turning on saves your pending changes."),
+                identifier: "output-pending-save"
+            )
+        }
         statusMenu.addItem(.separator())
 
         let batteryPresentation = BatteryStatusPresentation(status: model.batteryStatus)
@@ -773,71 +816,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: PaddrStyle.Metrics.defaultWindowSize),
-            styleMask: PaddrFamilyWindowChrome.styleMask,
+            styleMask: PaddrFamilyWindowChrome.configurationStyleMask,
             backing: .buffered,
             defer: false
         )
         window.title = String(localized: "Paddr")
-        window.appearance = NSAppearance(named: .darkAqua)
         window.toolbarStyle = .unifiedCompact
         window.collectionBehavior.insert(.fullScreenNone)
         window.standardWindowButton(.zoomButton)?.isEnabled = false
         window.tabbingMode = .disallowed
         window.isReleasedWhenClosed = false
         window.delegate = self
-        window.contentViewController = NSHostingController(
-            rootView: ConfigurationView(model: model)
+        let hostingController = NSHostingController(
+            rootView: ConfigurationView(model: model, managesWindowSize: true)
         )
+        // Content measurements below own the frame, not the hosting controller's
+        // unconstrained intrinsic minimum (which can include the whole scroll document).
+        hostingController.sizingOptions = []
+        window.contentViewController = hostingController
         PaddrFamilyWindowChrome.apply(to: window)
         PaddrFamilyWindowChrome.installConfigurationTitle(window.title, in: window)
-        let autosaveName = "PaddrConfigurationWindow.v9"
-        let rearButtonsAutosaveName = "PaddrConfigurationWindow.v8"
-        let previousAutosaveName = "PaddrConfigurationWindow.v7"
-        let expandedAutosaveName = "PaddrConfigurationWindow.v6"
-        let compactAutosaveName = "PaddrConfigurationWindow.v5"
-        let legacyAutosaveName = "PaddrConfigurationWindow.v4"
-        if !window.setFrameUsingName(autosaveName) {
-            if PaddrFamilyWindowChrome.restoreAutosavedUsableFrame(
-                usingName: rearButtonsAutosaveName,
-                legacyDefaultSize: NSSize(width: 1_280, height: 760),
-                newDefaultSize: PaddrStyle.Metrics.defaultWindowSize,
-                minimumSize: PaddrStyle.Metrics.minimumWindowSize,
-                for: window
-            ) {
-                // Only the v8 default grows; custom frames retain their usable size.
-            } else if PaddrFamilyWindowChrome.restoreAutosavedUsableFrame(
-                usingName: previousAutosaveName,
-                legacyDefaultSize: NSSize(width: 1_280, height: 700),
-                newDefaultSize: PaddrStyle.Metrics.defaultWindowSize,
-                minimumSize: PaddrStyle.Metrics.minimumWindowSize,
-                for: window
-            ) {
-                // Retain the v7 default migration and preserve custom frames.
-            } else if PaddrFamilyWindowChrome.migrateAutosavedFrame(
-                usingName: expandedAutosaveName,
-                from: .unified,
-                to: .unifiedCompact,
-                for: window
-            ) {
-                // Migrated under the short-lived regular unified titlebar geometry.
-            } else if window.setFrameUsingName(compactAutosaveName) {
-                // This frame already uses compact titlebar geometry.
-            } else if window.setFrameUsingName(legacyAutosaveName) {
-                let legacyUsableSize = window.contentRect(forFrameRect: window.frame).size
-                PaddrFamilyWindowChrome.setUsableLayoutSize(legacyUsableSize, for: window)
-            } else {
-                PaddrFamilyWindowChrome.setFreshDefaultUsableFrame(for: window)
-            }
-            PaddrFamilyWindowChrome.clampRestoredUsableFrame(
-                minimumSize: PaddrStyle.Metrics.minimumWindowSize,
-                for: window
-            )
-        }
-        PaddrFamilyWindowChrome.setMinimumUsableLayoutSize(
-            PaddrStyle.Metrics.minimumWindowSize,
-            for: window
-        )
-        window.setFrameAutosaveName(autosaveName)
+        PaddrFamilyWindowChrome.restoreConfigurationFrame(for: window)
 
         let controller = NSWindowController(window: window)
         configurationWindowController = controller
@@ -874,7 +873,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             defer: false
         )
         window.title = String(localized: "Paddr Guide")
-        window.appearance = NSAppearance(named: .darkAqua)
         window.collectionBehavior.insert(.fullScreenNone)
         window.standardWindowButton(.zoomButton)?.isEnabled = false
         window.tabbingMode = .disallowed

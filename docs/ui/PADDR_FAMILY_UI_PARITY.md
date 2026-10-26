@@ -1,11 +1,31 @@
 # Paddr Family UI Parity Manifest
 
-Updated: 2026-08-30
-Status: Implemented for the Paddr 0.11 development line  
+Updated: 2026-10-26
+Status: Historical adaptation record; presentation requirements superseded below
 Paddr issues: #76, #77, #78  
 Authority: BottleRocket `docs/marketing/PADDR_FAMILY_UI_AUTHORITY.md`, issue #267,
 PR #268, merged as `38839ca6dbf86a1ffb29108129378f46cbd1e119`  
 Pinned reference: `6c65d74fac9add281918438629228333535752a4`
+
+## Current presentation authority
+
+The operator-approved [native interface redesign](PADDR_REDESIGN_PLAN.md) supersedes
+this manifest's original dark palette, layered card treatment, equal-height pad
+enclosures, fixed dark appearance, default geometry, permission-tile placement,
+and compact status-pill presentation. The token and layout tables below describe
+the historical adaptation, not requirements for the current UI.
+
+Paddr now uses its own adaptive light/dark presentation, native macOS controls,
+simultaneous pad editors with independent tuning disclosures, a persistent profile
+header, and a visibly labeled **Enable output** switch. The configuration window
+now fits its measured content automatically, with a preferred width from
+`PaddrStyle.Metrics` and a screen-size cap. Manual resizing is disabled. Saved
+frames retain position and screen selection; saved dimensions do not control layout.
+
+The source provenance, MIT attribution, independent left/right bindings, mounted
+editor identity across reflow, localization, accessible control alternatives,
+and all runtime/profile/persistence boundaries remain in force. Later changes to
+locally owned presentation code do not remove the original attribution obligations.
 
 ## Boundary
 

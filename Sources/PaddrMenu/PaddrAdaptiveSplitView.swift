@@ -55,6 +55,21 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
         self.trailing = trailing
     }
 
+    /// Equal widths with independent natural heights, for the mapping workspace.
+    init(
+        columnsBreakpoint breakpoint: CGFloat,
+        @ViewBuilder leading: @escaping () -> Leading,
+        @ViewBuilder trailing: @escaping () -> Trailing
+    ) {
+        self.breakpoint = breakpoint
+        leadingWidth = nil
+        showsDivider = false
+        equalizesColumnHeights = false
+        columnSpacing = PaddrStyle.Spacing.s5
+        self.leading = leading
+        self.trailing = trailing
+    }
+
     var body: some View {
         let usesColumns = availableWidth >= breakpoint && !dynamicTypeSize.isAccessibilitySize
         let usesEqualHeightColumns = usesColumns && equalizesColumnHeights

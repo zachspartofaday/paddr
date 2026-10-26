@@ -1,6 +1,20 @@
 import Foundation
 
 public enum WindowFrameGeometry {
+    /// Content-driven windows have a fixed preferred width and measured height.
+    /// The screen wins over either dimension; overflow remains in the scroll view.
+    public static func contentDrivenUsableSize(
+        requestedSize: CGSize, currentFrame: CGRect, currentLayoutRect: CGRect,
+        visibleFrame: CGRect
+    ) -> CGSize {
+        let chromeWidth = max(0, currentFrame.width - currentLayoutRect.width)
+        let chromeHeight = max(0, currentFrame.height - currentLayoutRect.height)
+        return CGSize(
+            width: max(1, min(ceil(requestedSize.width), visibleFrame.width - chromeWidth)),
+            height: max(1, min(ceil(requestedSize.height), visibleFrame.height - chromeHeight))
+        )
+    }
+
     /// Fits only defaults; custom restored sizes must not pass through this policy.
     public static func fittedDefaultUsableSize(
         requestedSize: CGSize,

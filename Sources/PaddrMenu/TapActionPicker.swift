@@ -41,7 +41,6 @@ struct OptionalOutputBindingPicker: View {
         }
         .labelsHidden()
         .pickerStyle(.menu)
-        .paddrMenuSelector()
-        .frame(width: PaddrStyle.Width.control, alignment: .trailing)
+        .paddrMappingSelector()
     }
 }

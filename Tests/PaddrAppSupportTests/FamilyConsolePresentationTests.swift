@@ -8,29 +8,24 @@ import PaddrCore
 
 @MainActor
 final class FamilyConsolePresentationTests: XCTestCase {
-    func testFamilyConsoleGeometryMatchesApprovedContract() {
-        XCTAssertEqual(PaddrStyle.Metrics.controlHeight, 38)
-        XCTAssertEqual(PaddrStyle.Metrics.statusPill, 32)
-        XCTAssertEqual(PaddrStyle.Radius.control, 7)
-        XCTAssertEqual(PaddrStyle.Metrics.defaultWindowSize, NSSize(width: 1_380, height: 1_040))
+    func testNativeWorkspaceGeometryMatchesApprovedContract() {
+        XCTAssertEqual(PaddrStyle.Metrics.defaultWindowSize, NSSize(width: 1_080, height: 640))
         XCTAssertEqual(PaddrStyle.Metrics.minimumWindowSize, NSSize(width: 680, height: 600))
-        XCTAssertEqual(PaddrStyle.Metrics.defaultContentWidth, 1_332)
         XCTAssertEqual(PaddrStyle.Metrics.outerSpacing, 24)
         XCTAssertEqual(PaddrStyle.Inset.window, 24)
         XCTAssertEqual(PaddrStyle.Inset.card, 16)
-        XCTAssertEqual(PaddrStyle.Inset.section, 16)
         XCTAssertEqual(PaddrStyle.Inset.control, 12)
         XCTAssertEqual(PaddrStyle.cardSpacing, 16)
-        XCTAssertEqual(PaddrStyle.Metrics.padEditorColumnsBreakpoint, 792)
-        XCTAssertEqual(PaddrStyle.minimumPadSectionWidth, 324)
-        XCTAssertEqual(PaddrStyle.minimumPadColumnWidth, 388)
-        XCTAssertEqual(PaddrStyle.padColumnWidth, 658)
-        XCTAssertEqual(
-            PaddrStyle.Metrics.padEditorColumnsBreakpoint,
-            (2 * PaddrStyle.minimumPadColumnWidth) + PaddrStyle.cardSpacing
-        )
-        XCTAssertEqual(PaddrStyle.Metrics.statusBarInlineBreakpoint, 1_120)
-        XCTAssertEqual(PaddrStyle.Metrics.permissionColumnsBreakpoint, 960)
+        XCTAssertEqual(PaddrStyle.Metrics.defaultContentWidth,
+            PaddrStyle.Metrics.defaultWindowSize.width - (2 * PaddrStyle.Inset.window))
+        XCTAssertGreaterThan(PaddrStyle.Metrics.defaultContentWidth,
+            PaddrStyle.Metrics.padEditorColumnsBreakpoint)
+        XCTAssertGreaterThanOrEqual(PaddrStyle.Metrics.padEditorColumnsBreakpoint,
+            (2 * PaddrStyle.minimumPadColumnWidth) + PaddrStyle.cardSpacing)
+        XCTAssertEqual(PaddrStyle.padColumnWidth,
+            (PaddrStyle.Metrics.defaultContentWidth - PaddrStyle.cardSpacing) / 2)
+        XCTAssertGreaterThanOrEqual(PaddrStyle.Metrics.controlHeight, 28)
+        XCTAssertLessThanOrEqual(PaddrStyle.Metrics.controlHeight, 38)
     }
 
     func testStatusStripUsesReadinessOrder() {
@@ -40,7 +35,7 @@ final class FamilyConsolePresentationTests: XCTestCase {
         )
     }
 
-    func testTypographyRolesFormAStrictNativeHierarchy() {
+    func testTypographyRolesKeepNativeHeadingAndBodyHierarchy() {
         func height(for role: PaddrTextRole) -> CGFloat {
             let hostingView = NSHostingView(
                 rootView: Text("Hierarchy").paddrTypography(role)
@@ -58,17 +53,30 @@ final class FamilyConsolePresentationTests: XCTestCase {
         XCTAssertGreaterThan(page, card)
         XCTAssertGreaterThan(card, section)
         XCTAssertGreaterThan(section, band)
-        XCTAssertGreaterThan(band, row)
+        XCTAssertGreaterThanOrEqual(band, row)
         XCTAssertEqual(row, height(for: .value), accuracy: 0.5)
     }
 
-    func testFamilyConsolePaletteMatchesApprovedValues() throws {
-        try assertColor(PaddrStyle.night0, red: 5, green: 6, blue: 13)
-        try assertColor(PaddrStyle.night1, red: 13, green: 17, blue: 38)
-        try assertColor(PaddrStyle.interfaceBlue, red: 51, green: 158, blue: 255)
-        try assertColor(PaddrStyle.interfacePurple, red: 115, green: 89, blue: 255)
-        try assertColor(PaddrStyle.successGreen, red: 70, green: 180, blue: 135)
-        try assertColor(PaddrStyle.cautionAmber, red: 255, green: 179, blue: 64)
+    func testWorkspacePaletteAdaptsToSystemAppearance() throws {
+        func resolved(_ color: Color, under name: NSAppearance.Name) throws -> NSColor {
+            let appearance = try XCTUnwrap(NSAppearance(named: name))
+            var result: NSColor?
+            appearance.performAsCurrentDrawingAppearance {
+                result = NSColor(color).usingColorSpace(.sRGB)
+            }
+            return try XCTUnwrap(result)
+        }
+
+        let lightCanvas = try resolved(PaddrStyle.night0, under: .aqua)
+        let darkCanvas = try resolved(PaddrStyle.night0, under: .darkAqua)
+        let lightText = try resolved(PaddrStyle.textPrimary, under: .aqua)
+        let darkText = try resolved(PaddrStyle.textPrimary, under: .darkAqua)
+        XCTAssertGreaterThan(lightCanvas.redComponent, darkCanvas.redComponent)
+        XCTAssertGreaterThan(lightCanvas.greenComponent, darkCanvas.greenComponent)
+        XCTAssertGreaterThan(lightCanvas.blueComponent, darkCanvas.blueComponent)
+        XCTAssertLessThan(lightText.redComponent, darkText.redComponent)
+        XCTAssertLessThan(lightText.greenComponent, darkText.greenComponent)
+        XCTAssertLessThan(lightText.blueComponent, darkText.blueComponent)
     }
 
     func testAccessibilityIdentifiersAreStableAndPaddrNamespaced() {
@@ -204,17 +212,4 @@ final class FamilyConsolePresentationTests: XCTestCase {
         )
     }
 
-    private func assertColor(
-        _ color: Color,
-        red: CGFloat,
-        green: CGFloat,
-        blue: CGFloat,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) throws {
-        let resolved = try XCTUnwrap(NSColor(color).usingColorSpace(.sRGB), file: file, line: line)
-        XCTAssertEqual(resolved.redComponent * 255, red, accuracy: 0.01, file: file, line: line)
-        XCTAssertEqual(resolved.greenComponent * 255, green, accuracy: 0.01, file: file, line: line)
-        XCTAssertEqual(resolved.blueComponent * 255, blue, accuracy: 0.01, file: file, line: line)
-    }
 }

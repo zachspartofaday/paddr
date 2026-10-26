@@ -22,12 +22,12 @@ enum PaddrTextRole {
     var font: Font {
         switch self {
         case .pageTitle: .title.bold()
-        case .cardTitle: .title2.bold()
+        case .cardTitle: .title2.weight(.semibold)
         case .sectionTitle: .title3.weight(.semibold)
         case .sectionLabel: .headline.weight(.semibold)
-        case .rowLabel: .callout
-        case .value: .callout.monospacedDigit()
-        case .caption: .caption
+        case .rowLabel: .body
+        case .value: .body.monospacedDigit()
+        case .caption: .callout
         }
     }
 }
@@ -59,13 +59,15 @@ enum PaddrStyle {
         static let card = Spacing.s4
         static let section = Spacing.s4
         static let control = Spacing.s3
+        /// Align chrome with the content inside the workspace enclosure.
+        static let chrome = window + card
     }
 
     /// Heights and fixed surface sizes. `row` is the single interactive-row family
     /// (settings row, status cell, and permission row); headings keep their natural height.
     /// control heights themselves stay native and are never hand-set.
     enum Metrics {
-        static let controlHeight: CGFloat = 38
+        static let controlHeight: CGFloat = 32
         static let row = controlHeight
         /// Compact status feedback stays subordinate to the editor controls.
         static let statusPill: CGFloat = 32
@@ -73,17 +75,18 @@ enum PaddrStyle {
         static let commandBar: CGFloat = 54
 
         static let outerSpacing = Inset.window
-        /// Fresh windows match the approved side-by-side preview-and-settings composition.
-        /// Restored and user-sized windows remain fluid around this default.
-        static let defaultWindowSize = NSSize(width: 1_380, height: 1_040)
+        /// Preferred width and temporary opening height before content is measured.
+        /// The configuration window then fits its measured content to the screen.
+        static let defaultWindowSize = NSSize(width: 1_080, height: 640)
         static let defaultContentWidth = defaultWindowSize.width - (2 * outerSpacing)
         /// Below this content width, two complete pad editors no longer have
         /// enough room for their native mode controls and stack vertically.
-        static let padEditorColumnsBreakpoint: CGFloat = 792
-        /// The status row has its own content budget for enlarged, padded pills and guidance.
-        static let statusBarInlineBreakpoint: CGFloat = 1_120
+        static let padEditorColumnsBreakpoint = (2 * PaddrStyle.minimumPadColumnWidth) + Spacing.s5
+        /// Below this width, the output switch gets its own line.
+        static let statusBarInlineBreakpoint: CGFloat = 760
+        /// Compact layout evidence budget; managed windows can be shorter when content fits.
         static let minimumWindowSize = NSSize(width: 680, height: 600)
-        /// Permission cards share a row while each still has room for its status and actions.
+        /// Historical permission-column budget retained for compatible layout fixtures.
         static let permissionColumnsBreakpoint: CGFloat = 960
         static let guideWindowSize = NSSize(width: 720, height: 480)
         static let minimumGuideWindowSize = NSSize(width: 640, height: 460)
@@ -101,16 +104,16 @@ enum PaddrStyle {
         static let pad: CGFloat = 30
     }
 
-    /// Widths are derived from the container they must fit, not chosen a priori. The binding
-    /// constraint is the inset section inside one default dual-pad column: a settings row's
-    /// inline branch must fit after both the card and section padding are removed.
+    /// Width budgets for native labels and controls. Pointer tuning reserves a further
+    /// disclosure inset at the minimum editor width.
     enum Width {
         /// Numeric value column, monospaced and trailing-aligned.
-        static let readout: CGFloat = 48
+        static let readout: CGFloat = 40
+        static let toggle: CGFloat = 52
         /// Settings-row pickers.
-        static let control: CGFloat = 132
+        static let control: CGFloat = 192
         /// The area-layout picker, whose longest value is "Four-way radial".
-        static let controlMedium: CGFloat = 160
+        static let controlMedium: CGFloat = control
         /// The profile picker, which sits in the full-width top band rather than a column.
         static let controlWide: CGFloat = 200
         /// Label column for rows whose control is a fixed-width picker.
@@ -120,55 +123,56 @@ enum PaddrStyle {
         static let labelColumnWide: CGFloat = 136
     }
 
-    // Family-console palette adapted under the bounded MIT grant recorded in
-    // docs/ui/PADDR_FAMILY_UI_PARITY.md. Product-specific source names are intentionally
-    // replaced with Paddr-local neutral vocabulary.
-    static let night0 = Color(red: 5.0 / 255.0, green: 6.0 / 255.0, blue: 13.0 / 255.0)
-    static let night1 = Color(red: 13.0 / 255.0, green: 17.0 / 255.0, blue: 38.0 / 255.0)
-    static let interfaceBlue = Color(red: 51.0 / 255.0, green: 158.0 / 255.0, blue: 1)
-    static let interfacePurple = Color(red: 115.0 / 255.0, green: 89.0 / 255.0, blue: 1)
-    static let successGreen = Color(red: 70.0 / 255.0, green: 180.0 / 255.0, blue: 135.0 / 255.0)
-    static let cautionAmber = Color(red: 1, green: 179.0 / 255.0, blue: 64.0 / 255.0)
-    static let textPrimary = Color.white
-    static let textSecondary = Color(red: 215.0 / 255.0, green: 233.0 / 255.0, blue: 1)
-    static let textTertiary = Color(red: 157.0 / 255.0, green: 196.0 / 255.0, blue: 248.0 / 255.0)
-    static let errorText = Color(red: 1, green: 0.36, blue: 0.36)
+    /// Paddr's adaptive palette. AppKit resolves these colors with the hosting window's
+    /// appearance; native controls retain their own geometry and focus treatment.
+    static func adaptiveColor(light: UInt32, dark: UInt32) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let value = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+            return NSColor(
+                srgbRed: CGFloat((value >> 16) & 0xff) / 255,
+                green: CGFloat((value >> 8) & 0xff) / 255,
+                blue: CGFloat(value & 0xff) / 255,
+                alpha: 1
+            )
+        })
+    }
 
-    static let accent = interfaceBlue
+    static let canvas = adaptiveColor(light: 0xF3F5F7, dark: 0x20262D)
+    static let workspace = adaptiveColor(light: 0xFFFFFF, dark: 0x2B333C)
+    static let textPrimary = adaptiveColor(light: 0x1C2630, dark: 0xF0F4F8)
+    static let textSecondary = adaptiveColor(light: 0x52616E, dark: 0xBAC6D2)
+    static let textTertiary = textSecondary
+    static let boundary = adaptiveColor(light: 0xCBD3DB, dark: 0x536372)
+    static let action = adaptiveColor(light: 0x2859CF, dark: 0x8BB0FF)
+    static let successGreen = adaptiveColor(light: 0x206644, dark: 0x70D4A7)
+    static let cautionAmber = adaptiveColor(light: 0x855000, dark: 0xFFD080)
+    static let errorText = adaptiveColor(light: 0xB3261E, dark: 0xFFAAA3)
+
+    // Existing names remain local compatibility vocabulary for the adapted primitives.
+    static let night0 = canvas
+    static let night1 = workspace
+    static let interfaceBlue = action
+    static let interfacePurple = action
+    static let accent = action
     static let active = successGreen
-    static let activeText = successText
-    static let accentText = interfaceBlue
+    static let activeText = successGreen
+    static let accentText = action
     static let warningText = cautionAmber
-    static let accentGradient = LinearGradient(
-        colors: [interfaceBlue, interfacePurple],
-        startPoint: .leading,
-        endPoint: .trailing
-    )
-    static let surface = Color.white.opacity(0.05)
-    static let elevatedSurface = Color.white.opacity(0.08)
-    static let surfaceStroke = Color.white.opacity(0.10)
+    static let successText = successGreen
+    static let accentGradient = LinearGradient(colors: [action, action], startPoint: .leading, endPoint: .trailing)
+    static let surface = canvas
+    static let elevatedSurface = workspace
+    static let surfaceStroke = boundary
 
-    // Semantic derivatives preserve the canonical family palette above while pairing
-    // colors for the contrast requirements of the UI element that renders them.
-    // `interfaceBlue` remains the accent for text and artwork; native prominent and
-    // selected controls need a darker tint because AppKit renders their labels white.
-    static let controlTint = Color(
-        red: 0,
-        green: 110.0 / 255.0,
-        blue: 195.0 / 255.0
-    )
-    static let controlForeground = textPrimary
-    static let successText = Color(
-        red: 82.0 / 255.0,
-        green: 201.0 / 255.0,
-        blue: 154.0 / 255.0
-    )
-    static let selectedZoneFillTop = interfaceBlue.opacity(0.42)
-    static let selectedZoneFillBottom = interfacePurple.opacity(0.24)
-    static let selectedTapFill = interfacePurple.opacity(0.24)
-    static let selectionBoundary = textPrimary
-    static let selectedZoneCaptionFill = controlTint
-    static let selectedZoneCaptionForeground = controlForeground
+    // Native prominent buttons use their native label color against this accessible blue.
+    static let controlTint = adaptiveColor(light: 0x2859CF, dark: 0x2859CF)
+    static let controlForeground = Color.white
+    static let selectedZoneFillTop = adaptiveColor(light: 0xDDE8FF, dark: 0x334E78)
+    static let selectedZoneFillBottom = selectedZoneFillTop
+    static let selectedTapFill = selectedZoneFillTop
+    static let selectionBoundary = action
+    static let selectedZoneCaptionFill = action
+    static let selectedZoneCaptionForeground = adaptiveColor(light: 0xFFFFFF, dark: 0x1C2630)
     static let permissionFillOpacity = 0.07
     static let permissionStrokeOpacity = 0.75
 
@@ -178,17 +182,15 @@ enum PaddrStyle {
     static let sliderMinimumWidth: CGFloat = 120
     /// Combined toggle-and-slider rows retain the same inline width budget as a standard slider row.
     static let toggleSliderMinimumWidth: CGFloat = 72
-    static let minimumPadSectionWidth = Width.labelColumnWide
-        + Spacing.s3
-        + sliderMinimumWidth
-        + Spacing.s2
-        + Width.readout
-    static let minimumPadColumnWidth = minimumPadSectionWidth
-        + (2 * Inset.card)
-        + (2 * Inset.section)
-    static let previewInspectorSpacing = Spacing.s5
+    static let minimumPadSectionWidth = max(
+        Width.control,
+        sliderMinimumWidth + Spacing.s2 + Width.readout,
+        Width.toggle + (2 * Spacing.s2) + toggleSliderMinimumWidth + Width.readout
+    )
+    static let minimumPadColumnWidth = previewInspectorColumnsBreakpoint
+    static let previewInspectorSpacing = Spacing.s4
     static let previewInspectorColumnsBreakpoint = Metrics.zoneMapWidth
-        + minimumPadSectionWidth
+        + minimumPadSectionWidth + Spacing.s4
         + previewInspectorSpacing
     static let behaviorPickerWidth: CGFloat = 272
 }
@@ -231,7 +233,7 @@ private struct PaddrActionButtonModifier: ViewModifier {
         case .primary:
             content
                 .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .controlSize(.regular)
                 .paddrTypography(.rowLabel)
                 .foregroundStyle(PaddrStyle.controlForeground)
                 .tint(PaddrStyle.controlTint)
@@ -239,15 +241,17 @@ private struct PaddrActionButtonModifier: ViewModifier {
         case .secondary:
             content
                 .buttonStyle(.bordered)
-                .controlSize(.large)
+                .controlSize(.regular)
                 .paddrTypography(.rowLabel)
+                .tint(PaddrStyle.textPrimary)
                 .frame(minHeight: PaddrStyle.Metrics.controlHeight)
         case .icon:
             content
                 .labelStyle(.iconOnly)
                 .buttonStyle(.bordered)
-                .controlSize(.large)
+                .controlSize(.regular)
                 .paddrTypography(.rowLabel)
+                .tint(PaddrStyle.textPrimary)
                 .frame(minHeight: PaddrStyle.Metrics.controlHeight)
         }
     }
@@ -260,8 +264,15 @@ extension View {
 
     func paddrCard() -> some View { modifier(PaddrCardModifier()) }
 
+    /// Stretch the native menu bezel, not just the surrounding SwiftUI frame.
+    func paddrMappingSelector(width: CGFloat = PaddrStyle.Width.control) -> some View {
+        paddrMenuSelector()
+            .buttonSizing(.flexible)
+            .frame(width: width, alignment: .leading)
+    }
+
     func paddrMenuSelector() -> some View {
-        controlSize(.large)
+        controlSize(.regular)
             .frame(minHeight: PaddrStyle.Metrics.controlHeight)
             .tint(PaddrStyle.textPrimary)
     }

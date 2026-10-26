@@ -93,6 +93,17 @@ if ! grep -Fq '"mouseAcceleration" : 0.25' "$stdout_path" \
     echo "Mouse acceleration flags did not persist independent values." >&2
     exit 1
 fi
+if [ "$(plutil -extract left.mouseAccelerationEnabled raw -o - "$stdout_path")" != true ] \
+    || [ "$(plutil -extract right.mouseAccelerationEnabled raw -o - "$stdout_path")" != true ]; then
+    echo "Nonzero mouse acceleration flags must enable acceleration." >&2
+    exit 1
+fi
+"$cli_path" --config "$stdout_path" --left-mouse-acceleration 0 --show-config >"$test_dir/acceleration-off.json"
+if [ "$(plutil -extract left.mouseAccelerationEnabled raw -o - "$test_dir/acceleration-off.json")" != false ] \
+    || [ "$(plutil -extract right.mouseAccelerationEnabled raw -o - "$test_dir/acceleration-off.json")" != true ]; then
+    echo "Zero acceleration must disable only the selected pad." >&2
+    exit 1
+fi
 if [ "$(plutil -extract left.pointerSmoothingEnabled raw -o - "$stdout_path")" != true ] \
     || [ "$(plutil -extract right.pointerSmoothingEnabled raw -o - "$stdout_path")" != false ] \
     || [ "$(plutil -extract left.pointerSmoothingStrength raw -o - "$stdout_path")" != 0.400000 ] \

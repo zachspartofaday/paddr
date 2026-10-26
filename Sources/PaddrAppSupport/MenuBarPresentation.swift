@@ -32,7 +32,7 @@ public struct MenuBarPresentation: Equatable, Sendable {
         } else if isEnabled {
             outputValue = String(localized: "Waiting")
         } else {
-            outputValue = String(localized: "Idle")
+            outputValue = String(localized: "Off")
         }
 
         let controllerValue = controllerConnected

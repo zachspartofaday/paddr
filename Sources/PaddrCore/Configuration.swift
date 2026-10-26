@@ -136,6 +136,7 @@ public struct PadConfiguration: Codable, Equatable, Sendable {
     public var sensitivity: Double
     public var scrollSensitivity: Double
     public var mouseAcceleration: Double
+    public var mouseAccelerationEnabled: Bool
     public var pointerSmoothingEnabled: Bool
     public var pointerSmoothingStrength: Double
     public var mouseDeadzone: Double
@@ -155,6 +156,7 @@ public struct PadConfiguration: Codable, Equatable, Sendable {
         sensitivity: Double = 1,
         scrollSensitivity: Double = 1,
         mouseAcceleration: Double = 0,
+        mouseAccelerationEnabled: Bool? = nil,
         pointerSmoothingEnabled: Bool = false,
         pointerSmoothingStrength: Double = 0.35,
         mouseDeadzone: Double = 0,
@@ -173,6 +175,8 @@ public struct PadConfiguration: Codable, Equatable, Sendable {
         self.sensitivity = sensitivity
         self.scrollSensitivity = scrollSensitivity
         self.mouseAcceleration = mouseAcceleration
+        // Profiles and callers predating the switch keep their existing behavior.
+        self.mouseAccelerationEnabled = mouseAccelerationEnabled ?? (mouseAcceleration > 0)
         self.pointerSmoothingEnabled = pointerSmoothingEnabled
         self.pointerSmoothingStrength = pointerSmoothingStrength
         self.mouseDeadzone = mouseDeadzone
@@ -237,7 +241,7 @@ public struct PadConfiguration: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, sensitivity, scrollSensitivity, mouseAcceleration
+        case mode, sensitivity, scrollSensitivity, mouseAcceleration, mouseAccelerationEnabled
         case pointerSmoothingEnabled, pointerSmoothingStrength
         case mouseDeadzone, centerTapTrackingMode, tapKey
         case tapStabilizationEnabled, tapStabilizationThresholdPoints
@@ -253,6 +257,7 @@ public struct PadConfiguration: Codable, Equatable, Sendable {
             scrollSensitivity: try values.decodeIfPresent(Double.self, forKey: .scrollSensitivity)
                 ?? min(sensitivity, ConfigurationLimits.scrollSensitivity.upperBound),
             mouseAcceleration: try values.decodeIfPresent(Double.self, forKey: .mouseAcceleration) ?? 0,
+            mouseAccelerationEnabled: try values.decodeIfPresent(Bool.self, forKey: .mouseAccelerationEnabled),
             pointerSmoothingEnabled: try values.decodeIfPresent(
                 Bool.self,
                 forKey: .pointerSmoothingEnabled

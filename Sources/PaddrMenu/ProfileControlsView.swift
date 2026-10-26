@@ -25,12 +25,19 @@ struct ProfileControlsView: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
-            .paddrMenuSelector()
-            .frame(width: PaddrStyle.Width.controlWide)
+            .paddrMappingSelector()
             .accessibilityLabel("Profile")
             .accessibilityValue(Text(verbatim: pickerPresentation.accessibilityValue))
-            .help("Select the active profile")
+            .help(Text(verbatim: pickerPresentation.accessibilityValue))
             .paddrAccessibilityID("profile", "selector")
+
+            if isDefaultProfile {
+                Button("Duplicate to Edit", action: duplicateActiveProfile)
+                    .paddrActionButton(.primary)
+                    .disabled(model.hasUnsavedChanges)
+                    .help("Duplicate Default to create an editable profile")
+                    .paddrAccessibilityID("profile", "duplicate-to-edit")
+            }
 
             Menu {
                 if isDefaultProfile {
@@ -75,17 +82,9 @@ struct ProfileControlsView: View {
                 }
                 .disabled(!model.canEditActiveProfile || model.hasUnsavedChanges)
             } label: {
-                if isDefaultProfile {
-                    Label("Duplicate to Edit", systemImage: "plus.square.on.square")
-                        .labelStyle(.titleAndIcon)
-                        .fixedSize(horizontal: true, vertical: false)
-                } else {
-                    Label("Profile Actions", systemImage: "ellipsis.circle")
-                        .labelStyle(.titleAndIcon)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
+                Label("Profile actions", systemImage: "ellipsis.circle")
+                    .labelStyle(.iconOnly)
             }
-            .fixedSize(horizontal: true, vertical: false)
             .paddrMenuSelector()
             .accessibilityLabel(profileActionsAccessibilityLabel)
             .accessibilityValue(profileActionsAccessibilityValue)
@@ -174,7 +173,7 @@ struct ProfileControlsView: View {
     }
 
     private var profileActionsAccessibilityLabel: LocalizedStringResource {
-        isDefaultProfile ? "Duplicate Default to Edit" : "Profile Actions"
+        "Profile actions"
     }
 
     private var profileActionsAccessibilityValue: LocalizedStringResource {

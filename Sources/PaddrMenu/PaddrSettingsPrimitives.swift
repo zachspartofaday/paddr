@@ -1,29 +1,19 @@
 import AppKit
 import SwiftUI
 
+extension EnvironmentValues {
+    /// Compact inspectors place each label directly above its native control.
+    @Entry var paddrStacksSettingLabels = false
+}
+
 struct PaddrSectionContainer<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        PaddrAppearanceReader { appearance in
-            content()
-                .padding(PaddrStyle.Inset.section)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    appearance.usesOpaqueFallback
-                        ? AnyShapeStyle(PaddrStyle.night1)
-                        : AnyShapeStyle(appearance.surface(elevated: false)),
-                    in: .rect(cornerRadius: PaddrStyle.Radius.control)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: PaddrStyle.Radius.control)
-                        .strokeBorder(
-                            appearance.surfaceStroke,
-                            lineWidth: appearance.strokeWidth
-                        )
-                }
-        }
+        content()
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
+
 }
 
 /// A natural-height, noninteractive heading for regions inside a card. Keeping headings
@@ -66,10 +56,10 @@ struct PaddrInsetDivider: View {
     }
 }
 
-/// The single settings-row grammar: a label carrying an SF Symbol and a trailing control
-/// column on the shared `Metrics.row` height family. Most rows use a fixed label column;
-/// unusually long labels can opt into their intrinsic width.
+/// Native settings rows use labels above controls in compact map inspectors.
+/// Wider horizontal forms retain a label column and trailing control alignment.
 struct PaddrSettingsRow<Control: View>: View {
+    @Environment(\.paddrStacksSettingLabels) private var stacksLabels
     let title: LocalizedStringResource
     let systemImage: String
     /// Picker rows and slider rows need different label columns; see `PaddrStyle.Width`.
@@ -77,18 +67,21 @@ struct PaddrSettingsRow<Control: View>: View {
     @ViewBuilder let control: () -> Control
 
     var body: some View {
-        HStack(spacing: PaddrStyle.Spacing.s3) {
+        let layout = stacksLabels
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: PaddrStyle.Spacing.s1))
+            : AnyLayout(HStackLayout(spacing: PaddrStyle.Spacing.s3))
+        layout {
             label
-                .frame(width: labelWidth, alignment: .leading)
-                .layoutPriority(labelWidth == nil ? 1 : 0)
+                .frame(width: stacksLabels ? nil : labelWidth, alignment: .leading)
+                .layoutPriority(stacksLabels || labelWidth == nil ? 1 : 0)
             control()
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .frame(maxWidth: .infinity, alignment: stacksLabels ? .leading : .trailing)
         }
         .frame(maxWidth: .infinity, minHeight: PaddrStyle.Metrics.row, alignment: .leading)
     }
 
     private var label: some View {
-        Label(title, systemImage: systemImage)
+        Text(title)
             .paddrTypography(.rowLabel)
             .accessibilityHidden(true)
     }

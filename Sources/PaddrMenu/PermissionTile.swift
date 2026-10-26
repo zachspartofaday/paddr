@@ -5,70 +5,54 @@ struct PermissionTile: View {
     let detail: LocalizedStringResource
     let isGranted: Bool
     var identifier: String = "permission"
+    var identifierPrefix: String = "permissions"
     let requestAccessibilityLabel: LocalizedStringResource
     let settingsAccessibilityLabel: LocalizedStringResource
     let requestAction: () -> Void
     let settingsAction: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var availableWidth: CGFloat = 0
+
     var body: some View {
-        PaddrAppearanceReader { appearance in
-            tile(appearance: appearance)
-        }
-    }
+        let usesColumns = availableWidth >= 500 && !dynamicTypeSize.isAccessibilitySize
+        let layout = usesColumns
+            ? AnyLayout(HStackLayout(alignment: .center, spacing: PaddrStyle.Spacing.s3))
+            : AnyLayout(VStackLayout(alignment: .leading, spacing: PaddrStyle.Spacing.s2))
 
-    private func tile(appearance: PaddrAppearance) -> some View {
-        HStack(spacing: PaddrStyle.Spacing.s2) {
-            Image(systemName: isGranted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                .foregroundStyle(isGranted ? PaddrStyle.activeText : PaddrStyle.warningText)
-                .accessibilityHidden(true)
-
-            Text(title)
-                .paddrTypography(.sectionLabel)
-
-            if isGranted {
-                Text("Ready")
+        layout {
+            VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s1) {
+                Label(title, systemImage: isGranted ? "checkmark.circle.fill" : "exclamationmark.circle")
+                    .paddrTypography(.sectionLabel)
+                Text(isGranted ? "Ready" : "Needed")
                     .paddrTypography(.caption)
-                    .foregroundStyle(PaddrStyle.activeText)
-            } else {
-                Text("Needed")
+                    .foregroundStyle(isGranted ? PaddrStyle.activeText : PaddrStyle.warningText)
+                Text(detail)
                     .paddrTypography(.caption)
-                    .foregroundStyle(PaddrStyle.warningText)
+                    .foregroundStyle(PaddrStyle.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer(minLength: PaddrStyle.Spacing.s1)
-
-            if !isGranted {
+            .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: PaddrStyle.Spacing.s2) {
                 Button("Request", action: requestAction)
-                    .paddrActionButton(.primary)
+                    .paddrActionButton(.secondary)
+                    .disabled(isGranted)
                     .accessibilityLabel(requestAccessibilityLabel)
-                    .paddrAccessibilityID("permissions", identifier, "request")
-                Button("Open Settings", systemImage: "gearshape", action: settingsAction)
-                    .paddrActionButton(.icon)
+                    .paddrAccessibilityID(identifierPrefix, identifier, "request")
+                Button("Open Settings", action: settingsAction)
+                    .paddrActionButton(.secondary)
                     .accessibilityLabel(settingsAccessibilityLabel)
-                    .paddrAccessibilityID("permissions", identifier, "settings")
+                    .paddrAccessibilityID(identifierPrefix, identifier, "settings")
             }
         }
-        .padding(.horizontal, PaddrStyle.Inset.control)
-        .frame(maxWidth: .infinity, minHeight: PaddrStyle.Metrics.row)
-        .background(
-            tileColor.opacity(PaddrStyle.permissionFillOpacity),
-            in: .rect(cornerRadius: PaddrStyle.Radius.control)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: PaddrStyle.Radius.control)
-                .strokeBorder(
-                    tileColor.opacity(
-                        appearance.strokeOpacity(PaddrStyle.permissionStrokeOpacity)
-                    ),
-                    lineWidth: appearance.strokeWidth
-                )
-        }
-        .help(Text(detail))
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(title)
         .accessibilityValue(isGranted ? Text("Ready") : Text("Needed"))
-        .paddrAccessibilityID("permissions", identifier)
+        .paddrAccessibilityID(identifierPrefix, identifier)
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width in
+            guard width > 0 else { return }
+            availableWidth = width
+        }
     }
-
-    private var tileColor: Color { isGranted ? PaddrStyle.successGreen : PaddrStyle.cautionAmber }
 }

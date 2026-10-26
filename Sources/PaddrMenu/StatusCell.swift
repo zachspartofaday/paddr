@@ -66,7 +66,7 @@ struct StatusCell: View {
                 HStack(spacing: PaddrStyle.Spacing.s2) {
                     Text(title)
                         .paddrTypography(.rowLabel)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(PaddrStyle.textSecondary)
                         .lineLimit(1)
                     valueText
                         .paddrTypography(.value)

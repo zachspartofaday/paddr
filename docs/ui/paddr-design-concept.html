@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paddr mapping workspace concept</title>
+<style>
+:root { color-scheme: light dark; --paddr-canvas:light-dark(var(--secondary,Canvas),color-mix(in srgb,var(--background,Canvas) 92%,var(--foreground,CanvasText))); --paddr-surface:light-dark(var(--card,Canvas),color-mix(in srgb,var(--background,Canvas) 87%,var(--foreground,CanvasText))); --paddr-ink:var(--foreground,CanvasText); --paddr-muted:color-mix(in srgb,var(--foreground,CanvasText) 65%,var(--background,Canvas)); --paddr-line:light-dark(var(--border,ButtonBorder),color-mix(in srgb,var(--foreground,CanvasText) 30%,var(--background,Canvas))); --paddr-action:color-mix(in srgb,var(--info,Highlight) 72%,var(--foreground,CanvasText)); --paddr-action-ink:var(--background,Canvas); --paddr-radius:var(--radius,12px); }
+* { box-sizing:border-box; }
+html,body { margin:0; padding:0; background:transparent; }
+body { color:var(--paddr-ink); font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+button,select,input { font:inherit; }
+button,select { color:var(--paddr-ink); background:var(--paddr-surface); border:1px solid var(--paddr-line); border-radius:6px; min-height:29px; padding:4px 9px; }
+button:disabled,select:disabled,input:disabled { opacity:.55; }
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible { outline:3px solid var(--ring,Highlight); outline-offset:3px; }
+button { cursor:pointer; }
+input[type=range],input[type=checkbox] { accent-color:var(--paddr-action); }
+[hidden] { display:none !important; }
+.study { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; padding:0 0 12px; color:var(--paddr-muted); font-size:12px; }
+.study label { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.window { background:var(--paddr-canvas); border-radius:var(--paddr-radius); padding:16px; }
+.titlebar { display:flex; gap:12px; align-items:center; padding:0 0 14px; }
+.traffic { display:flex; gap:6px; }
+.traffic i { width:10px; height:10px; border:1px solid var(--paddr-line); border-radius:50%; background:var(--paddr-surface); }
+.appname { font-weight:600; }
+.top { display:flex; gap:10px 18px; flex-wrap:wrap; align-items:center; padding:0 0 16px; }
+.profile { display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
+.profile select { font-weight:600; max-width:100%; min-width:0; }
+.profile label { color:var(--paddr-muted); }
+.quiet { background:transparent; border-color:transparent; }
+.commit { display:flex; align-items:center; gap:10px; margin-left:auto; }
+.save-state { font-size:12px; color:var(--paddr-muted); }
+.primary { background:var(--paddr-action); color:var(--paddr-action-ink); border-color:transparent; font-weight:600; }
+.access { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 0; border-top:1px solid var(--paddr-line); }
+.access p { margin:0; flex:1; }
+.access strong { display:block; font-weight:600; }
+.access span { color:var(--paddr-muted); font-size:12px; }
+.workspace { padding:20px 16px 16px; background:var(--paddr-surface); border-radius:var(--paddr-radius); }
+.pads { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:32px; }
+.pad-section { min-width:0; }
+.pad-section h2 { margin:0 0 12px; font-size:17px; line-height:1.3; font-weight:600; letter-spacing:-.25px; }
+.mode { display:grid; grid-template-columns:repeat(4,1fr); gap:2px; padding:3px; border-radius:7px; background:var(--paddr-canvas); }
+.mode button { border:0; background:transparent; min-width:0; padding:4px 5px; font-size:12px; }
+.mode button[aria-pressed=true] { background:var(--paddr-surface); box-shadow:0 1px 3px var(--paddr-line); font-weight:600; }
+.diagram-wrap { min-height:218px; display:flex; align-items:center; justify-content:center; padding:18px 0; }
+.pad-map { width:176px; aspect-ratio:1; border-radius:32px; border:2px solid var(--paddr-line); background:var(--paddr-canvas); overflow:hidden; }
+.zone-map { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:1px; background:var(--paddr-line); padding:1px; }
+.zone-map button { border:0; border-radius:0; padding:0; background:var(--paddr-canvas); display:flex; align-items:center; justify-content:center; font-size:13px; }
+.zone-map button[aria-pressed=true] { background:var(--paddr-action); color:var(--paddr-action-ink); box-shadow:inset 0 0 0 2px currentColor; font-weight:600; }
+.zone-map button:focus-visible { outline-offset:-4px; }
+.pointer-map,.scroll-map,.off-map { position:relative; display:flex; align-items:center; justify-content:center; }
+.map-label { text-align:center; display:flex; flex-direction:column; gap:5px; }
+.map-label b { font-size:15px; font-weight:500; }
+.map-label span { font-size:12px; color:var(--paddr-muted); }
+.map-ring { width:80px; height:80px; border:1px solid var(--paddr-line); border-radius:50%; display:flex; align-items:center; justify-content:center; }
+.form { display:grid; gap:12px; }
+.field { display:flex; gap:8px; align-items:center; justify-content:space-between; min-height:30px; }
+.field label { min-width:0; }
+.field select { max-width:64%; min-width:104px; text-align-last:right; }
+.slider-label { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:4px; }
+output { font-variant-numeric:tabular-nums; color:var(--paddr-muted); font-size:12px; }
+input[type=range] { width:100%; margin:5px 0; }
+.help { color:var(--paddr-muted); font-size:12px; margin:7px 0 0; }
+.tuning { margin-top:17px; }
+summary { cursor:pointer; font-weight:500; }
+.tuning-summary { display:block; margin:4px 0 0 14px; color:var(--paddr-muted); font-size:12px; }
+.tuning .form { padding-top:14px; }
+.tuning label { display:flex; gap:6px; align-items:center; }
+.rears { margin-top:24px; padding-top:16px; border-top:1px solid var(--paddr-line); }
+.rears h2 { font-size:13px; font-weight:600; margin:0 0 12px; }
+.rear-sides { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:32px; }
+.rear-side { display:grid; gap:8px; }
+.rear-side .field label { font-weight:500; }
+.rear-side select { width:150px; }
+.footer { padding:16px 0 0; }
+.footer-main { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; }
+.hardware { display:flex; align-items:center; flex-wrap:wrap; gap:6px 14px; font-size:12px; }
+.hardware span+span { color:var(--paddr-muted); }
+.output-control { display:flex; align-items:center; gap:8px; font-weight:500; }
+.output-control label { display:flex; align-items:center; gap:8px; }
+.output-control input { width:16px; height:16px; }
+.footer-detail { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px; color:var(--paddr-muted); font-size:12px; }
+.footer-detail p { margin:0; flex:1; }
+.footer-detail button { font-size:12px; padding:3px 0; min-height:24px; }
+.detail-panel { margin-top:10px; padding-top:12px; border-top:1px solid var(--paddr-line); }
+.detail-panel dl { display:grid; grid-template-columns:1fr 1fr; gap:7px 16px; margin:0; font-size:12px; }
+.detail-panel dd { margin:0; }
+.setup { margin-top:12px; padding:16px; border:1px solid var(--paddr-line); border-radius:var(--paddr-radius); background:var(--paddr-surface); }
+.setup h3 { margin:0 0 12px; font-size:15px; }
+.setup-row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:12px; }
+.setup-row p { margin:0; }
+.setup-row span { color:var(--paddr-muted); font-size:12px; display:block; }
+.setup-actions { display:flex; flex-wrap:wrap; gap:6px; }
+.default-note { margin:0 0 14px; color:var(--paddr-muted); font-size:12px; }
+.notice { margin:10px 0 0; color:var(--paddr-muted); font-size:12px; min-height:18px; }
+@media(max-width:620px) { .pads,.rear-sides { grid-template-columns:1fr; gap:24px; } .pad-section+.pad-section { padding-top:20px; border-top:1px solid var(--paddr-line); } .rear-side+.rear-side { padding-top:12px; border-top:1px solid var(--paddr-line); } .window { padding:12px; } .workspace { padding:16px; } .commit { width:100%; justify-content:space-between; } .study label { margin-left:0; } .profile { flex-wrap:wrap; } .diagram-wrap { min-height:204px; } }
+@media(prefers-reduced-motion:no-preference) { button { transition:background-color 100ms ease; } }
+</style>
+</head>
+<body>
+<div id="paddr-concept">
+  <div class="study"><span>Design concept. Example profile and device states.</span><label for="scenario">Preview <select id="scenario"><option value="edited">Editing a profile</option><option value="saved">Saved and active</option><option value="setup">Access needed</option><option value="disconnected">Controller disconnected</option><option value="default">Built-in Default</option></select></label></div>
+  <main class="window" aria-label="Paddr proposed configuration window">
+    <div class="titlebar"><span class="traffic" aria-hidden="true"><i></i><i></i><i></i></span><span class="appname">Paddr</span></div>
+    <header class="top">
+      <div class="profile"><label for="profile">Profile</label><select id="profile"><option>World of Warcraft</option><option>Default</option></select><button class="quiet" id="profile-actions" aria-expanded="false">Profile actions</button></div>
+      <div class="commit"><span class="save-state" id="save-state" role="status">Unsaved changes</span><button class="primary" id="save">Save &amp; Apply</button><button class="primary" id="duplicate" hidden>Duplicate to Edit</button></div>
+    </header>
+    <div class="access" id="switch-confirm" hidden role="alert"><p>Discard unsaved changes before switching profiles?</p><button id="cancel-switch">Cancel</button><button id="discard-switch">Discard changes</button></div>
+    <div id="profile-menu" class="access" hidden><button class="profile-demo">New profile…</button><button id="duplicate-menu">Duplicate profile</button><button class="profile-demo">Rename…</button><button class="profile-demo">Delete…</button></div>
+    <div class="access" id="access" hidden><p><strong>Access setup needed</strong><span id="access-copy">Allow Input Monitoring to read the controller.</span></p><button id="open-setup" aria-expanded="false">Open setup…</button></div>
+    <section class="setup" id="setup-panel" hidden aria-label="Permission setup">
+      <h3>Allow Paddr to use your mappings</h3>
+      <div class="setup-row"><p>Input Monitoring<span id="input-status">Needed to read controller input</span></p><div class="setup-actions"><button id="request-input">Request</button><button class="settings-link">Open Settings</button></div></div>
+      <div class="setup-row"><p>Accessibility<span id="accessibility-status">Needed to send mouse and keyboard actions</span></p><div class="setup-actions"><button id="request-accessibility">Request</button><button class="settings-link">Open Settings</button></div></div>
+    </section>
+    <section class="workspace" aria-label="Trackpad and rear-button mappings">
+      <p class="default-note" id="default-note" hidden>Default is a read-only starting point. Make a copy to change its mappings.</p>
+      <div class="pads" id="pads"></div>
+      <section class="rears" aria-label="Rear buttons"><h2>Rear buttons</h2><div class="rear-sides" id="rear-sides"></div></section>
+    </section>
+    <footer class="footer">
+      <div class="footer-main"><div class="hardware"><span id="controller">Controller connected</span><span id="battery">Battery 82%</span></div><div class="output-control"><label id="output-label" for="output">Mapped output <input id="output" type="checkbox" checked></label><button id="save-enable" hidden>Save &amp; enable output</button></div></div>
+      <div class="footer-detail"><p id="output-state" aria-live="polite">Output active. Unsaved changes have not been applied.</p><button class="quiet" id="connection-details" aria-expanded="false">Connection details</button></div>
+      <div class="detail-panel" id="connection-panel" hidden><dl><dt>Access</dt><dd id="detail-access">Granted</dd><dt>Puck</dt><dd>Connected</dd><dt>Controller</dt><dd id="detail-controller">Connected</dd><dt>Output</dt><dd id="detail-output">Active</dd></dl></div>
+    </footer>
+  </main>
+  <p class="notice" id="notice" role="status"></p>
+</div>
+<script>
+(() => {
+  const root = document.getElementById('paddr-concept');
+  const el = id => root.querySelector('#' + id);
+  const state = { dirty:true, enabled:true, connected:true, input:true, accessibility:true, locked:false, profile:'World of Warcraft', left:'Zones', right:'Pointer', selected:{left:1,right:1}, zones:{left:['Q','W','E','A','Space','D','Z','X','C'],right:['Q','W','E','A','Space','D','Z','X','C']}, rear:{L4:'None',L5:'None',R4:'None',R5:'None'} };
+  const areas = ['Top left','Top','Top right','Left','Center','Right','Bottom left','Bottom','Bottom right'];
+  const actions = ['None','Left click','Right click','Q','W','E','A','Space','D','Z','X','C','F1','F2','F3','F4'];
+  const options = (list,value) => list.map(v => `<option${v === value ? ' selected' : ''}>${v}</option>`).join('');
+  const message = text => { el('notice').textContent=text; };
+  let padMemory = {left:{},right:{}};
+  let pendingProfile = null;
+  const savedProfiles = new Map();
+  function freshDraft(isDefault) {
+    return {left:isDefault?'Scroll':'Zones',right:'Pointer',selected:{left:1,right:1},zones:{left:['Q','W','E','A','Space','D','Z','X','C'],right:['Q','W','E','A','Space','D','Z','X','C']},rear:{L4:'None',L5:'None',R4:'None',R5:'None'},memory:{left:{},right:{}}};
+  }
+  function rememberPads() {
+    for(const side of ['left','right']) {
+      const form=el(side+'-form'); if(!form) continue;
+      const controls=Array.from(form.querySelectorAll('input,select')).map(control=>({value:control.value,checked:control.checked}));
+      const details=form.querySelector('details');
+      padMemory[side][state[side]]={controls,expanded:details?details.open:false,summary:el(side+'-tuning-summary')?.textContent};
+    }
+  }
+  function restorePads() {
+    for(const side of ['left','right']) {
+      const saved=padMemory[side][state[side]]; if(!saved) continue;
+      const form=el(side+'-form');
+      if(state[side]!=='Zones') Array.from(form.querySelectorAll('input,select')).forEach((control,i)=>{if(saved.controls[i]){control.value=saved.controls[i].value;control.checked=saved.controls[i].checked;}});
+      const details=form.querySelector('details'); if(details) details.open=saved.expanded;
+      const speed=el(side+'-speed'); if(speed) el(side+'-speed-value').textContent=Number(speed.value).toFixed(1)+'×';
+      for(const key of ['acceleration','radius']) {const control=el(side+'-'+key);if(control)el(side+'-'+key+'-value').textContent=control.value+'%';}
+      if(saved.summary&&el(side+'-tuning-summary')) el(side+'-tuning-summary').textContent=saved.summary;
+    }
+  }
+  function saveDraft() {
+    rememberPads();
+    const {left,right,selected,zones,rear}=state;
+    savedProfiles.set(state.profile,structuredClone({left,right,selected,zones,rear,memory:padMemory}));
+    state.dirty=false;
+  }
+  function loadProfile(name) {
+    const draft=structuredClone(savedProfiles.get(name)||freshDraft(name==='Default'));
+    const {memory,...values}=draft;
+    Object.assign(state,values,{profile:name,locked:name==='Default',dirty:false});
+    padMemory=memory;pendingProfile=null;el('switch-confirm').hidden=true;
+    renderPads();update();
+  }
+  savedProfiles.set('Default',freshDraft(true));
+  savedProfiles.set('World of Warcraft',freshDraft(false));
+  const dirty = () => { if(!state.locked) state.dirty=true; update(); };
+  function zoneMap(side) { return `<div class="pad-map zone-map" role="group" aria-label="${side} trackpad zones">${state.zones[side].map((key,i)=>`<button data-zone="${i}" data-side="${side}" aria-label="${areas[i]}, ${key}" aria-pressed="${state.selected[side]===i}">${key}</button>`).join('')}</div>`; }
+  function map(side,mode) {
+    if(mode==='Zones') return zoneMap(side);
+    if(mode==='Pointer') return '<div class="pad-map pointer-map" role="img" aria-label="Full pad pointer movement"><div class="map-ring"><div class="map-label"><b>Pointer</b><span>Full pad</span></div></div></div>';
+    if(mode==='Scroll') return '<div class="pad-map scroll-map" role="img" aria-label="Scroll in all directions"><div class="map-label"><b>Scroll</b><span>All directions</span></div></div>';
+    return '<div class="pad-map off-map"><div class="map-label"><b>Off</b><span>No mapped action</span></div></div>';
+  }
+  function form(side,mode) {
+    if(mode==='Off') return '<p class="help">Choose a mode to map this trackpad.</p>';
+    if(mode==='Zones') return `<div class="form"><div class="field"><span>Layout</span><span>3 × 3 grid</span></div><div class="field"><label for="${side}-area">Selected area</label><select id="${side}-area" data-area="${side}">${options(areas,areas[state.selected[side]])}</select></div><div class="field"><label for="${side}-action">Action</label><select id="${side}-action" data-action="${side}">${options(actions,state.zones[side][state.selected[side]])}</select></div></div><p class="help">Hold a zone to hold its action.</p>`;
+    return `<div class="form"><div><div class="slider-label"><label for="${side}-speed">Sensitivity</label><output for="${side}-speed" id="${side}-speed-value">${mode==='Pointer'?'15.0':'1.0'}×</output></div><input id="${side}-speed" type="range" min="0.1" max="${mode==='Pointer'?'30':'3'}" value="${mode==='Pointer'?'15':'1'}" step="0.1" data-speed="${side}"></div><div class="field"><label for="${side}-tap">Touch tap</label><select id="${side}-tap" data-edit>${options(actions,mode==='Pointer'?'Left click':'Right click')}</select></div></div>${mode==='Pointer'?`<details class="tuning"><summary>Pointer tuning<span class="tuning-summary" id="${side}-tuning-summary">Tap stabilization 6 pt</span></summary><div class="form"><div><div class="slider-label"><label for="${side}-acceleration">Pointer acceleration</label><output id="${side}-acceleration-value">0%</output></div><input id="${side}-acceleration" type="range" min="0" max="100" value="0" data-tuning="acceleration" data-side="${side}"></div><div class="field"><label><input type="checkbox" data-tuning="smoothing" data-side="${side}">Pointer smoothing</label><span>35%</span></div><div class="field"><label><input type="checkbox" checked data-tuning="stabilization" data-side="${side}">Tap stabilization</label><span>6 pt</span></div><div><div class="slider-label"><label for="${side}-radius">Center tap radius</label><output id="${side}-radius-value">0%</output></div><input id="${side}-radius" type="range" min="0" max="100" value="0" data-tuning="radius" data-side="${side}"></div><label><input type="checkbox" data-tuning="tracking" data-side="${side}">Track pointer inside tap radius</label></div></details>`:''}`;
+  }
+  function renderPads() {
+    el('pads').innerHTML=['left','right'].map(side=>`<section class="pad-section" aria-labelledby="${side}-title"><h2 id="${side}-title">${side==='left'?'Left':'Right'} trackpad</h2><div class="mode" role="group" aria-label="${side} trackpad mode">${['Off','Pointer','Scroll','Zones'].map(mode=>`<button data-mode="${mode}" data-side="${side}" aria-pressed="${state[side]===mode}">${mode}</button>`).join('')}</div><div class="diagram-wrap">${map(side,state[side])}</div><div id="${side}-form">${form(side,state[side])}</div></section>`).join('');
+    el('rear-sides').innerHTML=[['L4','L5'],['R4','R5']].map(pair=>`<div class="rear-side">${pair.map(key=>`<div class="field"><label for="rear-${key}">${key}</label><select id="rear-${key}" data-rear="${key}">${options(actions,state.rear[key])}</select></div>`).join('')}</div>`).join('');
+    el('pads').querySelectorAll('button,select,input').forEach(control=>{control.disabled=state.locked;});
+    el('rear-sides').querySelectorAll('select').forEach(control=>{control.disabled=state.locked;});
+    restorePads();
+  }
+  function update() {
+    const access = state.input && state.accessibility;
+    el('profile').value=state.profile;
+    el('save-state').textContent=state.locked?'Built-in profile':state.dirty?'Unsaved changes':'Saved';
+    el('save').hidden=state.locked;
+    el('save').disabled=!state.dirty;
+    el('duplicate').hidden=!state.locked;
+    el('default-note').hidden=!state.locked;
+    el('access').hidden=access;
+    el('access-copy').textContent=!state.input?'Allow Input Monitoring to read the controller.':'Allow Accessibility to send mapped actions.';
+    el('output').checked=state.enabled;
+    el('output-label').hidden=state.dirty&&!state.enabled;
+    el('save-enable').hidden=!(state.dirty&&!state.enabled);
+    el('controller').textContent=state.connected?'Controller connected':'Controller not connected';
+    el('battery').textContent=state.connected?'Battery 82%':'Battery unavailable';
+    let output=!state.enabled?'Output off.':!access?'Waiting for access. You can keep editing.':!state.connected?'Waiting for the controller. Connect through the puck.':'Output active.';
+    if(state.dirty&&state.enabled&&access&&state.connected) output+=' Unsaved changes have not been applied.';
+    el('output-state').textContent=output;
+    el('detail-access').textContent=access?'Granted':'Needed';
+    el('detail-controller').textContent=state.connected?'Connected':'Not connected';
+    el('detail-output').textContent=!state.enabled?'Off':access&&state.connected?'Active':'Waiting';
+    el('input-status').textContent=state.input?'Granted':'Needed to read controller input';
+    el('accessibility-status').textContent=state.accessibility?'Granted':'Needed to send mouse and keyboard actions';
+    el('request-input').disabled=state.input;
+    el('request-accessibility').disabled=state.accessibility;
+  }
+  function scenario(value) {
+    savedProfiles.clear();savedProfiles.set('Default',freshDraft(true));savedProfiles.set('World of Warcraft',freshDraft(false));
+    el('profile').innerHTML=options(['World of Warcraft','Default'],'World of Warcraft');
+    loadProfile(value==='default'?'Default':'World of Warcraft');
+    Object.assign(state,{dirty:value==='edited',enabled:value!=='setup',connected:value!=='disconnected',input:value!=='setup',accessibility:value!=='setup',locked:value==='default',profile:value==='default'?'Default':'World of Warcraft',left:value==='default'?'Scroll':'Zones',right:'Pointer'});
+    el('scenario').value=value;
+    el('setup-panel').hidden=true;
+    el('open-setup').setAttribute('aria-expanded','false');
+    message('');renderPads();update();
+  }
+  function duplicate() { rememberPads(); let name=state.profile+' copy';while(savedProfiles.has(name))name+=' copy';state.locked=false;state.profile=name;saveDraft();const option=document.createElement('option');option.textContent=name;el('profile').append(option);el('profile-menu').hidden=true;el('profile-actions').setAttribute('aria-expanded','false');renderPads();update();message('Concept: an editable copy is ready. The native app will let you name it.'); }
+  root.addEventListener('click',event=>{
+    const b=event.target.closest('button');if(!b)return;
+    if(b.dataset.mode){rememberPads();state[b.dataset.side]=b.dataset.mode;renderPads();dirty();root.querySelector(`[data-side="${b.dataset.side}"][data-mode="${b.dataset.mode}"]`).focus();}
+    if(b.dataset.zone!==undefined){state.selected[b.dataset.side]=Number(b.dataset.zone);const side=b.dataset.side;root.querySelectorAll(`[data-zone][data-side="${side}"]`).forEach(zone=>zone.setAttribute('aria-pressed',zone===b));el(side+'-area').value=areas[state.selected[side]];el(side+'-action').value=state.zones[side][state.selected[side]];}
+    if(b.id==='save'){saveDraft();update();message(state.enabled?'Example changes saved and applied.':'Example changes saved. Output stays off.');}
+    if(b.id==='save-enable'){saveDraft();state.enabled=true;update();message('Example changes saved. Output is enabled.');}
+    if(b.id==='cancel-switch'){pendingProfile=null;el('switch-confirm').hidden=true;el('profile').focus();}
+    if(b.id==='discard-switch'){loadProfile(pendingProfile);el('profile').focus();}
+    if(b.id==='duplicate'||b.id==='duplicate-menu')duplicate();
+    if(b.id==='profile-actions'){el('profile-menu').hidden=!el('profile-menu').hidden;b.setAttribute('aria-expanded',!el('profile-menu').hidden);}
+    if(b.id==='open-setup'){el('setup-panel').hidden=!el('setup-panel').hidden;b.setAttribute('aria-expanded',!el('setup-panel').hidden);message('Concept: permission requests are simulated locally.');}
+    if(b.id==='connection-details'){el('connection-panel').hidden=!el('connection-panel').hidden;b.setAttribute('aria-expanded',!el('connection-panel').hidden);}
+    if(b.id==='request-input'){state.input=true;update();}
+    if(b.id==='request-accessibility'){state.accessibility=true;update();}
+    if(b.classList.contains('profile-demo'))message('Concept: this opens the matching native profile dialog.');
+    if(b.classList.contains('settings-link'))message('Concept only: the native app opens the matching macOS privacy settings.');
+  });
+  root.addEventListener('change',event=>{
+    const target=event.target;
+    if(target.id==='scenario')scenario(target.value);
+    else if(target.id==='profile'){const next=target.value;if(next===state.profile)return;if(state.dirty){pendingProfile=next;target.value=state.profile;el('switch-confirm').hidden=false;el('cancel-switch').focus();}else{loadProfile(next);}}
+    else if(target.id==='output'){state.enabled=target.checked;update();}
+    else if(target.dataset.area){const side=target.dataset.area;state.selected[side]=areas.indexOf(target.value);root.querySelectorAll(`[data-zone][data-side="${side}"]`).forEach(b=>b.setAttribute('aria-pressed',Number(b.dataset.zone)===state.selected[side]));el(side+'-action').value=state.zones[side][state.selected[side]];}
+    else if(target.dataset.action){const side=target.dataset.action;state.zones[side][state.selected[side]]=target.value;const b=root.querySelector(`[data-zone="${state.selected[side]}"][data-side="${side}"]`);b.textContent=target.value;b.setAttribute('aria-label',areas[state.selected[side]]+', '+target.value);dirty();}
+    else if(target.dataset.rear){state.rear[target.dataset.rear]=target.value;dirty();}
+    else if(target.hasAttribute('data-edit'))dirty();
+  });
+  root.addEventListener('input',event=>{
+    const target=event.target;
+    if(target.dataset.speed){el(target.dataset.speed+'-speed-value').textContent=Number(target.value).toFixed(1)+'×';dirty();}
+    if(target.dataset.tuning){const side=target.dataset.side;const key=target.dataset.tuning;if(key==='acceleration'||key==='radius')el(side+'-'+key+'-value').textContent=target.value+'%';const parts=[];const section=el(side+'-form');const smoothing=section.querySelector('[data-tuning="smoothing"]');const stabilization=section.querySelector('[data-tuning="stabilization"]');const acceleration=el(side+'-acceleration').value;const radius=el(side+'-radius').value;if(Number(acceleration))parts.push('Acceleration '+acceleration+'%');if(smoothing.checked)parts.push('Smoothing 35%');if(stabilization.checked)parts.push('Tap stabilization 6 pt');if(Number(radius))parts.push('Tap radius '+radius+'%');if(section.querySelector('[data-tuning="tracking"]').checked)parts.push('Track inside tap radius');el(side+'-tuning-summary').textContent=parts.length?parts.join(', '):'No additional tuning enabled';dirty();}
+  });
+  renderPads();update();
+})();
+</script>
+</body>
+</html>

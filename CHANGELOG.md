@@ -2,6 +2,33 @@
 
 User-visible changes to Paddr are recorded here. Release entries describe confirmed behavior at the time of each release; later entries may supersede earlier limitations.
 
+## Unreleased
+
+### Native mapping workspace
+
+- Add a per-pad Pointer acceleration switch, retaining its strength when disabled.
+  Existing profiles keep their effective acceleration; the CLI's numeric options
+  continue to enable nonzero acceleration and disable zero.
+- Give native profile, zone, touch-tap, and rear-button selectors a shared 192-point
+  width so short and long selections keep aligned edges.
+
+- Give Paddr an independent interface that follows macOS light and dark appearance,
+  with native pickers, sliders, switches, menus, and sheets around the paired pad maps.
+- Keep profile selection and Save & Apply visible while the mappings scroll. Keep
+  both pads independently editable, with common settings visible and advanced
+  pointer settings in per-pad Pointer tuning disclosures.
+- Use a persistent **Enable output** switch with separate output readiness. When
+  output is off and edits are pending, explain that turning it on saves those edits.
+- Consolidate missing-permission guidance into Open setup, share permission controls
+  with the guide, and make Duplicate to Edit a direct action for Default.
+- Group permission setup into one actionable footer notice. Keep output state and
+  pending-save guidance beside Enable output; omit unavailable battery data from the summary.
+- Let Paddr manage the configuration window size. Expand and shrink with Pointer
+  tuning and other content changes, keeping the top edge steady where space permits.
+  Disable manual resizing and remove Reset Window Size. Fit the screen and scroll
+  only when needed; saved position is retained but saved size no longer controls layout.
+  Profile storage and controller/output behavior are unchanged.
+
 ## 1.0.0 — 2026-09-07
 
 ### Rear buttons and mapped input

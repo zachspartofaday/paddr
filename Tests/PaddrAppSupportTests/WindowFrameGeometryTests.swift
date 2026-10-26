@@ -3,6 +3,20 @@ import XCTest
 @testable import PaddrAppSupport
 
 final class WindowFrameGeometryTests: XCTestCase {
+    func testContentDrivenSizeFitsSmallScreensWithoutAnOversizedMinimum() {
+        for (requested, expected) in [
+            (CGSize(width: 1080, height: 520.3), CGSize(width: 900, height: 521)),
+            (CGSize(width: 1080, height: 1100), CGSize(width: 900, height: 560)),
+            (CGSize(width: 680, height: 450), CGSize(width: 680, height: 450))
+        ] {
+            XCTAssertEqual(WindowFrameGeometry.contentDrivenUsableSize(
+                requestedSize: requested,
+                currentFrame: CGRect(x: 0, y: 0, width: 1080, height: 680),
+                currentLayoutRect: CGRect(x: 0, y: 0, width: 1080, height: 640),
+                visibleFrame: CGRect(x: -900, y: 40, width: 900, height: 600)), expected)
+        }
+    }
+
     func testDefaultFitsAvailableScreenUsingMeasuredChrome() {
         for (screen, expected) in [
             (CGSize(width: 1800, height: 1200), CGSize(width: 1380, height: 1040)),

@@ -30,23 +30,69 @@ enum PointerSetting: CaseIterable {
     case pointerTracking
 }
 
+enum PointerTuningPresentation {
+    static func summary(configuration: PadConfiguration, locale: Locale = .current) -> String {
+        var values: [String] = []
+        if configuration.mouseAccelerationEnabled && configuration.mouseAcceleration > 0 {
+            let value = configuration.mouseAcceleration.formatted(.percent.precision(.fractionLength(0)).locale(locale))
+            values.append(String(localized: "Acceleration \(value)", locale: locale))
+        }
+        if configuration.pointerSmoothingEnabled {
+            let value = configuration.pointerSmoothingStrength.formatted(.percent.precision(.fractionLength(0)).locale(locale))
+            values.append(String(localized: "Smoothing \(value)", locale: locale))
+        }
+        if configuration.tapStabilizationEnabled {
+            let value = TapStabilizationPresentation.toleranceValue(points: configuration.tapStabilizationThresholdPoints, locale: locale)
+            values.append(String(localized: "Tap stabilization \(value)", locale: locale))
+        }
+        if configuration.mouseDeadzone > 0 {
+            let value = configuration.mouseDeadzone.formatted(.percent.precision(.fractionLength(0)).locale(locale))
+            values.append(String(localized: "Tap radius \(value)", locale: locale))
+            if configuration.centerTapTrackingMode == .coupled {
+                values.append(String(localized: "Pointer dead zone", locale: locale))
+            }
+        }
+        return values.isEmpty
+            ? String(localized: "No additional tuning enabled", locale: locale)
+            : values.formatted(.list(type: .and).locale(locale))
+    }
+}
+
 struct PadConfigurationView: View {
-    @Environment(\.paddrFillsEqualHeightColumn) private var fillsEqualHeightColumn
     @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.locale) private var locale
 
+    @State private var tuningExpanded: Bool
+
     let side: PadSide
+    let isEditable: Bool
     @Binding var configuration: PadConfiguration
 
     init(
         side: PadSide,
-        configuration: Binding<PadConfiguration>
+        configuration: Binding<PadConfiguration>,
+        isEditable: Bool = true,
+        initialTuningExpanded: Bool = false
     ) {
         self.side = side
+        self.isEditable = isEditable
         _configuration = configuration
+        _tuningExpanded = State(initialValue: initialTuningExpanded)
     }
 
     private var title: LocalizedStringResource { side == .left ? "Left trackpad" : "Right trackpad" }
+    private var accelerationEnabled: Binding<Bool> {
+        Binding(
+            get: { configuration.mouseAccelerationEnabled },
+            set: { enabled in
+                if enabled && configuration.mouseAcceleration == 0 {
+                    configuration.mouseAcceleration = 0.25
+                }
+                configuration.mouseAccelerationEnabled = enabled
+            }
+        )
+    }
+
     private var tracksPointerInsideTapRadius: Binding<Bool> {
         Binding(
             get: { configuration.centerTapTrackingMode == .decoupled },
@@ -54,15 +100,6 @@ struct PadConfigurationView: View {
                 configuration.centerTapTrackingMode = $0 ? .decoupled : .coupled
             }
         )
-    }
-
-    private var settingsTitle: LocalizedStringResource {
-        switch configuration.mode {
-        case .disabled: "Trackpad off"
-        case .mouse: "Pointer settings"
-        case .scroll: "Scroll settings"
-        case .dpad: "Zone settings"
-        }
     }
 
     var body: some View {
@@ -74,6 +111,7 @@ struct PadConfigurationView: View {
                 Text(title)
                     .paddrTypography(.cardTitle)
                     .foregroundStyle(PaddrStyle.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
 
                 PadModePicker(
                     selection: $configuration.mode,
@@ -83,19 +121,13 @@ struct PadConfigurationView: View {
                     )
                 )
                 .frame(width: PaddrStyle.behaviorPickerWidth)
+                .disabled(!isEditable)
             }
             .frame(maxWidth: .infinity, minHeight: PaddrStyle.Metrics.row)
 
-            PaddrSectionContainer {
-                modeSettings
-            }
+            modeSettings
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(
-            maxHeight: fillsEqualHeightColumn ? .infinity : nil,
-            alignment: .topLeading
-        )
-        .paddrCard()
         .accessibilityElement(children: .contain)
         .accessibilityLabel(title)
     }
@@ -103,32 +135,55 @@ struct PadConfigurationView: View {
     @ViewBuilder private var modeSettings: some View {
         switch configuration.mode {
         case .disabled:
-            previewSplit(previewTitle: LocalizedStringResource("Preview")) {
+            previewSplit() {
                 Text("This trackpad will not emit pointer, scroll, or button input.")
                     .paddrTypography(.rowLabel)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(PaddrStyle.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
         case .mouse:
-            previewSplit(previewTitle: LocalizedStringResource("Tap area")) {
+            previewSplit() {
                 PaddrSettingsGroup {
-                    ForEach(PointerSetting.allCases, id: \.self) { setting in
-                        pointerSetting(setting)
+                    sensitivityRow.disabled(!isEditable)
+                    TapActionPicker(selection: $configuration.tapKey)
+                        .disabled(!isEditable)
+                    DisclosureGroup(isExpanded: $tuningExpanded) {
+                        PaddrSettingsGroup {
+                            pointerSetting(.acceleration)
+                            pointerSetting(.smoothing)
+                            pointerSetting(.tapStabilization)
+                            pointerSetting(.tapRadius)
+                            pointerSetting(.pointerTracking)
+                        }
+                        .padding(.top, PaddrStyle.Spacing.s2)
+                        .disabled(!isEditable)
+                    } label: {
+                        Text("Pointer tuning")
+                            .paddrTypography(.sectionLabel)
+                    }
+                    .paddrAccessibilityID("pad", side.rawValue, "pointer-tuning")
+                    if !tuningExpanded {
+                        Text(verbatim: PointerTuningPresentation.summary(configuration: configuration, locale: locale))
+                            .paddrTypography(.caption)
+                            .foregroundStyle(PaddrStyle.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .paddrAccessibilityID("pad", side.rawValue, "pointer-tuning-summary")
                     }
                 }
             }
 
         case .scroll:
-            previewSplit(previewTitle: LocalizedStringResource("Preview")) {
+            previewSplit() {
                 PaddrSettingsGroup {
-                    sensitivityRow
+                    sensitivityRow.disabled(!isEditable)
                     TapActionPicker(selection: $configuration.tapKey)
+                        .disabled(!isEditable)
                 }
             }
 
         case .dpad:
-            ButtonZoneConfigurationView(configuration: $configuration)
+            ButtonZoneConfigurationView(configuration: $configuration, isEditable: isEditable)
         }
     }
 
@@ -138,17 +193,20 @@ struct PadConfigurationView: View {
         case .sensitivity:
             sensitivityRow
         case .acceleration:
-            ValueSliderRow(
+            ToggleValueSliderRow(
                 title: "Pointer acceleration",
                 systemImage: "arrow.up.right.and.arrow.down.left",
+                isEnabled: accelerationEnabled,
                 value: $configuration.mouseAcceleration,
                 range: ConfigurationLimits.mouseAcceleration,
                 step: 0.01,
                 valueText: configuration.mouseAcceleration.formatted(
                     .percent.precision(.fractionLength(0))
-                )
+                ),
+                accessibilityIdentifier: PaddrAccessibility.identifier("pad", side.rawValue, "pointer-acceleration"),
+                sliderAccessibilityLabel: "Pointer Acceleration Strength"
             )
-            .help("Zero is linear. Higher values increase fast-motion gain.")
+            .help("Higher values increase fast-motion gain. Turning acceleration off keeps your strength setting.")
         case .smoothing:
             ToggleValueSliderRow(
                 title: "Pointer smoothing",
@@ -229,14 +287,13 @@ struct PadConfigurationView: View {
     /// Mirrors the Zones map-plus-inspector split so every mode keeps the pad
     /// itself as the card's anchor.
     private func previewSplit(
-        previewTitle: LocalizedStringResource,
         @ViewBuilder settings: @escaping () -> some View
     ) -> some View {
         PaddrAdaptiveSplitView(
             breakpoint: PaddrStyle.previewInspectorColumnsBreakpoint,
             leadingWidth: PaddrStyle.Metrics.zoneMapWidth,
             showsDivider: false,
-            leading: { previewSection(title: previewTitle) },
+            leading: { previewSection },
             trailing: { settingsSection(settings) }
         )
     }
@@ -245,22 +302,21 @@ struct PadConfigurationView: View {
         @ViewBuilder _ settings: () -> Settings
     ) -> some View {
         VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
-            PaddrSectionHeader(settingsTitle)
             settings()
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+        .environment(\.paddrStacksSettingLabels, true)
         .accessibilityElement(children: .contain)
     }
 
-    private func previewSection(title: LocalizedStringResource) -> some View {
+    private var previewSection: some View {
         VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
-            PaddrSectionHeader(title)
             PadModePreview(mode: configuration.mode, deadzone: configuration.mouseDeadzone)
                 .frame(
                     width: PaddrStyle.Metrics.zoneMapWidth,
                     height: PaddrStyle.Metrics.zoneMapHeight
                 )
-                .frame(maxWidth: .infinity, alignment: .center)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .help("Mirrors how the trackpad will respond in this mode.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -325,15 +381,16 @@ private struct PadModePicker: NSViewRepresentable {
         control.setAccessibilityLabel(String(localized: LocalizedStringResource("Behavior")))
         control.setAccessibilityIdentifier(accessibilityIdentifier)
         control.identifier = NSUserInterfaceItemIdentifier(accessibilityIdentifier)
-        update(control, coordinator: context.coordinator)
+        update(control, coordinator: context.coordinator, isEnabled: context.environment.isEnabled)
         return control
     }
 
     func updateNSView(_ control: NSSegmentedControl, context: Context) {
-        update(control, coordinator: context.coordinator)
+        update(control, coordinator: context.coordinator, isEnabled: context.environment.isEnabled)
     }
 
-    private func update(_ control: NSSegmentedControl, coordinator: Coordinator) {
+    private func update(_ control: NSSegmentedControl, coordinator: Coordinator, isEnabled: Bool) {
+        control.isEnabled = isEnabled
         coordinator.selection = $selection
         control.selectedSegment = Self.modes.firstIndex(where: { $0.rawValue == selection.rawValue }) ?? 0
         let segmentWidth = PaddrStyle.behaviorPickerWidth / CGFloat(Self.modes.count)

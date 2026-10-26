@@ -5,21 +5,24 @@ import SwiftUI
 /// can measure card enclosure independently from AppKit's scroll-view implementation.
 struct ConfigurationContentView: View {
     @Bindable var model: PaddrMenuModel
+    var initialTuningExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: PaddrStyle.cardSpacing) {
-            TopControlsView(model: model)
             DualPadConfigurationView(
                 configuration: $model.configuration,
                 appearsEnabled: model.activeProfileControlsAppearEnabled,
-                isEditable: model.canEditActiveProfile
+                isEditable: model.canEditActiveProfile,
+                initialTuningExpanded: initialTuningExpanded
             )
+            Divider()
             RearButtonConfigurationView(
                 configuration: $model.configuration.rearButtons,
                 isEditable: model.canEditActiveProfile
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .paddrCard()
         .padding(PaddrStyle.Inset.window)
     }
 }

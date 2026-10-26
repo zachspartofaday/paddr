@@ -234,7 +234,10 @@ private func parse(_ rawArguments: [String]) throws -> CLIOptions {
         case "--left-mouse-acceleration", "--right-mouse-acceleration":
             let side: PadSide = argument.hasPrefix("--left") ? .left : .right
             let value = try parseDouble(nextValue(), option: argument)
-            setPad(side) { $0.mouseAcceleration = value }
+            setPad(side) {
+                $0.mouseAcceleration = value
+                $0.mouseAccelerationEnabled = value > 0
+            }
         case "--left-pointer-smoothing", "--right-pointer-smoothing":
             let side: PadSide = argument.hasPrefix("--left") ? .left : .right
             let value = try parseToggle(nextValue(), option: argument)
@@ -422,7 +425,7 @@ private func run(_ options: CLIOptions) throws {
 
 private func padSummary(_ configuration: PadConfiguration) -> String {
     "\(configuration.mode.rawValue), pointer sensitivity \(configuration.sensitivity), "
-        + "pointer acceleration \(configuration.mouseAcceleration), pointer smoothing "
+        + "pointer acceleration \(configuration.mouseAccelerationEnabled ? "on" : "off") at \(configuration.mouseAcceleration), pointer smoothing "
         + "\(configuration.pointerSmoothingEnabled ? "on" : "off") at "
         + "\(configuration.pointerSmoothingStrength), scroll sensitivity "
         + "\(configuration.scrollSensitivity), center tap tracking "
