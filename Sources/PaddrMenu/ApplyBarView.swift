@@ -17,6 +17,7 @@ struct ApplyBarView: View {
     @State private var availableWidth: CGFloat = 0
     @State private var showsConnectionDetails = false
     @State private var showsPermissionSetup = false
+    @State private var showsNeutralGuidance = false
 
     var outputValue: LocalizedStringResource {
         switch model.readiness.output {
@@ -91,7 +92,10 @@ struct ApplyBarView: View {
     // Setup is the actionable next step while permissions are missing. Preserve
     // explicit failures and system-prompt instructions, without competing advice.
     var showsStatusMessage: Bool {
-        model.status.messageState != nil
+        // Neutral confirmation normally arrives with the next controller report.
+        // Avoid flashing a warning and resizing the window during that brief wait.
+        if model.status == .waitingForNeutral { return showsNeutralGuidance }
+        return model.status.messageState != nil
             || (model.hasSystemAccess && model.readiness.nextAction != .none
                 && model.readiness.nextAction != .enableOutput)
     }
@@ -152,8 +156,18 @@ struct ApplyBarView: View {
             availableWidth = width
         }
         .sheet(isPresented: $showsPermissionSetup) { PermissionSetupView(model: model) }
+        .task(id: model.status == .waitingForNeutral) {
+            showsNeutralGuidance = false
+            guard model.status == .waitingForNeutral else { return }
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+            } catch { return }
+            guard !Task.isCancelled, model.status == .waitingForNeutral else { return }
+            showsNeutralGuidance = true
+            AccessibilityNotification.Announcement(String(localized: model.status.message)).post()
+        }
         .onChange(of: model.status) { _, status in
-            guard status.messageState != nil else { return }
+            guard status.messageState != nil, status != .waitingForNeutral else { return }
             AccessibilityNotification.Announcement(String(localized: status.message)).post()
         }
     }
@@ -222,6 +236,8 @@ struct ApplyBarView: View {
                     Image(systemName: batteryPresentation.systemImage)
                         .accessibilityHidden(true)
                 }
+                // Match the connection button's inset in this top-aligned wrapping row.
+                .padding(.vertical, PaddrStyle.Spacing.s1)
                 .foregroundStyle(batteryState.textColor)
                 .accessibilityLabel("Battery")
                 .accessibilityValue(Text(verbatim: batteryPresentation.accessibilityValue))

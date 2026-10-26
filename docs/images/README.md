@@ -1,8 +1,9 @@
 # Native interface evidence
 
 All twelve README images were replaced on 2026-10-26 using production SwiftUI/AppKit
-views on macOS 27.2, build `26B118`, with Xcode 27.0. Application code is unchanged
-from merged PR #92 (`c211657d3dcff3e38e7835508993ce0cef966172`). The README exporter
+views on macOS 27.2, build `26B118`, with Xcode 27.0. The views come from merged PR #92
+(`c211657d3dcff3e38e7835508993ce0cef966172`), with the footer alignment and activation-guidance
+corrections in PR #93. The README exporter
 is `FamilyConsoleLayoutEvidenceTests.testExportReadmeWindowEvidence`.
 
 These are complete native window-frame renders, including the AppKit titlebar,
@@ -24,12 +25,12 @@ use the configuration window's automatic sizing.
 
 | Captures | Window image dimensions |
 | --- | --- |
-| Profile overview, light and dark | 1080 × 631 |
-| Expanded Pointer tuning | 1080 × 853 |
-| Both pads in Zones | 1080 × 677 |
+| Profile overview, light and dark | 1080 × 577 |
+| Expanded Pointer tuning | 1080 × 799 |
+| Both pads in Zones | 1080 × 623 |
 | Access granted | 1080 × 577 |
-| Radial, corners, left/right, top/bottom zone layouts | 1080 × 677 |
-| 3 × 3 zone layout | 1080 × 631 |
+| Radial, corners, left/right, top/bottom zone layouts | 1080 × 623 |
+| 3 × 3 zone layout | 1080 × 577 |
 | Guide welcome and access pages | 720 × 512 |
 
 - `paddr-profile-overview.png` and `paddr-profile-overview-light.png`: editable
@@ -42,8 +43,8 @@ use the configuration window's automatic sizing.
 - `paddr-onboarding.png`: guide welcome page, light.
 - `paddr-permissions.png`: guide page 3 using the shared permission controls, light.
 
-Unless noted otherwise, the example model has neither permission granted, no
-controller/puck connected, and output off. Its profile is named Editable. Bindings
+Workspace examples have both permissions granted, no controller/puck connected,
+and output off. Only `paddr-permissions.png` simulates permissions still needed. Its profile is named Editable. Bindings
 are example drafts, not built-in presets.
 
 Regenerate the README captures with:

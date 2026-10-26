@@ -13,11 +13,11 @@ See [CHANGELOG.md](CHANGELOG.md) for release history and current compatibility n
 
 The configuration window follows macOS light and dark appearance and keeps both trackpads independently editable. Profile selection and **Save & Apply** stay visible above the scrolling workspace; **Enable output** and output readiness stay below it. Common settings remain visible, while **Pointer tuning** reveals advanced controls and summarizes the enabled tuning when collapsed. Paddr manages the window size: it uses a 1080-point width when the screen allows, grows when Pointer tuning opens, and shrinks when it closes. Manual resizing is disabled. The window stays within the available screen area; scrolling remains available when the content is too tall to fit.
 
-The screenshots render complete native windows at their app-managed sizes with inert example data: no puck connected and output off. The main examples show permissions still needed; the access-granted example below simulates both permissions granted. The bindings are example drafts, not built-in presets. [View the light appearance](docs/images/paddr-profile-overview-light.png).
+The screenshots render complete native windows at their app-managed sizes with inert example data: no puck connected and output off. The workspace examples simulate both permissions granted. Only the permission guide shows access still needed. The bindings are example drafts, not built-in presets. [View the light appearance](docs/images/paddr-profile-overview-light.png).
 
 Opening **Pointer tuning** expands the window to keep the acceleration, smoothing, and tap-stability controls visible. Switching to shorter content shrinks it again.
 
-![Paddr managed window with left Pointer tuning expanded, right Zones, and the Enable output and permission footer visible](docs/images/paddr-auto-sized-tuning.png)
+![Paddr managed window with left Pointer tuning expanded, right Zones, and the Enable output footer visible](docs/images/paddr-auto-sized-tuning.png)
 
 [View the shorter window with both pads in Zones](docs/images/paddr-auto-sized-zones.png). Screenshot provenance and regeneration instructions are in [the image evidence notes](docs/images/README.md).
 

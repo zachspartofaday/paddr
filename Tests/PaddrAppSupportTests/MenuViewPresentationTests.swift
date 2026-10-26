@@ -1355,6 +1355,63 @@ final class MenuViewPresentationTests: XCTestCase {
         _ = await session.stop()
     }
 
+    func testNeutralGuidanceAvoidsBriefActivationFlashButShowsPersistentWaitsAndErrors() async throws {
+        for armsQuickly in [true, false] {
+            let store = BlockingProfileStore()
+            let session = PresentationSession()
+            let model = PaddrMenuModel(dependencies: dependencies(
+                store: store, session: session, receiver: "Fake receiver"
+            ))
+            defer { store.releaseSave() }
+            let initialized = await waitUntil { model.isInitialized }
+            XCTAssertTrue(initialized)
+            let started = await waitUntil { await session.startCount == 1 }
+            XCTAssertTrue(started)
+            await session.send(.controllerConnected)
+            let connected = await waitUntil { model.controllerConnected }
+            XCTAssertTrue(connected)
+            let host = NSHostingView(rootView: ApplyBarView(model: model))
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 300),
+                styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            defer { window.close() }
+            window.contentView = host
+            await settle(host)
+            let idleHeight = host.fittingSize.height
+
+            model.isEnabled = true
+            XCTAssertEqual(model.status, .waitingForNeutral)
+            await settle(host)
+            XCTAssertEqual(host.fittingSize.height, idleHeight, accuracy: 1,
+                "A normal activation wait must not insert a flashing footer row")
+            if !armsQuickly {
+                let guidanceAppeared = await waitUntil {
+                    await self.settle(host)
+                    return host.fittingSize.height > idleHeight + 5
+                }
+                XCTAssertTrue(guidanceAppeared, "A sustained neutral wait must still explain how to activate")
+            }
+            await session.send(.outputArmed)
+            let active = await waitUntil { model.isRunning }
+            XCTAssertTrue(active)
+            await settle(host)
+            XCTAssertEqual(host.fittingSize.height, idleHeight, accuracy: 1)
+            // A canceled delayed task must not resurrect guidance after output activates.
+            try await Task.sleep(for: .milliseconds(300))
+            await settle(host)
+            XCTAssertEqual(host.fittingSize.height, idleHeight, accuracy: 1)
+
+            await session.send(.failed("Fixture output failure"))
+            let failed = await waitUntil { model.status.messageState == .failure }
+            XCTAssertTrue(failed)
+            XCTAssertTrue(ApplyBarView(model: model).showsStatusMessage,
+                "Failure guidance must not be gated by the neutral-wait delay")
+            await settle(host)
+            XCTAssertGreaterThan(host.fittingSize.height, idleHeight + 5)
+            _ = await session.stop()
+        }
+    }
+
     func testBottomStatusBarOwnsTrailingOutputToggleWithPreservedSemantics() async throws {
         let store = BlockingProfileStore()
         let model = PaddrMenuModel(dependencies: dependencies(store: store))

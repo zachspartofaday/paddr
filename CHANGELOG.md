@@ -11,10 +11,18 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
   beta-only compatibility notes below. Bluetooth and direct USB remain unvalidated.
 - Replace every README screenshot with a complete native window capture. Configuration
   captures use content-driven sizing, including the shorter access-granted workspace
-  and expanded Pointer tuning. These inert fixtures are separate from hardware confirmation.
+  and expanded Pointer tuning. Workspace examples have permissions granted; the
+  access guide retains its permission-needed state. These inert fixtures are
+  separate from hardware confirmation.
 - Update local build instructions for Xcode 27 at its standard application path.
 
 ### Native mapping workspace
+
+- Align the footer battery label with the adjacent controller status by matching
+  their vertical insets.
+- Avoid flashing orange release-controls guidance and resizing the footer during
+  normal output activation. Show it after a sustained 250 ms neutral wait; output
+  readiness, errors, and permission guidance remain immediate.
 
 - Add a per-pad Pointer acceleration switch, retaining its strength when disabled.
   Existing profiles keep their effective acceleration; the CLI's numeric options

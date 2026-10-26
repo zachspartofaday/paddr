@@ -126,13 +126,16 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         }
         let directory = URL(fileURLWithPath: path, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let model = try makeEditableMenuModel(hasSystemAccess: false)
+        let model = try makeEditableMenuModel(hasSystemAccess: true)
         let initialized = await waitUntil { model.isInitialized }
         XCTAssertTrue(initialized)
         model.configuration.rearButtons = .init(l4: "F1", l5: "F2", r4: "F3", r5: "F4")
         let readyModel = try makeEditableMenuModel(hasSystemAccess: true)
         let ready = await waitUntil { readyModel.isInitialized }
         XCTAssertTrue(ready)
+        let permissionModel = try makeEditableMenuModel(hasSystemAccess: false)
+        let permissionsInitialized = await waitUntil { permissionModel.isInitialized }
+        XCTAssertTrue(permissionsInitialized)
 
         for (theme, scheme, appearance) in [
             ("light", ColorScheme.light, NSAppearance.Name.aqua),
@@ -183,7 +186,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             pager.advance()
             pager.advance()
             try await exportReadmeWindow(
-                OnboardingGuideView(model: model, onSkip: {}, onComplete: {}, initialPager: pager),
+                OnboardingGuideView(model: permissionModel, onSkip: {}, onComplete: {}, initialPager: pager),
                 isGuide: true, scheme: scheme, appearance: appearance,
                 to: directory.appendingPathComponent("readme-guide-permissions-\(theme).png")
             )
