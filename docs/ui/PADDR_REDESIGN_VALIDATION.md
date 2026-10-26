@@ -213,3 +213,10 @@ Logs: `/tmp/paddr-selectors-full-tests.log`, `/tmp/paddr-selectors-cli.log`,
 Captures: `/tmp/paddr-selectors-evidence/`. The local app and selected docs images
 were refreshed. Older binaries ignore the enable flag and use the numeric amount;
 profile schema version remains 1.
+
+
+## Bespoke controls follow-up
+
+The subsequent control-family implementation has its own
+[validation record](PADDR_BESPOKE_CONTROLS_VALIDATION.md). Earlier native-widget
+captures and counts above remain historical evidence for their own revisions.

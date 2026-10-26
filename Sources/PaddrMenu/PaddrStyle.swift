@@ -63,9 +63,28 @@ enum PaddrStyle {
         static let chrome = window + card
     }
 
+    /// Visible control geometry, separate from layout row metrics.
+    enum Control {
+        static let height: CGFloat = 32
+        static let radius: CGFloat = 7
+        static let sideInset: CGFloat = 12
+        static let focusWidth: CGFloat = 2
+        static let segmentInset: CGFloat = 2
+        static let segmentRadius: CGFloat = 5
+        static let bindingPlateHeight: CGFloat = 24
+        static let bindingPlateRadius: CGFloat = 5
+        enum TuningSwitch {
+            static let track = CGSize(width: 44, height: 24)
+            static let thumb = CGSize(width: 18, height: 18)
+            static let thumbRadius: CGFloat = 4
+            static let inset: CGFloat = 3
+            static let travel: CGFloat = 20
+        }
+    }
+
     /// Heights and fixed surface sizes. `row` is the single interactive-row family
     /// (settings row, status cell, and permission row); headings keep their natural height.
-    /// control heights themselves stay native and are never hand-set.
+    /// Visible control geometry belongs to `Control`.
     enum Metrics {
         static let controlHeight: CGFloat = 32
         static let row = controlHeight
@@ -98,10 +117,10 @@ enum PaddrStyle {
     enum Radius {
         /// Console card or banner.
         static let card: CGFloat = 12
-        /// Inset controls, status containers, and zone label plates.
+        /// Inset controls and status containers. Binding plates have their own role.
         static let control: CGFloat = 7
-        /// The physical trackpad. Geometry-bearing and unchanged.
-        static let pad: CGFloat = 30
+        /// Shared visual shell; runtime region geometry is unchanged.
+        static let pad: CGFloat = 14
     }
 
     /// Width budgets for native labels and controls. Pointer tuning reserves a further
@@ -115,7 +134,7 @@ enum PaddrStyle {
         /// The area-layout picker, whose longest value is "Four-way radial".
         static let controlMedium: CGFloat = control
         /// The profile picker, which sits in the full-width top band rather than a column.
-        static let controlWide: CGFloat = 200
+        static let controlWide: CGFloat = control
         /// Label column for rows whose control is a fixed-width picker.
         static let labelColumn: CGFloat = 108
         /// Label column for slider rows. It is wide enough for "Pointer acceleration"
@@ -124,7 +143,7 @@ enum PaddrStyle {
     }
 
     /// Paddr's adaptive palette. AppKit resolves these colors with the hosting window's
-    /// appearance; native controls retain their own geometry and focus treatment.
+    /// appearance; controls reuse these colors without introducing another palette.
     static func adaptiveColor(light: UInt32, dark: UInt32) -> Color {
         Color(nsColor: NSColor(name: nil) { appearance in
             let value = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
@@ -164,7 +183,7 @@ enum PaddrStyle {
     static let elevatedSurface = workspace
     static let surfaceStroke = boundary
 
-    // Native prominent buttons use their native label color against this accessible blue.
+    // Prominent controls preserve the existing blue/white contrast pair.
     static let controlTint = adaptiveColor(light: 0x2859CF, dark: 0x2859CF)
     static let controlForeground = Color.white
     static let selectedZoneFillTop = adaptiveColor(light: 0xDDE8FF, dark: 0x334E78)
@@ -229,31 +248,10 @@ private struct PaddrActionButtonModifier: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        switch role {
-        case .primary:
-            content
-                .buttonStyle(.borderedProminent)
-                .controlSize(.regular)
-                .paddrTypography(.rowLabel)
-                .foregroundStyle(PaddrStyle.controlForeground)
-                .tint(PaddrStyle.controlTint)
-                .frame(minHeight: PaddrStyle.Metrics.controlHeight)
-        case .secondary:
-            content
-                .buttonStyle(.bordered)
-                .controlSize(.regular)
-                .paddrTypography(.rowLabel)
-                .tint(PaddrStyle.textPrimary)
-                .frame(minHeight: PaddrStyle.Metrics.controlHeight)
-        case .icon:
-            content
-                .labelStyle(.iconOnly)
-                .buttonStyle(.bordered)
-                .controlSize(.regular)
-                .paddrTypography(.rowLabel)
-                .tint(PaddrStyle.textPrimary)
-                .frame(minHeight: PaddrStyle.Metrics.controlHeight)
-        }
+        content
+            .labelStyle(PaddrActionLabelStyle(role: role))
+            .buttonStyle(PaddrButtonStyle(role: role))
+            .focusEffectDisabled()
     }
 }
 
@@ -264,20 +262,15 @@ extension View {
 
     func paddrCard() -> some View { modifier(PaddrCardModifier()) }
 
-    /// Stretch the native menu bezel, not just the surrounding SwiftUI frame.
-    func paddrMappingSelector(width: CGFloat = PaddrStyle.Width.control) -> some View {
-        paddrMenuSelector()
-            .buttonSizing(.flexible)
-            .frame(width: width, alignment: .leading)
-    }
-
-    func paddrMenuSelector() -> some View {
-        controlSize(.regular)
-            .frame(minHeight: PaddrStyle.Metrics.controlHeight)
-            .tint(PaddrStyle.textPrimary)
-    }
-
     func paddrActionButton(_ role: PaddrButtonRole) -> some View {
         modifier(PaddrActionButtonModifier(role: role))
+    }
+}
+
+private struct PaddrActionLabelStyle: LabelStyle {
+    let role: PaddrButtonRole
+    @ViewBuilder func makeBody(configuration: Configuration) -> some View {
+        if role == .icon { configuration.icon }
+        else { HStack(spacing: PaddrStyle.Spacing.s1) { configuration.icon; configuration.title } }
     }
 }

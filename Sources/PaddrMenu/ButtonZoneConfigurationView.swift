@@ -98,27 +98,18 @@ struct ButtonZoneConfigurationView: View {
     }
 
     private var areaLayoutPicker: some View {
-        Picker("Area layout", selection: $configuration.zoneLayout) {
-            ForEach(PadZoneLayout.allCases, id: \.self) { layout in
-                Text(layout.displayName).tag(layout)
-            }
-        }
-        .labelsHidden()
-        .pickerStyle(.menu)
-        .paddrMappingSelector()
+        PaddrMenuPicker(title: "Area layout", selection: $configuration.zoneLayout,
+            options: PadZoneLayout.allCases.map {
+                .init(value: $0, title: String(localized: $0.displayName))
+            })
         .help("Choose how the trackpad is divided into button areas.")
     }
 
     private var selectedAreaPicker: some View {
-        Picker("Selected area", selection: $selectedZone) {
-            ForEach(configuration.zoneLayout.zones, id: \.self) { zone in
-                Label(zone.title, systemImage: zone.systemImage).tag(zone)
-            }
-        }
-        .labelsHidden()
-        .pickerStyle(.menu)
-        .paddrMappingSelector()
-        .paddrAccessibilityID("zones", "selected-area")
+        PaddrMenuPicker(title: "Selected area", selection: $selectedZone,
+            options: configuration.zoneLayout.zones.map {
+                .init(value: $0, title: String(localized: $0.title), systemImage: $0.systemImage)
+            }, accessibilityIdentifier: PaddrAccessibility.identifier("zones", "selected-area"))
         .help("Choose the trackpad area to configure.")
     }
 }

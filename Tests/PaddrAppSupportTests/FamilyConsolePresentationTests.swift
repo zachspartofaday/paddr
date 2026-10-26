@@ -28,6 +28,21 @@ final class FamilyConsolePresentationTests: XCTestCase {
         XCTAssertLessThanOrEqual(PaddrStyle.Metrics.controlHeight, 38)
     }
 
+    func testBespokeControlFamilyUsesApprovedBaseDimensions() {
+        XCTAssertEqual(PaddrStyle.Control.height, 32)
+        XCTAssertEqual(PaddrStyle.Control.radius, 7)
+        XCTAssertEqual(PaddrStyle.Control.sideInset, 12)
+        XCTAssertEqual(PaddrStyle.Control.focusWidth, 2)
+        XCTAssertEqual(PaddrStyle.behaviorPickerWidth, 272)
+        XCTAssertEqual(PaddrStyle.Width.control, 192)
+        XCTAssertEqual(PaddrStyle.Control.segmentInset, 2)
+        XCTAssertEqual(PaddrStyle.Control.segmentRadius, 5)
+        XCTAssertEqual(PaddrStyle.Control.bindingPlateHeight, 24)
+        XCTAssertEqual(PaddrStyle.Control.bindingPlateRadius, 5)
+        XCTAssertEqual(PaddrStyle.Metrics.zoneMapWidth, 190)
+        XCTAssertEqual(PaddrStyle.Metrics.zoneMapHeight, 182)
+    }
+
     func testStatusStripUsesReadinessOrder() {
         XCTAssertEqual(
             PaddrStatusKind.allCases,

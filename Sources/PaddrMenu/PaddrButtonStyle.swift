@@ -1,0 +1,53 @@
+import SwiftUI
+
+struct PaddrButtonStyle: ButtonStyle {
+    let role: PaddrButtonRole
+    func makeBody(configuration: Configuration) -> some View {
+        Chrome(configuration: configuration, role: role)
+    }
+
+    private struct Chrome: View {
+        @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.isFocused) private var isFocused
+        @Environment(\.colorSchemeContrast) private var contrast
+        @State private var isHovered = false
+        let configuration: ButtonStyle.Configuration
+        let role: PaddrButtonRole
+
+        var body: some View {
+            configuration.label
+                .paddrTypography(.rowLabel)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, role == .icon ? 0 : PaddrStyle.Control.sideInset)
+                .padding(.vertical, 6)
+                .frame(minWidth: role == .icon ? PaddrStyle.Control.height : nil,
+                       minHeight: PaddrStyle.Control.height)
+                .foregroundStyle(role == .primary && isEnabled
+                    ? PaddrStyle.controlForeground : PaddrStyle.textPrimary)
+                .background(role == .primary && isEnabled ? PaddrStyle.controlTint : PaddrStyle.workspace,
+                            in: RoundedRectangle(cornerRadius: PaddrStyle.Control.radius, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: PaddrStyle.Control.radius, style: .continuous)
+                        .fill(PaddrStyle.textPrimary.opacity(configuration.isPressed ? 0.12 : isHovered && isEnabled ? 0.05 : 0))
+                        .allowsHitTesting(false)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: PaddrStyle.Control.radius, style: .continuous)
+                        .strokeBorder(isEnabled ? PaddrStyle.textSecondary : PaddrStyle.boundary,
+                                      lineWidth: contrast == .increased ? 1.5 : 1)
+                        .allowsHitTesting(false)
+                }
+                .overlay {
+                    if isFocused {
+                        RoundedRectangle(cornerRadius: PaddrStyle.Control.radius, style: .continuous)
+                            .strokeBorder(PaddrStyle.action, lineWidth: PaddrStyle.Control.focusWidth)
+                            .padding(-3)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .contentShape(RoundedRectangle(cornerRadius: PaddrStyle.Control.radius, style: .continuous))
+                .opacity(isEnabled ? 1 : 0.55)
+                .onHover { isHovered = $0 }
+        }
+    }
+}

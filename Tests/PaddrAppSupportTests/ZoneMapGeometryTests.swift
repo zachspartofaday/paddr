@@ -1,9 +1,28 @@
 import CoreGraphics
+import SwiftUI
+@testable import PaddrMenu
 import XCTest
 @testable import PaddrAppSupport
 import PaddrCore
 
 final class ZoneMapGeometryTests: XCTestCase {
+    @MainActor
+    func testBespokePadShellAndSelectedOutlineShareThe14PointCorner() {
+        let bounds = CGRect(x: 0, y: 0, width: 190, height: 182)
+        XCTAssertEqual(PaddrStyle.Radius.pad, 14)
+        let shell = PaddrPadShape().path(in: bounds)
+        XCTAssertFalse(shell.contains(.zero))
+        XCTAssertTrue(shell.contains(CGPoint(x: 6, y: 6)),
+            "The approved tighter corner must include this point that the old 30-point shell excluded")
+        let outline = ZoneMapGeometry.selectedOutlineRegion(
+            for: CGPath(rect: CGRect(x: 0, y: 0, width: 95, height: 91), transform: nil),
+            in: bounds, cornerRadius: PaddrStyle.Radius.pad, lineWidth: 2)
+        XCTAssertFalse(outline.contains(CGPoint(x: 1, y: 1)))
+        XCTAssertTrue(outline.contains(CGPoint(x: 6, y: 6)))
+        XCTAssertEqual(outline.boundingBoxOfPath.maxX, 95, accuracy: 0.001,
+            "Changing the shell must preserve the contiguous internal divider")
+    }
+
     func testSelectedOutlineInsetsEveryOuterEdgeAndPreservesInternalDividers() {
         let bounds = CGRect(x: 0, y: 0, width: 200, height: 180)
         let lineWidth: CGFloat = 2

@@ -34,7 +34,7 @@ struct RearButtonConfigurationView: View {
 
     private func rearRow(
         _ code: LocalizedStringResource,
-        title: LocalizedStringKey,
+        title: LocalizedStringResource,
         selection: Binding<String?>
     ) -> some View {
         HStack(spacing: PaddrStyle.Spacing.s2) {

@@ -246,17 +246,10 @@ struct PadConfigurationView: View {
                 systemImage: "cursorarrow.motionlines",
                 labelWidth: nil
             ) {
-                Toggle(
-                    "Track pointer inside tap radius",
-                    isOn: tracksPointerInsideTapRadius
-                )
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .accessibilityLabel("Track pointer inside tap radius")
-                .accessibilityValue(
-                    configuration.centerTapTrackingMode == .decoupled
-                        ? LocalizedStringResource("On")
-                        : LocalizedStringResource("Off")
+                PaddrTuningSwitch(
+                    title: "Track pointer inside tap radius",
+                    isOn: tracksPointerInsideTapRadius,
+                    accessibilityIdentifier: PaddrAccessibility.identifier("pad", side.rawValue, "pointer-tracking")
                 )
                 .help("When on, pointer movement continues inside and across the center tap radius. When off, the radius also acts as a pointer dead zone.")
                 .paddrAccessibilityID("pad", side.rawValue, "pointer-tracking")
@@ -336,7 +329,8 @@ struct PadConfigurationView: View {
     }
 }
 
-private struct PadModePicker: NSViewRepresentable {
+struct PadModePicker: NSViewRepresentable {
+    @ScaledMetric(relativeTo: .body) private var textScale: CGFloat = 1
     @Binding var selection: PadMode
     let accessibilityIdentifier: String
 
@@ -357,7 +351,7 @@ private struct PadModePicker: NSViewRepresentable {
         }
 
         @objc func selectionChanged(_ sender: NSSegmentedControl) {
-            guard Self.validSegment(sender.selectedSegment) else { return }
+            guard sender.isEnabled, Self.validSegment(sender.selectedSegment) else { return }
             selection.wrappedValue = PadModePicker.modes[sender.selectedSegment]
         }
 
@@ -370,32 +364,106 @@ private struct PadModePicker: NSViewRepresentable {
         Coordinator(selection: $selection)
     }
 
-    func makeNSView(context: Context) -> NSSegmentedControl {
-        let control = NSSegmentedControl(
+    func makeNSView(context: Context) -> PaddrModeSegmentedControl {
+        let control = PaddrModeSegmentedControl(
             labels: Self.labels,
             trackingMode: .selectOne,
             target: context.coordinator,
             action: #selector(Coordinator.selectionChanged(_:))
         )
         control.segmentDistribution = .fillEqually
-        control.setAccessibilityLabel(String(localized: LocalizedStringResource("Behavior")))
+        control.focusRingType = .none
+        control.font = .preferredFont(forTextStyle: .body)
+        control.setAccessibilityLabel(String(localized: accessibilityIdentifier.hasSuffix("left")
+            ? LocalizedStringResource("Left trackpad behavior") : LocalizedStringResource("Right trackpad behavior")))
+        control.cell?.setAccessibilityLabel(control.accessibilityLabel())
+        control.cell?.setAccessibilityIdentifier(accessibilityIdentifier)
         control.setAccessibilityIdentifier(accessibilityIdentifier)
         control.identifier = NSUserInterfaceItemIdentifier(accessibilityIdentifier)
         update(control, coordinator: context.coordinator, isEnabled: context.environment.isEnabled)
         return control
     }
 
-    func updateNSView(_ control: NSSegmentedControl, context: Context) {
+    func updateNSView(_ control: PaddrModeSegmentedControl, context: Context) {
         update(control, coordinator: context.coordinator, isEnabled: context.environment.isEnabled)
     }
 
     private func update(_ control: NSSegmentedControl, coordinator: Coordinator, isEnabled: Bool) {
         control.isEnabled = isEnabled
+        let bodyFont = NSFont.preferredFont(forTextStyle: .body)
+        control.font = NSFont(descriptor: bodyFont.fontDescriptor, size: bodyFont.pointSize * textScale) ?? bodyFont
+        control.invalidateIntrinsicContentSize()
+        control.needsDisplay = true
         coordinator.selection = $selection
         control.selectedSegment = Self.modes.firstIndex(where: { $0.rawValue == selection.rawValue }) ?? 0
         let segmentWidth = PaddrStyle.behaviorPickerWidth / CGFloat(Self.modes.count)
         for segment in Self.modes.indices {
             control.setWidth(segmentWidth, forSegment: segment)
         }
+    }
+}
+
+/// Native select-one segments retain their radio-group AX children and tracking.
+/// The bespoke drawing uses the same equal segment positions for pointer and keys.
+final class PaddrModeSegmentedControl: NSSegmentedControl {
+    var isHovered = false
+    override func updateTrackingAreas() { super.updateTrackingAreas(); paddrUpdateHoverTracking() }
+    override func mouseEntered(with event: NSEvent) { isHovered = true; needsDisplay = true }
+    override func mouseExited(with event: NSEvent) { isHovered = false; needsDisplay = true }
+    override var alignmentRectInsets: NSEdgeInsets { NSEdgeInsetsZero }
+    override func keyDown(with event: NSEvent) {
+        guard isEnabled else { return }
+        guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else {
+            super.keyDown(with: event)
+            return
+        }
+        let offset: Int
+        switch event.keyCode {
+        case 123, 126: offset = -1
+        case 124, 125: offset = 1
+        case 49: return // The select-one group's current item is already selected.
+        default: super.keyDown(with: event); return
+        }
+        let next = min(max(selectedSegment + offset, 0), segmentCount - 1)
+        guard next != selectedSegment, isEnabled(forSegment: next) else { return }
+        selectedSegment = next
+        needsDisplay = true
+        _ = sendAction(action, to: target)
+    }
+    override var isFlipped: Bool { true }
+    override var intrinsicContentSize: NSSize {
+        let textHeight = (0..<segmentCount).map {
+            PaddrControlDrawing.height(label(forSegment: $0) ?? "", width: (PaddrStyle.behaviorPickerWidth - 10) / 4 - 4,
+                font: font ?? .preferredFont(forTextStyle: .body))
+        }.max() ?? 16
+        return NSSize(width: PaddrStyle.behaviorPickerWidth, height: max(PaddrStyle.Control.height, textHeight + 12))
+    }
+    func segmentRect(_ index: Int) -> CGRect {
+        let inset = PaddrStyle.Control.segmentInset
+        let width = (bounds.width - 2 * inset - CGFloat(max(0, segmentCount - 1)) * inset) / CGFloat(max(1, segmentCount))
+        return CGRect(x: inset + CGFloat(index) * (width + inset), y: inset,
+                      width: width, height: bounds.height - 2 * inset)
+    }
+    override func becomeFirstResponder() -> Bool { needsDisplay = true; return super.becomeFirstResponder() }
+    override func resignFirstResponder() -> Bool { needsDisplay = true; return super.resignFirstResponder() }
+    override func draw(_ dirtyRect: NSRect) {
+        PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius, color: isHovered && isEnabled ? PaddrStyle.workspace : PaddrStyle.canvas)
+        PaddrControlDrawing.stroke(bounds, radius: PaddrStyle.Control.radius, color: isEnabled ? PaddrStyle.textSecondary : PaddrStyle.boundary)
+        if cell?.isHighlighted == true && isEnabled {
+            PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius,
+                color: PaddrStyle.textPrimary.opacity(0.06))
+        }
+        for index in 0..<segmentCount {
+            let rect = segmentRect(index)
+            if isSelected(forSegment: index) {
+                PaddrControlDrawing.fill(rect, radius: PaddrStyle.Control.segmentRadius, color: PaddrStyle.workspace)
+                PaddrControlDrawing.stroke(rect, radius: PaddrStyle.Control.segmentRadius,
+                    color: isEnabled ? PaddrStyle.action : PaddrStyle.textSecondary)
+            }
+            PaddrControlDrawing.text(label(forSegment: index) ?? "", rect: rect.insetBy(dx: 2, dy: 2),
+                font: font ?? .preferredFont(forTextStyle: .body),
+                color: isEnabled ? PaddrStyle.textPrimary : PaddrStyle.textSecondary, alignment: .center)
+        }
+        PaddrControlDrawing.focus(self, rect: bounds, radius: PaddrStyle.Control.radius)
     }
 }

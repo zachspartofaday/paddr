@@ -12,20 +12,16 @@ struct OutputBindingPicker: View {
         return [selection] + KeyCatalog.commonNames
     }
 
+    private var options: [PaddrMenuOption<String>] {
+        [
+            .init(value: TapBindingCatalog.leftMouseButton, title: String(localized: "Left click"), systemImage: "computermouse.fill"),
+            .init(value: TapBindingCatalog.rightMouseButton, title: String(localized: "Right click"), systemImage: "computermouse"),
+            .separator
+        ] + keyChoices.map { .init(value: $0, title: OutputBindingText.string(for: $0)) }
+    }
+
     var body: some View {
-        Picker("Action", selection: $selection) {
-            Label("Left click", systemImage: "computermouse.fill")
-                .tag(TapBindingCatalog.leftMouseButton)
-            Label("Right click", systemImage: "computermouse")
-                .tag(TapBindingCatalog.rightMouseButton)
-            Divider()
-            ForEach(keyChoices, id: \.self) { key in
-                OutputBindingText(binding: key).tag(key)
-            }
-        }
-        .labelsHidden()
-        .pickerStyle(.menu)
-        .paddrMappingSelector(width: width)
+        PaddrMenuPicker(title: "Zone action", selection: $selection, options: options, width: width)
         .accessibilityLabel("Zone action")
         .help("Assign a keyboard key, left click, or right click to this touch area.")
     }

@@ -24,6 +24,11 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             ("light", ColorScheme.light, NSAppearance.Name.aqua),
             ("dark", ColorScheme.dark, NSAppearance.Name.darkAqua)
         ] {
+            for radius in [0.0, 0.6, 1.0] {
+                try await exportEvidence(PadModePreview(mode: .mouse, deadzone: radius),
+                    size: NSSize(width: 190, height: 182), scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("pointer-radius-\(Int(radius * 100))-\(theme).png"))
+            }
             model.configuration.left.mode = .scroll
             model.configuration.right.mode = .mouse
             for (name, size) in [
@@ -48,6 +53,27 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 await settle(document, passes: 12)
                 try exportPNG(document, to: directory.appendingPathComponent("\(name)-\(theme)-document.png"))
             }
+            model.configuration.left.mode = .mouse
+            model.configuration.right.mode = .mouse
+            for width in [CGFloat(680), 940, 1080] {
+                try await exportEvidence(
+                    ConfigurationView(model: model, initialTuningExpanded: true),
+                    size: NSSize(width: width, height: 900), scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("both-tuning-\(Int(width))-\(theme).png"))
+            }
+            try await exportEvidence(
+                PadConfigurationView(side: .left, configuration: .constant(model.configuration.left),
+                    isEditable: false, initialTuningExpanded: true),
+                size: NSSize(width: 500, height: 650), scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("disabled-tuning-\(theme).png"))
+            try await exportEvidence(
+                PadConfigurationView(side: .left, configuration: .constant(model.configuration.left), initialTuningExpanded: true)
+                    .environment(\._colorSchemeContrast, .increased)
+                    .environment(\._accessibilityReduceTransparency, true)
+                    .environment(\._accessibilityReduceMotion, true),
+                size: NSSize(width: 500, height: 650), scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("increased-contrast-tuning-\(theme).png"))
+            model.configuration.left.mode = .scroll
             model.configuration.right.mode = .disabled
             try await exportEvidence(
                 ConfigurationView(model: model), size: NSSize(width: 940, height: 620),
@@ -101,6 +127,25 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 size: PaddrStyle.Metrics.guideWindowSize, scheme: scheme, appearance: appearance,
                 to: directory.appendingPathComponent("guide-welcome-\(theme).png")
             )
+            model.configuration.left.mode = .mouse
+            model.configuration.right.mode = .mouse
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true, initialTuningExpanded: true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-both-tuning-\(theme).png"))
+            let longModel = try makeEditableMenuModel(hasSystemAccess: true,
+                profileName: "A deliberately long profile name that remains fully readable in the selector")
+            let longReady = await waitUntil { longModel.isInitialized }
+            XCTAssertTrue(longReady)
+            longModel.configuration.left.mode = .dpad
+            longModel.configuration.left.zoneLayout = .gridNine
+            for zone in PadZoneLayout.gridNine.zones {
+                longModel.configuration.left[bindingFor: zone] = "code:65535"
+            }
+            longModel.configuration.right.tapKey = "code:65535"
+            try await exportReadmeWindow(
+                ConfigurationView(model: longModel, managesWindowSize: true), scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-long-labels-\(theme).png"))
             var pager = OnboardingPager()
             pager.advance()
             pager.advance()
@@ -1032,10 +1077,11 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
     }
 
     private func makeEditableMenuModel(
-        hasSystemAccess: Bool, inputMonitoringGranted: Bool? = nil, accessibilityGranted: Bool? = nil
+        hasSystemAccess: Bool, inputMonitoringGranted: Bool? = nil, accessibilityGranted: Bool? = nil,
+        profileName: String = "Editable"
     ) throws -> PaddrMenuModel {
         var document = ConfigurationProfileDocument.default
-        let profile = try document.createProfile(named: "Editable")
+        let profile = try document.createProfile(named: profileName)
         try document.activateProfile(id: profile.id)
         let loadedDocument = document
         return PaddrMenuModel(

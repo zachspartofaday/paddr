@@ -7,6 +7,10 @@ Authority: BottleRocket `docs/marketing/PADDR_FAMILY_UI_AUTHORITY.md`, issue #26
 PR #268, merged as `38839ca6dbf86a1ffb29108129378f46cbd1e119`  
 Pinned reference: `6c65d74fac9add281918438629228333535752a4`
 
+The later operator-approved [bespoke controls plan](PADDR_BESPOKE_CONTROLS_PLAN.md)
+supersedes this record's native-widget-only styling and 30-point pad-radius guidance.
+It preserves the palette, paired editors, workflow, footer and automatic sizing.
+
 ## Current presentation authority
 
 The operator-approved [native interface redesign](PADDR_REDESIGN_PLAN.md) supersedes
