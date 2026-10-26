@@ -9,8 +9,9 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
 - Record maintainer-confirmed operation with a puck-connected Steam Controller 2 on
   released macOS 27 and macOS 27.2 release candidate, superseding the historical
   beta-only compatibility notes below. Bluetooth and direct USB remain unvalidated.
-- Refresh native interface captures and show the automatically sized Pointer tuning
-  workspace in the README. These inert fixtures are separate from hardware confirmation.
+- Replace every README screenshot with a complete native window capture. Configuration
+  captures use content-driven sizing, including the shorter access-granted workspace
+  and expanded Pointer tuning. These inert fixtures are separate from hardware confirmation.
 - Update local build instructions for Xcode 27 at its standard application path.
 
 ### Native mapping workspace

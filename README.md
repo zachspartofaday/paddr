@@ -13,7 +13,7 @@ See [CHANGELOG.md](CHANGELOG.md) for release history and current compatibility n
 
 The configuration window follows macOS light and dark appearance and keeps both trackpads independently editable. Profile selection and **Save & Apply** stay visible above the scrolling workspace; **Enable output** and output readiness stay below it. Common settings remain visible, while **Pointer tuning** reveals advanced controls and summarizes the enabled tuning when collapsed. Paddr manages the window size: it uses a 1080-point width when the screen allows, grows when Pointer tuning opens, and shrinks when it closes. Manual resizing is disabled. The window stays within the available screen area; scrolling remains available when the content is too tall to fit.
 
-The screenshots render the native views with inert example data: no puck connected and output off. The main examples show permissions still needed; the access-granted example below simulates both permissions granted. The bindings are example drafts, not built-in presets. [View the light appearance](docs/images/paddr-profile-overview-light.png).
+The screenshots render complete native windows at their app-managed sizes with inert example data: no puck connected and output off. The main examples show permissions still needed; the access-granted example below simulates both permissions granted. The bindings are example drafts, not built-in presets. [View the light appearance](docs/images/paddr-profile-overview-light.png).
 
 Opening **Pointer tuning** expands the window to keep the acceleration, smoothing, and tap-stability controls visible. Switching to shorter content shrinks it again.
 
