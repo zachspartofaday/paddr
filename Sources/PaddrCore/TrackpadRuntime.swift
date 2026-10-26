@@ -76,6 +76,15 @@ public final class TrackpadStopToken: Sendable {
         retainedOutputLedger?.releasePending(maxPasses: maxPasses)
     }
 
+    /// Called by the CLI owner after its synchronous runtime has returned. A diagnostic
+    /// means ownership must be retained and cleanup retried; nil means nothing is held.
+    package func retryPendingOutputRelease() -> String? {
+        guard let attempt = releasePendingOutputs(maxPasses: 1), !attempt.isDrained else {
+            return nil
+        }
+        return attempt.diagnostic
+    }
+
     private var retainedOutputLedger: HeldOutputLedger? {
         state.withLock { $0.outputLedger }
     }

@@ -2107,7 +2107,9 @@ final class MenuModelTests: XCTestCase {
         ])
         let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
         await waitUntil(model: model) { model.isInitialized }
+        await waitUntil(model: model) { model.reportCount == 77 }
         model.isEnabled = true
+        await session.sendNeutralReport()
         await waitUntil(model: model) { model.isRunning }
 
         var replies: [Bool] = []
@@ -2852,31 +2854,43 @@ final class MenuModelTests: XCTestCase {
     }
 
     func testEnabledProfileSelectionSerializesStopSaveStartWithoutWorkerOverlap() async throws {
-        let state = readyState(receiver: "Fake")
-        let (document, _, second) = try twoProfileDocument()
-        state.loadedProfileDocument = document
-        let recorder = OperationRecorder()
-        state.operationRecorder = recorder
-        let session = RecordingSession(recorder: recorder)
-        let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
-        await waitUntil(model: model) { model.isInitialized }
-        model.isEnabled = true
-        await waitUntil(model: model) { model.isRunning }
-        recorder.removeAll()
+        for observesBeforeEnable in [true, false] {
+            let state = readyState(receiver: observesBeforeEnable ? "Fake" : nil)
+            let (document, _, second) = try twoProfileDocument()
+            state.loadedProfileDocument = document
+            let recorder = OperationRecorder()
+            state.operationRecorder = recorder
+            let session = RecordingSession(recorder: recorder)
+            let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
+            await waitUntil(model: model) { model.isInitialized }
+            if observesBeforeEnable {
+                // A consumed progress marker proves startup events were handled while output was off.
+                await waitUntil(model: model) { model.reportCount == 77 }
+                XCTAssertFalse(model.isRunning)
+            }
+            state.receiver = "Fake"
+            model.isEnabled = true
+            if observesBeforeEnable {
+                await session.sendNeutralReport()
+            }
+            await waitUntil(model: model) { model.isRunning }
+            recorder.removeAll()
 
-        XCTAssertEqual(
-            model.requestProfileSelection(id: second.id, source: .menu),
-            .accepted
-        )
-        await waitUntil(model: model) {
-            model.activeProfileID == second.id && model.isRunning
+            XCTAssertEqual(
+                model.requestProfileSelection(id: second.id, source: .menu),
+                .accepted
+            )
+            await waitUntil(model: model) {
+                model.activeProfileID == second.id && model.isRunning
+            }
+
+            let maximumWorkerCount = await session.maximumWorkerCount
+            let startedConfiguration = await session.startedConfigurations.last
+            XCTAssertEqual(recorder.values, ["stop", "save", "start"])
+            XCTAssertEqual(maximumWorkerCount, 1)
+            XCTAssertEqual(startedConfiguration, second.configuration)
+            await session.stop()
         }
-
-        let maximumWorkerCount = await session.maximumWorkerCount
-        let startedConfiguration = await session.startedConfigurations.last
-        XCTAssertEqual(recorder.values, ["stop", "save", "start"])
-        XCTAssertEqual(maximumWorkerCount, 1)
-        XCTAssertEqual(startedConfiguration, second.configuration)
     }
 
     func testEnabledProfileSelectionPersistsWhenOutputIsDisabledDuringStop() async throws {
@@ -4487,6 +4501,8 @@ private actor GatedSession: TrackpadSessionControlling {
     private let gate = IndexedStopGate()
     private let stopEvents = SessionEventProbe<Int>()
     private var eventContinuation: AsyncStream<TrackpadSessionEvent>.Continuation?
+    private var outputGate: OutputGate?
+    private var observeOnly = false
     private(set) var startCount = 0
     private(set) var stopCount = 0
 
@@ -4499,12 +4515,14 @@ private actor GatedSession: TrackpadSessionControlling {
         observeOnly: Bool,
         outputGate: OutputGate?
     ) async -> AsyncStream<TrackpadSessionEvent> {
+        self.outputGate = outputGate
+        self.observeOnly = observeOnly
         startCount += 1
         let (stream, continuation) = AsyncStream<TrackpadSessionEvent>.makeStream()
         eventContinuation = continuation
         continuation.yield(.waitingForController("Fake puck"))
         continuation.yield(.controllerConnected)
-        continuation.yield(.outputArmed)
+        armOutput()
         return stream
     }
 
@@ -4522,6 +4540,7 @@ private actor GatedSession: TrackpadSessionControlling {
     }
 
     func armOutput() {
+        guard !observeOnly, outputGate?.isEnabled != false else { return }
         eventContinuation?.yield(.outputArmed)
     }
 
@@ -4544,6 +4563,8 @@ private actor GatedSession: TrackpadSessionControlling {
 private actor SequencedStopSession: TrackpadSessionControlling {
     private var stopOutcomes: [TrackpadSessionStopOutcome]
     private var continuation: AsyncStream<TrackpadSessionEvent>.Continuation?
+    private var outputGate: OutputGate?
+    private var observeOnly = false
     private(set) var stopCount = 0
 
     init(outcomes: [TrackpadSessionStopOutcome]) {
@@ -4555,12 +4576,20 @@ private actor SequencedStopSession: TrackpadSessionControlling {
         observeOnly: Bool,
         outputGate: OutputGate?
     ) async -> AsyncStream<TrackpadSessionEvent> {
+        self.outputGate = outputGate
+        self.observeOnly = observeOnly
         let (stream, continuation) = AsyncStream<TrackpadSessionEvent>.makeStream()
         self.continuation = continuation
         continuation.yield(.waitingForController("Fake puck"))
         continuation.yield(.controllerConnected)
-        continuation.yield(.outputArmed)
+        sendNeutralReport()
+        continuation.yield(.progress(.init(reportCount: 77, actionCount: 0)))
         return stream
+    }
+
+    func sendNeutralReport() {
+        guard !observeOnly, outputGate?.isEnabled != false else { return }
+        continuation?.yield(.outputArmed)
     }
 
     @discardableResult
@@ -4765,6 +4794,8 @@ private final class OperationRecorder: Sendable {
 private actor RecordingSession: TrackpadSessionControlling {
     private let recorder: OperationRecorder
     private var continuation: AsyncStream<TrackpadSessionEvent>.Continuation?
+    private var outputGate: OutputGate?
+    private var observeOnly = false
     private var workerCount = 0
     private(set) var maximumWorkerCount = 0
     private(set) var startedConfigurations: [PaddrConfiguration] = []
@@ -4778,6 +4809,8 @@ private actor RecordingSession: TrackpadSessionControlling {
         observeOnly: Bool,
         outputGate: OutputGate?
     ) async -> AsyncStream<TrackpadSessionEvent> {
+        self.outputGate = outputGate
+        self.observeOnly = observeOnly
         recorder.record("start")
         workerCount += 1
         maximumWorkerCount = max(maximumWorkerCount, workerCount)
@@ -4786,8 +4819,14 @@ private actor RecordingSession: TrackpadSessionControlling {
         self.continuation = continuation
         continuation.yield(.waitingForController("Fake puck"))
         continuation.yield(.controllerConnected)
-        continuation.yield(.outputArmed)
+        sendNeutralReport()
+        continuation.yield(.progress(.init(reportCount: 77, actionCount: 0)))
         return stream
+    }
+
+    func sendNeutralReport() {
+        guard !observeOnly, outputGate?.isEnabled != false else { return }
+        continuation?.yield(.outputArmed)
     }
 
     @discardableResult

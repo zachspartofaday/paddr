@@ -7,6 +7,7 @@ private struct CLIOptions {
     var configuration = PaddrConfiguration.default
     var configurationURL: URL?
     var profileStoreURL: URL?
+    var profileStore: ConfigurationProfileStoreClient?
     var profileDocument: ConfigurationProfileDocument?
     var writeConfigurationURL: URL?
     var listProfiles = false
@@ -150,14 +151,15 @@ private func parse(_ rawArguments: [String]) throws -> CLIOptions {
         }
     }
 
+    let profileStore = ConfigurationProfileStoreClient(url: explicitConfigurationURL ?? profileStoreURL)
     let configuration: PaddrConfiguration
     let profileDocument: ConfigurationProfileDocument?
-    if let explicitConfigurationURL {
-        let loaded = try ConfigurationStore.loadInput(from: explicitConfigurationURL)
+    if explicitConfigurationURL != nil {
+        let loaded = try profileStore.loadInput()
         configuration = loaded.configuration
         profileDocument = loaded.profileDocument
     } else {
-        let loaded = try ConfigurationProfileStore.load(from: profileStoreURL)
+        let loaded = try profileStore.load()
         profileDocument = loaded.document
         configuration = loaded.document.activeProfile?.configuration ?? .default
         if let diagnostic = loaded.diagnostic {
@@ -167,6 +169,7 @@ private func parse(_ rawArguments: [String]) throws -> CLIOptions {
     var options = CLIOptions(configuration: configuration)
     options.configurationURL = explicitConfigurationURL
     options.profileStoreURL = profileStoreURL
+    options.profileStore = profileStore
     options.profileDocument = profileDocument
     options.listProfiles = listsProfiles
     options.selectProfile = selectProfile
@@ -417,6 +420,9 @@ private func run(_ options: CLIOptions) throws {
         duration: options.duration,
         onAction: { action in
             if verbose { print("- \(action)") }
+        },
+        onCleanupDiagnostic: { diagnostic in
+            FileHandle.standardError.write(Data("\(diagnostic)\n".utf8))
         }
     )
     let summary = result.summary
@@ -449,7 +455,7 @@ do {
         exit(0)
     }
     if let selector = options.selectProfile {
-        guard var document = options.profileDocument else {
+        guard var document = options.profileDocument, let store = options.profileStore else {
             throw PaddrError.configuration("Profile storage is unavailable.")
         }
         guard let profile = document.profile(matching: selector) else {
@@ -458,16 +464,19 @@ do {
             )
         }
         try document.activateProfile(id: profile.id)
-        try ConfigurationProfileStore.save(document, to: options.profileStoreURL)
+        try store.save(document)
         print("Selected profile: \(profile.name) (\(profile.id.rawValue))")
         exit(0)
     }
     if let destination = options.writeConfigurationURL {
+        guard let store = options.profileStore else {
+            throw PaddrError.configuration("Profile storage is unavailable.")
+        }
         let document = try canonicalDocument(
             for: options.configuration,
             preserving: options.profileDocument
         )
-        try ConfigurationProfileStore.save(document, to: destination)
+        try store.save(document, to: destination)
         print("Wrote profile document: \(destination.path)")
         exit(0)
     }

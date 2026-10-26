@@ -6,6 +6,48 @@ import PaddrCore
 
 @MainActor
 final class MenuDependencyTests: XCTestCase {
+    func testStaleModelSavePreservesExternalProfileAndUnsavedDraft() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("config.json")
+        var document = ConfigurationProfileDocument.default
+        let editable = try document.createProfile(named: "Editable")
+        document.activeProfileID = editable.id
+        try ConfigurationProfileStore.save(document, to: url)
+        let guiStore = ConfigurationProfileStoreClient(url: url)
+        let model = PaddrMenuModel(dependencies: MenuDependencies(
+            session: InertSession(),
+            loadProfiles: { try guiStore.load() },
+            saveProfiles: { try guiStore.save($0) },
+            probeReceiver: { nil }, accessibilityTrusted: { _ in true },
+            openPrivacySettings: { _ in }, sleep: { try await Task.sleep(for: $0) }
+        ))
+        await waitUntil(model: model) { model.isInitialized }
+        let cliStore = ConfigurationProfileStoreClient(url: url)
+        var external = try cliStore.load().document
+        _ = try external.createProfile(named: "CLI addition")
+        try cliStore.save(external)
+        let externalBytes = try Data(contentsOf: url)
+        model.configuration.left.sensitivity = 7
+        model.saveAndApply()
+        await waitUntil(model: model) {
+            if case .failure(.configurationSave) = model.status { return true }
+            return false
+        }
+        XCTAssertTrue(model.hasUnsavedChanges)
+        XCTAssertEqual(model.configuration.left.sensitivity, 7)
+        XCTAssertEqual(model.savedConfiguration, editable.configuration)
+        XCTAssertEqual(try Data(contentsOf: url), externalBytes)
+        XCTAssertTrue(model.renameActiveProfile(to: "Renamed draft"))
+        await waitUntil(model: model) {
+            if case .failure(.profileSave) = model.status { return true }
+            return false
+        }
+        XCTAssertEqual(model.profiles.first(where: { $0.id == editable.id })?.name, "Editable")
+        XCTAssertEqual(model.configuration.left.sensitivity, 7)
+        XCTAssertEqual(try Data(contentsOf: url), externalBytes)
+    }
+
     func testConfigurationAndReceiverDependenciesRunOffMainActor() async throws {
         let state = DependencyExecutionState()
         let storedConfiguration: PaddrConfiguration = {

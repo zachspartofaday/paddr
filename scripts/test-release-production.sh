@@ -201,7 +201,12 @@ create_package_fixture() {
         'esac' \
         'printf "build-output=%s\nbuild-scratch=%s\nbuild-tmp=%s\n" "$OUTPUT_DIR" "$BUILD_SCRATCH_PATH" "$TMPDIR" >> "$PADDR_TEST_RECORD"' \
         'mkdir -p "$OUTPUT_DIR/Paddr.app/Contents/MacOS" "$BUILD_SCRATCH_PATH"' \
-        'printf "%s\n" "#!/bin/sh" "exec /bin/sleep 30" > "$OUTPUT_DIR/Paddr.app/Contents/MacOS/Paddr"' \
+        'cat > "$OUTPUT_DIR/Paddr.app/Contents/MacOS/Paddr" <<"SMOKE"' \
+        '#!/bin/sh' \
+        'test "$#" = 1 && test "$1" = --artifact-smoke-test || exit 81' \
+        'printf "%s\n" "inert-smoke" >> "$PADDR_TEST_RECORD"' \
+        'test "$PADDR_TEST_PACKAGE_MODE" != fail-smoke || exit 82' \
+        'SMOKE' \
         'chmod 755 "$OUTPUT_DIR/Paddr.app/Contents/MacOS/Paddr"'
 
     write_fake_tool "$package_fixture/scripts/verify-release.sh" \
@@ -279,6 +284,14 @@ create_package_fixture() {
         fi
         assert_sentinel_outputs "$package_output"
     fi
+    grep -qx 'inert-smoke' "$package_record"
+    if test "$package_mode" = fail-smoke; then
+        if grep -Eq '^(verified|package-test)=' "$package_record"; then
+            echo "Packaging continued after a failed smoke check." >&2
+            exit 1
+        fi
+        return
+    fi
     if ! grep -Eq "^build-output=$package_output/.paddr-package\.[^/]+/output$" "$package_record" ||
        ! grep -Eq "^build-scratch=$package_output/.paddr-package\.[^/]+/swiftpm$" "$package_record" ||
        ! grep -Eq "^verified=$package_output/.paddr-package\.[^/]+/output/Paddr.app$" "$package_record" ||
@@ -289,6 +302,8 @@ create_package_fixture() {
         exit 1
     fi
 }
+
+create_package_fixture fail-smoke
 
 create_package_fixture move-head
 grep -q 'Release source identity changed while the package was being produced' \

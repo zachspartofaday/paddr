@@ -1,4 +1,7 @@
-# Paddr
+<p align="center">
+  <img src="Assets/PaddrIcon.png" width="112" height="112" alt="Paddr Compass app icon">
+</p>
+<h1 align="center">Paddr</h1>
 
 Paddr adds pointer movement, scrolling, touch-tap actions, button zones, and rear-button mappings to a puck-connected Steam Controller 2 on macOS—without requiring Steam Input.
 
@@ -13,7 +16,7 @@ See [CHANGELOG.md](CHANGELOG.md) for release history and current compatibility n
 
 The configuration window follows macOS light and dark appearance and keeps both trackpads independently editable. Profile selection and **Save & Apply** stay visible above the scrolling workspace; **Enable output** and output readiness stay below it. Common settings remain visible, while **Pointer tuning** reveals advanced controls and summarizes the enabled tuning when collapsed. Paddr manages the window size: it uses a 1080-point width when the screen allows, grows when Pointer tuning opens, and shrinks when it closes. Manual resizing is disabled. The window stays within the available screen area; scrolling remains available when the content is too tall to fit.
 
-The screenshots render complete native windows at their app-managed sizes with inert example data: no puck connected and output off. The workspace examples simulate both permissions granted. Only the permission guide shows access still needed. The bindings are example drafts, not built-in presets. [View the light appearance](docs/images/paddr-profile-overview-light.png).
+The screenshots show the running app at its managed window sizes, with a puck-connected controller, granted permissions, and output off. The bindings are staged unsaved examples, not built-in presets. Only the setup screenshot shows access still needed; it was captured before permission approval. [View the light appearance](docs/images/paddr-profile-overview-light.png).
 
 Opening **Pointer tuning** expands the window to keep the acceleration, smoothing, and tap-stability controls visible. Switching to shorter content shrinks it again.
 
@@ -82,9 +85,9 @@ Puck mode is the only confirmed connection. Bluetooth and direct USB remain unva
    Input Monitoring lets Paddr see puck reports; Accessibility lets it emit your mapped
    mouse and keyboard actions. You can edit profiles before granting access.
 
-![Paddr Guide Allow Access page, step 3 of 4, with separate Input Monitoring and Accessibility Request and Open Settings buttons](docs/images/paddr-permissions.png)
+![Paddr Allow access setup sheet before permission approval, with separate Input Monitoring and Accessibility Request and Open Settings buttons](docs/images/paddr-permissions.png)
 
-[View the workspace with access granted](docs/images/paddr-access-ready-light.png). This example still has output off and no controller connected; granting access does not enable output automatically.
+[View Connection details with access granted](docs/images/paddr-access-ready-light.png). The live controller is connected with 100% battery and output remains off; granting access does not enable output automatically.
 
 4. Choose **Duplicate to Edit** for the built-in **Default** profile, rename the copy if desired, configure both trackpads, and choose **Save & Apply**. Default always remains left Scroll/right Pointer and cannot be renamed, edited, or deleted. Its tuning remains available to inspect.
 
@@ -140,6 +143,8 @@ scripts/paddr.sh --observe-only --verbose --duration 10
 
 Profiles are stored at `~/.config/Paddr/config.json`. On first profile-aware load, an existing raw left/right configuration is atomically migrated: unchanged defaults activate **Default**, while customized values become the active **Previous configuration** profile. Existing raw and canonical configurations retain the former coupled center-radius tracking behavior until changed; fresh profile stores and newly created configurations use full-pad pointer tracking. A failed migration leaves the original file intact and reports its path.
 
+GUI and CLI profile edits use a shared storage lock and reject saves based on an older file version. If another process changes the profiles, Paddr keeps your unsaved draft and reports a conflict. Copy your edits before reopening the app to load the current profiles. Explicit exports to a different path deliberately replace that destination; they still reject a changed source.
+
 `--list-profiles` prints each name and stable ID; `--select-profile` persists an exact name or ID selection. Use `--profile-store PATH` for a different canonical document. An explicit `--config PATH` remains a read-only compatibility input for an existing legacy raw configuration (or canonical document); invalid paths fail instead of loading defaults. Mapping flags—including per-pad center-tap tracking, pointer smoothing/strength, and tap stabilization/tolerance—change only the effective CLI draft unless `--write-config PATH` persists it. With canonical input, that write preserves the complete profile document and updates its active profile; with legacy raw input, it creates a new canonical document from the effective configuration. Profile list/select operations are mutually exclusive with runtime and mapping options. Run `scripts/paddr.sh --help` for the complete flag list and numeric ranges.
 
 Example:
@@ -149,6 +154,8 @@ Example:
 scripts/paddr.sh --left-mode dpad --left-layout grid-nine \
   --left-grid-top-left q --left-grid-center space --left-grid-bottom-right c
 ```
+
+If a key or mouse-button release fails during CLI shutdown, the process stays alive and retries until the held input is released. It prints recovery guidance instead of abandoning cleanup; restoring Accessibility access may be necessary.
 
 ## Limitations and roadmap
 

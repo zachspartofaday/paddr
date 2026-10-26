@@ -85,19 +85,21 @@ public enum ConfigurationStore {
                 "Legacy raw configuration saves require an explicit destination. The default path is owned by the profile store."
             )
         }
-        if FileManager.default.fileExists(atPath: destination.path) {
-            let existing = try Data(contentsOf: destination)
-            if (try? ConfigurationProfileStore.isProfileDocument(existing)) == true {
-                throw PaddrError.configuration(
-                    "Legacy raw configuration cannot replace a profile document at \(destination.path)."
-                )
+        try ConfigurationProfileStore.withStorageLock(for: destination) {
+            if FileManager.default.fileExists(atPath: destination.path) {
+                let existing = try Data(contentsOf: destination)
+                if (try? ConfigurationProfileStore.isProfileDocument(existing)) == true {
+                    throw PaddrError.configuration(
+                        "Legacy raw configuration cannot replace a profile document at \(destination.path)."
+                    )
+                }
             }
+            try FileManager.default.createDirectory(
+                at: destination.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try encoded(configuration).write(to: destination, options: .atomic)
         }
-        try FileManager.default.createDirectory(
-            at: destination.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        try encoded(configuration).write(to: destination, options: .atomic)
     }
 
     static func defaultCandidateURL(fileManager: FileManager, homeDirectory: URL) -> URL {

@@ -1,0 +1,49 @@
+{
+  "features": [
+    "refractivity"
+  ],
+  "fill": {
+    "automatic-gradient": "extended-srgb:0.16863,0.20000,0.23529,1.00000"
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "North.svg",
+          "name": "North zone"
+        },
+        {
+          "image-name": "East.svg",
+          "name": "East zone"
+        },
+        {
+          "image-name": "South.svg",
+          "name": "South zone"
+        },
+        {
+          "image-name": "West.svg",
+          "name": "West zone"
+        }
+      ],
+      "refractivity": {
+        "depth": 0,
+        "enabled": true,
+        "strength": 0.25
+      },
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.35
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.15
+      },
+      "name": "Compass zones"
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}

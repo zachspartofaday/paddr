@@ -1,4 +1,6 @@
+import Darwin
 import Foundation
+import Synchronization
 
 public enum ConfigurationProfileStore {
     public static var defaultURL: URL {
@@ -7,24 +9,57 @@ public enum ConfigurationProfileStore {
     }
 
     public static func load(from url: URL? = nil) throws -> ConfigurationProfileLoadResult {
-        try load(
-            from: url,
-            fileManager: .default,
-            homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
-            writeAtomically: atomicWrite
-        )
+        try withStorageLock(for: url ?? defaultURL) {
+            try loadUnlocked(from: url)
+        }
     }
 
     public static func save(
         _ document: ConfigurationProfileDocument,
         to url: URL? = nil
     ) throws {
-        try save(
-            document,
-            to: url ?? defaultURL,
-            fileManager: .default,
-            writeAtomically: atomicWrite
-        )
+        // Explicit full-document replacement (for new stores and deliberate exports).
+        // Read-modify-write clients must use ConfigurationProfileStoreClient instead.
+        try withStorageLock(for: url ?? defaultURL) {
+            try saveUnlocked(document, to: url ?? defaultURL)
+        }
+    }
+
+    fileprivate static func loadUnlocked(from url: URL?) throws -> ConfigurationProfileLoadResult {
+        try load(from: url, fileManager: .default,
+                 homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+                 writeAtomically: atomicWrite)
+    }
+
+    fileprivate static func saveUnlocked(_ document: ConfigurationProfileDocument, to url: URL) throws {
+        try save(document, to: url, fileManager: .default, writeAtomically: atomicWrite)
+    }
+
+    fileprivate static func bytes(at url: URL) throws -> Data? {
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        guard try url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true else {
+            throw PaddrError.configuration("Profile storage path is not a regular file: \(url.path).")
+        }
+        return try Data(contentsOf: url)
+    }
+
+    /// A persistent, directory-scoped advisory lock survives atomic file replacement
+    /// and filename aliases (including case/Unicode variants). Do not unlink this lock.
+    static func withStorageLock<T>(for url: URL, _ operation: () throws -> T) throws -> T {
+        let directory = url.deletingLastPathComponent().resolvingSymlinksInPath().standardizedFileURL
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let lockPath = directory.appendingPathComponent(".paddr-profiles.lock").path
+        let descriptor = Darwin.open(lockPath, O_CREAT | O_RDWR | O_CLOEXEC | O_NOFOLLOW, 0o600)
+        guard descriptor >= 0 else {
+            throw PaddrError.configuration("Could not open profile storage lock: \(String(cString: strerror(errno))).")
+        }
+        defer { Darwin.close(descriptor) }
+        while flock(descriptor, LOCK_EX) != 0 {
+            if errno == EINTR { continue }
+            throw PaddrError.configuration("Could not lock profile storage: \(String(cString: strerror(errno))).")
+        }
+        defer { _ = flock(descriptor, LOCK_UN) }
+        return try operation()
     }
 
     public static func encoded(_ document: ConfigurationProfileDocument) throws -> Data {
@@ -172,5 +207,75 @@ public enum ConfigurationProfileStore {
 
     private static func atomicWrite(_ data: Data, _ destination: URL) throws {
         try data.write(to: destination, options: .atomic)
+    }
+}
+
+/// Retains the exact storage version read by one GUI/CLI client. A commit compares and
+/// replaces while holding the same interprocess lock; failed commits keep its baseline.
+/// This is intentionally not an automatic merge: drafts and external profiles stay intact.
+public final class ConfigurationProfileStoreClient: Sendable {
+    private enum Version: Sendable {
+        case notLoaded
+        case loaded(Data?)
+    }
+    private let version = Mutex<Version>(.notLoaded)
+    private let explicitURL: URL?
+    public let url: URL
+
+    public init(url: URL? = nil) {
+        explicitURL = url
+        self.url = url ?? ConfigurationProfileStore.defaultURL
+    }
+
+    public func load() throws -> ConfigurationProfileLoadResult {
+        try version.withLock { version in
+            version = .notLoaded
+            return try ConfigurationProfileStore.withStorageLock(for: url) {
+                let result = try ConfigurationProfileStore.loadUnlocked(from: explicitURL)
+                version = .loaded(try ConfigurationProfileStore.bytes(at: url))
+                return result
+            }
+        }
+    }
+
+    /// Compatibility input is read once, without migration or rewriting its source.
+    package func loadInput() throws -> (configuration: PaddrConfiguration, profileDocument: ConfigurationProfileDocument?) {
+        try version.withLock { version in
+            version = .notLoaded
+            // A compatibility read must also work in a read-only directory. One atomic
+            // file read supplies both the decoded document and its comparison baseline.
+            guard let bytes = try ConfigurationProfileStore.bytes(at: url) else {
+                throw PaddrError.configuration("Configuration file does not exist at \(url.path).")
+            }
+            let result = try ConfigurationProfileStore.decodeConfigurationInput(from: bytes)
+            version = .loaded(bytes)
+            return result
+        }
+    }
+
+    /// An explicit destination is a deliberate export/replacement. The source baseline
+    /// is checked under the destination lock. In-place writes and directory/name aliases
+    /// share that lock. Distinct exports deliberately replace only their destination.
+    public func save(_ document: ConfigurationProfileDocument, to exportDestination: URL? = nil) throws {
+        try version.withLock { version in
+            guard case let .loaded(expected) = version else {
+                throw PaddrError.configuration("Load profile storage before saving changes.")
+            }
+            let destination = exportDestination ?? url
+            try ConfigurationProfileStore.withStorageLock(for: destination) {
+                guard try ConfigurationProfileStore.bytes(at: url) == expected else {
+                    throw PaddrError.configuration(
+                        "Profile storage changed in another app or CLI process. Your changes have not been saved. "
+                            + "Keep a copy of your edits, then reopen Paddr or rerun the CLI to load the current profiles."
+                    )
+                }
+                try ConfigurationProfileStore.saveUnlocked(document, to: destination)
+                // An explicit export consumes its snapshot. Never adopt a later source
+                // version without also loading that version's document.
+                version = exportDestination == nil
+                    ? .loaded(try ConfigurationProfileStore.encoded(document))
+                    : .notLoaded
+            }
+        }
     }
 }
