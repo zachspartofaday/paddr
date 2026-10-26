@@ -92,13 +92,18 @@ struct ApplyBarView: View {
     // Normal activation and release settle within a few controller reports.
     // Key the delay by the specific transition so switching between them starts
     // a fresh wait, while failures and permission instructions bypass the delay.
+    private var usesExplicitStatusMessage: Bool {
+        model.status.messageState != nil && model.status != .waitingForNeutral
+    }
+
     private var pendingTransitionGuidance: PaddrReadinessNextAction? {
-        if model.status == .waitingForNeutral { return .releaseTrackpads }
-        if model.status.messageState == nil, model.hasSystemAccess,
-           model.readiness.nextAction == .waitForOutputRelease {
-            return .waitForOutputRelease
+        guard !usesExplicitStatusMessage, model.hasSystemAccess else { return nil }
+        switch model.readiness.nextAction {
+        case .releaseTrackpads, .waitForOutputRelease, .waitForProfileOperation:
+            return model.readiness.nextAction
+        default:
+            return nil
         }
-        return nil
     }
 
     // Setup is the actionable next step while permissions are missing. Preserve
@@ -107,7 +112,7 @@ struct ApplyBarView: View {
         if let pendingTransitionGuidance {
             return revealedTransitionGuidance == pendingTransitionGuidance
         }
-        return model.status.messageState != nil
+        return usesExplicitStatusMessage
             || (model.hasSystemAccess && model.readiness.nextAction != .none
                 && model.readiness.nextAction != .enableOutput)
     }
@@ -176,8 +181,7 @@ struct ApplyBarView: View {
             } catch { return }
             guard !Task.isCancelled, pendingTransitionGuidance == guidance else { return }
             revealedTransitionGuidance = guidance
-            let message = guidance == .releaseTrackpads ? model.status.message : guidance.title
-            AccessibilityNotification.Announcement(String(localized: message)).post()
+            AccessibilityNotification.Announcement(String(localized: guidance.title)).post()
         }
         .onChange(of: model.status) { _, status in
             guard status.messageState != nil, status != .waitingForNeutral else { return }
@@ -261,7 +265,7 @@ struct ApplyBarView: View {
     }
 
     @ViewBuilder private var statusMessage: some View {
-        if let messageState = model.status.messageState {
+        if usesExplicitStatusMessage, let messageState = model.status.messageState {
             Label {
                 Text(model.status.message)
                     .fixedSize(horizontal: false, vertical: true)
@@ -287,10 +291,12 @@ struct ApplyBarView: View {
             )
             .paddrTypography(.caption)
             .foregroundStyle(
-                model.readiness.nextAction == .none
-                    ? PaddrStyle.activeText
+                model.readiness.nextAction == .releaseTrackpads
+                    ? PaddrStyle.warningText
                     : PaddrStyle.textSecondary
             )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(model.readiness.nextAction.title))
             .help(Text(model.readiness.nextAction.title))
             .paddrAccessibilityID("status", "next-action")
         }

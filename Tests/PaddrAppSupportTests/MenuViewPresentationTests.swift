@@ -1355,6 +1355,112 @@ final class MenuViewPresentationTests: XCTestCase {
         _ = await session.stop()
     }
 
+    func testEnablingDuringSaveShowsPersistenceGuidanceUntilSaveCompletesOrFails() async throws {
+        for failsSave in [false, true] {
+            var document = ConfigurationProfileDocument.default
+            let profile = try document.createProfile(named: "Editable")
+            try document.activateProfile(id: profile.id)
+            let loadedDocument = document
+            let store = BlockingProfileStore(failsSave: failsSave)
+            defer { store.releaseSave() }
+            let session = PresentationSession()
+            let model = PaddrMenuModel(dependencies: MenuDependencies(
+                session: session,
+                loadProfiles: { ConfigurationProfileLoadResult(document: loadedDocument) },
+                saveProfiles: store.save,
+                probeReceiver: { "Fake receiver" },
+                accessibilityTrusted: { _ in true },
+                inputMonitoringAccess: { _ in .granted },
+                openPrivacySettings: { _ in },
+                sleep: { duration in try await Task.sleep(for: duration) },
+                reconnectDelay: { _ in throw CancellationError() }
+            ))
+            let initialized = await waitUntil { model.isInitialized }
+            XCTAssertTrue(initialized)
+            let started = await waitUntil { await session.startCount == 1 }
+            XCTAssertTrue(started)
+            await session.send(.controllerConnected)
+            let connected = await waitUntil { model.controllerConnected }
+            XCTAssertTrue(connected)
+            let host = NSHostingView(rootView: ApplyBarView(model: model)
+                .environment(\.accessibilityEnabled, true))
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 300),
+                styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            defer { window.close() }
+            window.contentView = host
+            await settle(host)
+
+            model.configuration.left.sensitivity = 3
+            model.saveAndApply()
+            let saving = await waitUntil { store.didStartSave }
+            XCTAssertTrue(saving)
+            XCTAssertTrue(model.canToggleOutput)
+            model.isEnabled = true
+            XCTAssertEqual(model.status, .off)
+            XCTAssertEqual(model.readiness.nextAction, .waitForProfileOperation,
+                "Pending persistence is not a neutral-input wait")
+            await settle(host)
+            XCTAssertNil(footerNextAction(in: host), "Brief preparation should not flash guidance")
+            try await Task.sleep(for: .milliseconds(300))
+            await settle(host)
+            XCTAssertEqual(footerNextAction(in: host),
+                String(localized: PaddrReadinessNextAction.waitForProfileOperation.title))
+            XCTAssertFalse(model.isRunning)
+            let startsBeforeSave = await session.startCount
+            XCTAssertEqual(startsBeforeSave, 1, "Activation cannot restart before persistence finishes")
+            let enabledBeforeSave = await session.startedWithOutputEnabled
+            XCTAssertFalse(enabledBeforeSave.contains(true))
+
+            store.releaseSave()
+            if failsSave {
+                let failed = await waitUntil { !model.isEnabled && model.status.messageState == .failure }
+                XCTAssertTrue(failed)
+                XCTAssertTrue(ApplyBarView(model: model).showsStatusMessage)
+                XCTAssertTrue(model.hasUnsavedChanges)
+                let enabledAfterFailure = await session.startedWithOutputEnabled
+                XCTAssertFalse(enabledAfterFailure.contains(true))
+            } else {
+                let restarted = await waitUntil { await session.startCount == 2 }
+                XCTAssertTrue(restarted)
+                XCTAssertEqual(model.savedConfiguration.left.sensitivity, 3)
+                let startedSensitivity = await session.lastConfiguration?.left.sensitivity
+                XCTAssertEqual(startedSensitivity, 3)
+                await session.send(.controllerConnected)
+                let waiting = await waitUntil { model.status == .waitingForNeutral }
+                XCTAssertTrue(waiting)
+                await settle(host)
+                XCTAssertNil(footerNextAction(in: host), "Neutral guidance needs its own fresh delay")
+                try await Task.sleep(for: .milliseconds(300))
+                await settle(host)
+                XCTAssertEqual(footerNextAction(in: host),
+                    String(localized: PaddrReadinessNextAction.releaseTrackpads.title))
+                await session.send(.outputArmed)
+                let active = await waitUntil { model.isRunning }
+                XCTAssertTrue(active)
+                await settle(host)
+                XCTAssertNil(footerNextAction(in: host))
+            }
+            _ = await session.stop()
+        }
+    }
+
+    private func footerNextAction(in view: NSView) -> String? {
+        var visited = Set<ObjectIdentifier>()
+        func find(_ object: AnyObject) -> String? {
+            guard visited.insert(ObjectIdentifier(object)).inserted else { return nil }
+            if object.accessibilityIdentifier?() == "paddr.status.next-action" {
+                return object.accessibilityLabel?()
+            }
+            let children = object.accessibilityChildren?() as? [Any] ?? []
+            for child in children {
+                if let label = find(child as AnyObject) { return label }
+            }
+            return nil
+        }
+        return find(view)
+    }
+
     func testOutputTransitionGuidanceAvoidsBriefFlashesButShowsPersistentWaitsAndErrors() async throws {
         for armsQuickly in [true, false] {
             let store = BlockingProfileStore()
@@ -1801,6 +1907,8 @@ private struct InertSession: TrackpadSessionControlling {
 private actor PresentationSession: TrackpadSessionControlling {
     private var continuation: AsyncStream<TrackpadSessionEvent>.Continuation?
     private(set) var startCount = 0
+    private(set) var startedWithOutputEnabled: [Bool] = []
+    private(set) var lastConfiguration: PaddrConfiguration?
 
     func start(
         configuration: PaddrConfiguration,
@@ -1808,6 +1916,8 @@ private actor PresentationSession: TrackpadSessionControlling {
         outputGate: OutputGate?
     ) async -> AsyncStream<TrackpadSessionEvent> {
         startCount += 1
+        startedWithOutputEnabled.append(outputGate?.isEnabled ?? false)
+        lastConfiguration = configuration
         let (stream, continuation) = AsyncStream<TrackpadSessionEvent>.makeStream()
         self.continuation = continuation
         return stream
@@ -1835,9 +1945,17 @@ private final class BlockingProfileStore: @unchecked Sendable {
         lock.withLock { saveStarted }
     }
 
-    func save(_ document: ConfigurationProfileDocument) {
-        lock.withLock { saveStarted = true }
-        gate.wait()
+    private let failsSave: Bool
+
+    init(failsSave: Bool = false) { self.failsSave = failsSave }
+
+    func save(_ document: ConfigurationProfileDocument) throws {
+        let shouldWait = lock.withLock {
+            saveStarted = true
+            return !saveReleased
+        }
+        if shouldWait { gate.wait() }
+        if failsSave { throw PaddrError.configuration("Fixture save failure") }
     }
 
     func releaseSave() {

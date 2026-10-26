@@ -23,6 +23,9 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
 - Avoid flashing transition guidance and resizing the footer during normal output
   activation or disabling. Show it after a sustained 250 ms neutral or output-release
   wait; output readiness, release safety gates, errors, and permission guidance remain immediate.
+- When enabling output during a pending profile save, describe profile preparation
+  instead of asking for neutral input. Footer text, delayed display, and announcements
+  now share the same readiness result.
 
 - Add a per-pad Pointer acceleration switch, retaining its strength when disabled.
   Existing profiles keep their effective acceleration; the CLI's numeric options

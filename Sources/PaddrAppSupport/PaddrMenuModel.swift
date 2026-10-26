@@ -213,7 +213,8 @@ public final class PaddrMenuModel {
                 isEnabled: isEnabled,
                 isRunning: isRunning,
                 isReleasingOutput: isReleasingOutput,
-                canToggleOutput: canToggleOutput
+                canToggleOutput: canToggleOutput,
+                isApplyingProfile: profileOperationInProgress
             )
         )
     }
