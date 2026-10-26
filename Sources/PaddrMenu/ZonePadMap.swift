@@ -92,10 +92,7 @@ struct ZonePadMap: View {
         .focusEffectDisabled()
         .overlay {
             if isFocused {
-                PaddrPadShape()
-                    .stroke(PaddrStyle.action, style: StrokeStyle(lineWidth: 2, dash: [4, 2]))
-                    .padding(-4)
-                    .allowsHitTesting(false)
+                PaddrPadFocusRing()
             }
         }
         .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in

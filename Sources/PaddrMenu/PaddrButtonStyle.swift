@@ -31,26 +31,27 @@ struct PaddrButtonStyle: ButtonStyle {
                         .accessibilityHidden(true)
                 }
                 .overlay {
-                    RoundedRectangle(cornerRadius: PaddrStyle.Control.radius, style: .continuous)
+                    PaddrControlShape()
                         .fill(isEnabled && configuration.isPressed ? PaddrStyle.controlPressed
                             : isHovered && isEnabled ? PaddrStyle.controlHover : .clear)
                         .allowsHitTesting(false)
                 }
                 .overlay {
-                    RoundedRectangle(cornerRadius: PaddrStyle.Control.radius, style: .continuous)
-                        .strokeBorder(isEnabled ? PaddrStyle.textSecondary : PaddrStyle.boundary,
-                                      lineWidth: environment.colorSchemeContrast == .increased ? 2 : 1.5)
+                    PaddrControlShape()
+                        .strokeBorder(isEnabled
+                            ? environment.colorSchemeContrast == .increased ? PaddrStyle.textPrimary : PaddrStyle.textSecondary
+                            : PaddrStyle.boundary,
+                            lineWidth: PaddrStyle.Control.outlineWidth)
                         .allowsHitTesting(false)
                 }
                 .overlay {
                     if isFocused {
-                        RoundedRectangle(cornerRadius: PaddrStyle.Control.radius, style: .continuous)
+                        PaddrControlShape(insetAmount: -3)
                             .strokeBorder(PaddrStyle.action, lineWidth: PaddrStyle.Control.focusWidth)
-                            .padding(-3)
                             .allowsHitTesting(false)
                     }
                 }
-                .contentShape(RoundedRectangle(cornerRadius: PaddrStyle.Control.radius, style: .continuous))
+                .contentShape(PaddrControlShape())
                 .opacity(isEnabled ? 1 : 0.55)
                 .onHover { isHovered = $0 }
         }

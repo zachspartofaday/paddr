@@ -199,6 +199,10 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 scheme: scheme, appearance: appearance,
                 to: directory.appendingPathComponent("readme-access-ready-\(theme).png")
             )
+            try await exportReadmeWindow(
+                ConfigurationView(model: permissionModel, managesWindowSize: true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-permission-setup-\(theme).png"))
             model.configuration.left.mode = .dpad
             model.configuration.right.mode = .dpad
             model.configuration.left.zoneLayout = .fourCorners
@@ -228,6 +232,11 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                     .environment(\._accessibilityReduceMotion, true),
                 scheme: scheme, appearance: appearance,
                 to: directory.appendingPathComponent("readme-both-zones-opaque-\(theme).png"))
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true)
+                    .environment(\.layoutDirection, .rightToLeft),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-both-zones-rtl-\(theme).png"))
             model.configuration.right.mode = .mouse
             model.configuration.left.mode = .dpad
             for layout in PadZoneLayout.allCases {
@@ -290,6 +299,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             backing: .buffered, defer: false
         )
         window.isReleasedWhenClosed = false
+        window.animationBehavior = .none
         defer { window.close() }
         window.title = isGuide ? "Paddr Guide" : "Paddr"
         window.appearance = NSAppearance(named: appearance)
@@ -338,14 +348,13 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: false)
             let fixture = try XCTUnwrap(content.windows.first { $0.windowID == CGWindowID(window.windowNumber) })
             let filter = SCContentFilter(desktopIndependentWindow: fixture)
-            let configuration = SCStreamConfiguration()
-            configuration.width = Int(filter.contentRect.width * CGFloat(filter.pointPixelScale))
-            configuration.height = Int(filter.contentRect.height * CGFloat(filter.pointPixelScale))
+            let configuration = SCScreenshotConfiguration()
             configuration.showsCursor = false
-            configuration.scalesToFit = true
-            configuration.ignoreShadowsSingleWindow = true
-            configuration.captureResolution = .best
-            let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
+            configuration.ignoreShadows = true
+            configuration.dynamicRange = .sdr
+            let output = try await SCScreenshotManager.captureScreenshot(contentFilter: filter, configuration: configuration)
+            let image = try XCTUnwrap(output.sdrImage)
+            print("Composited fixture \(url.lastPathComponent): \(image.width)x\(image.height), window \(window.frame.size), filter scale \(filter.pointPixelScale)")
             let bitmap = NSBitmapImageRep(cgImage: image)
             let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
             try png.write(to: url.deletingPathExtension().appendingPathExtension("composited.png"))
@@ -450,6 +459,53 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         XCTAssertLessThanOrEqual(abs(host.fittingSize.height - pointerHeight), 2 * PaddrStyle.Spacing.s5,
             "A collapsed tuning summary must not create an oversized blank band on the other pad")
         XCTAssertEqual(state.configuration.left.scrollSensitivity, 1.7)
+    }
+
+    func testPadInspectorLeadingTracksModeColumnAcrossModesWidthsDirectionsAndAccessibility() async throws {
+        for side in [PadSide.left, .right] {
+            for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+                func content(_ mode: PadMode, _ size: DynamicTypeSize) -> some View {
+                    PadConfigurationView(side: side, configuration: .constant(PadConfiguration(mode: mode)))
+                        .environment(\.layoutDirection, direction)
+                        .environment(\.dynamicTypeSize, size)
+                }
+                let host = NSHostingView(rootView: content(.mouse, .large))
+                host.frame = CGRect(x: 0, y: 0, width: 488, height: 1600)
+                await settle(host, passes: 12)
+                let original = try XCTUnwrap(modeSelector(side: side, in: host))
+                for size in [DynamicTypeSize.large, .accessibility1] {
+                    for width in [CGFloat(488), 478, 472.5, 470, 469.5, 418, 413, 680] {
+                        host.frame.size.width = width
+                        for mode in PadMode.allCases {
+                            host.rootView = content(mode, size)
+                            await settle(host, passes: 12)
+                            let selector = try XCTUnwrap(modeSelector(side: side, in: host))
+                            XCTAssertTrue(selector === original, "Reflow/mode changes must retain the mounted header control")
+                            let usesColumns = width >= PaddrStyle.previewInspectorColumnsBreakpoint && !size.isAccessibilitySize
+                            let columnLeading = usesColumns ? PaddrPadColumns.inspectorLeading(in: width) : 0
+                            let headerInline = width >= PaddrPadColumns.minimumInlineWidth && !size.isAccessibilitySize
+                            let headerLeading = headerInline ? columnLeading : 0
+                            let selectorFrame = frame(of: selector, in: host)
+                            let actualHeaderLeading = direction == .leftToRight ? selectorFrame.minX : width - selectorFrame.maxX
+                            XCTAssertEqual(actualHeaderLeading, headerLeading, accuracy: 0.6, "\(side)/\(mode)/\(width)/\(direction)/\(size)")
+                            XCTAssertEqual(selectorFrame.width, 272, accuracy: 0.5)
+                            for menu in descendants(of: PaddrPopUpButton.self, in: host) {
+                                let rect = frame(of: menu, in: host)
+                                let leading = direction == .leftToRight ? rect.minX : width - rect.maxX
+                                XCTAssertEqual(leading, columnLeading, accuracy: 0.6, "Menu \(mode)/\(width)/\(direction)/\(size)")
+                                XCTAssertEqual(rect.width, 192, accuracy: 0.5)
+                                if headerInline { XCTAssertEqual(leading, actualHeaderLeading, accuracy: 0.6) }
+                            }
+                            for slider in descendants(of: NSSlider.self, in: host) where slider.accessibilityLabel() == "Sensitivity" {
+                                let aligned = slider.convert(slider.alignmentRect(forFrame: slider.bounds), to: host)
+                                let leading = direction == .leftToRight ? aligned.minX : width - aligned.maxX
+                                XCTAssertEqual(leading, columnLeading, accuracy: 0.6, "Slider \(mode)/\(width)/\(direction)/\(size)")
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     func testCompactSliderPreservesUsableTrackWidth() async throws {

@@ -1,6 +1,6 @@
 # Bespoke controls verification
 
-Historical initial implementation record, 2026-10-26. The current teal/glass
+Historical initial implementation record, 2026-10-26. The current alignment/rim/depth
 refinement and its verification are recorded at the end of this document.
 Initial baseline: merged PR #95,
 `d0c99d8d079e24c6ecf727b9a8d4247921ba0b06`. Isolated branch: `t3/99b216c7`.
@@ -210,7 +210,7 @@ and production fixtures all pass. Logs: `/tmp/paddr-bespoke-final-tests.log`,
 `-production.log`. Fresh exact-commit ad-hoc packaging is recorded separately in
 `/tmp/paddr-bespoke-final-package.log`. Manual gaps listed above remain open.
 
-## Current operator refinement: teal, filled selection and native glass
+## Previous operator refinement: teal, filled selection and native glass
 
 Implemented on isolated branch `t3/eeff8259`, directly from exact PR #96 candidate
 `095fede96d07b4e22cbb0126661efed15ba52d59`. The parent checkout and PR head were
@@ -342,3 +342,140 @@ menu Escape/return, mode arrows, switch Space/VO-Space, map navigation and real
 controller/disconnect safety; expect one semantic stop/activation, persistent
 selection and visible focus throughout. This presentation change does not replace
 those checks or fresh independent review.
+
+
+## Current operator refinement: aligned columns, concentric rims and layered depth
+
+Source baseline: `ef6e53fcdb926297f4cee4d7a24b88a54b7d0f5f`. Same isolated
+`t3/eeff8259` checkout and leaf implementer; no child agents. The preceding review
+was canceled for this new direction and is not acceptance. Parent integration and
+fresh independent review remain separate. No PR mutation/push, production app,
+profile, TCC/global setting, core/runtime/persistence/CLI, packaging identity,
+release script, version/icon or published 1.1.0 change was made.
+
+### Design and implementation
+
+The three supplied crops show an inspector starting before the mode group, a
+nonconcentric focused pad corner, and an irregular Open setup rim. The operator
+now authorizes depth; the newest section of the plan supersedes older no-shadow
+recommendations. Neutral surfaces, light blue and Compass-teal dark accents,
+system typography and approved control/map dimensions remain.
+
+- `PaddrPadColumns` owns one measurable header/inspector rule for every mode.
+  Surplus width goes to the preview *column*, keeping the map itself 190 × 182.
+  The trailing inspector aligns to the fixed 272-point mode group. Its gutter is
+  normally 16 points and can yield to the existing 8-point spacing step only in
+  the narrow 470–478-point interval where the complete pair still fits. The
+  existing 414-point lower split breakpoint and outer editor breakpoint remain.
+  A constrained header stacks when the whole control cannot fit; accessibility
+  sizes stack both header and lower split. Natural/ideal measurement uses the
+  same column budget, preserving the existing default opening-height assertions.
+- The header now places logical coordinates and lets SwiftUI mirror them once.
+  The previous explicit flip plus environment mirroring double-flipped a real RTL
+  host. The old isolated RTL probe only supplied a layout argument; it now uses
+  the real RTL environment. Selector text/chevron RTL handling remains intact.
+- `PaddrControlShape` is the continuous silhouette for glass, SwiftUI rims/focus
+  and native drawing. A 2-point opaque rim contains an inset native material edge,
+  avoiding competing fractional borders. The centered native stroke insets both
+  its rectangle and radius. Increased Contrast strengthens the rim color rather
+  than adding another edge. Button/switch outward focus also grows its radius.
+- `PaddrPadFocusRing` grows the path outward 4 points and its radius from 14 to 18,
+  preserving corner centers. Its 2-point rounded dashed cue stays outside solid
+  selection without changing region, hit or clipping geometry. The ordinary pad
+  rim remains inset and antialiased; no map refraction, gaps or sensor distortion.
+- Depth has three roles: a neutral window, a workspace lifted by a 10% black
+  6-point shadow offset 2 points, and opaque pads recessed by a native Canvas
+  inverse-alpha inner shadow (18%, radius 3, offset 2). Native control glass
+  supplies control depth. Shadows are decorative/non-hit/AX-hidden and are omitted
+  under Reduce Transparency or Increased Contrast. Reduce Motion still disables
+  interactive material behavior; all static cues/content remain enabled/readable.
+- Secondary controls use regular native glass. Primary actions place the approved
+  accent *beneath* native clear glass tinted with the same role. Material remains
+  above the color, rather than being covered by opaque paint. A rendered tint-only
+  option lost the required primary emphasis/contrast and was discarded. Final
+  sampled text/background pairs are **6.62:1 light and 6.71:1 dark**; unchanged
+  semantic filled-selection pairs remain 6.14:1 / 7.82:1. No fake lighting gradients
+  or third-party dependencies were introduced.
+
+### Final checks and regression evidence
+
+Environment remains macOS 27.2 (`26B118`), arm64, Xcode developer directory
+`/Applications/Xcode.app/Contents/Developer`, Swift 6.4, SDK 27.0, deployment 26.0.
+Logs below use `/tmp/paddr-layer-eeff8259-<suffix>.log`.
+
+| Check | Result | Log suffix |
+| --- | --- | --- |
+| Full `swift test -Xswiftc -warnings-as-errors` with `PADDR_UI_EVIDENCE_DIR=/tmp/paddr-layer-eeff8259/final` | **527 tests: 526 passed, 1 existing map-focus skip, zero failures**; both exporters enabled | `tests-complete` |
+| `scripts/check-localization.sh` | Pass | `localization` |
+| arm64 release build, warnings as errors | Pass | `build` |
+| Explicit PaddrCLI release build / `scripts/test-cli.sh` | Pass / Pass | `cli-build`, `cli` |
+| Release identity / production fixtures | Pass / Pass | `identity`, `production` |
+| Native material/semantic contrast samples | Pass for the inspected text roles | `contrast-samples` |
+| Exact-head clean local ad-hoc app / inert artifact smoke | Final revision, clean-source flag and results in local HANDOFF after commit | `package`, `package-identity`, `artifact-smoke` |
+
+New regression checks measure actual native mode/menu/slider alignment on both
+pads, all four modes, widths 413/418/469.5/470/472.5/478/488/680, LTR/RTL and
+standard/accessibility sizes. They retain the same mounted mode control, protect
+192/272-point widths, and compare native alignment rectangles/leading positions.
+The shared rule's default-mode opening-size and existing narrow mixed-mode
+compactness/containment assertions pass unchanged. Geometry checks pin concentric
+pad focus and the complete stroke envelope within icon/normal/grown control bounds.
+The 1x/2x opaque raster check samples both complete rim points against the semantic
+color, with unchanged filled-versus-idle assertions. Existing hover, selected,
+pressed, disabled, native menu Escape/raw/checkmark, switch/radio AX, RTL/long label,
+independent binding/editor/reflow, auto-sizing and runtime safety tests still pass.
+
+The native menu Escape test's main-queue callbacks could stall inside AppKit's
+nested tracking loop. It now delivers Escape with a selector timer in the documented
+event-tracking run-loop mode and invalidates its timers on close. The existing
+no-fallback/no-write/focus-return assertions remain. A first inactive fixture click
+can be consumed for activation; a click on the already-selected mode primes that
+fixture before the counted press checks, which still demand one write and the
+expected selected value. This does not change production tracking.
+
+Earlier logs/artifacts are diagnostic attempts, not accepted results. `tests`
+exposed the default intrinsic-height mismatch; the full column budget fixed it
+without relaxing the opening-size assertion. `tests-final` exposed cached display
+omitting layers in a mixed clear/regular-glass test composition. Static 1x/2x rim
+fixtures now explicitly request the opaque fallback so cached pixels are reliable;
+normal material is verified through WindowServer. `iteration-3` was stopped after
+sampling proved a stuck native menu loop (`/tmp/paddr-layer-press-hang.txt`), leading
+to the event-tracking timer correction. Final `tests-complete` is the passing full
+run on the committed source/test content. No assertion was changed to accept the
+observed layout overflow, missing pixels or fallback cancellation.
+
+### Native capture inspection and remaining limits
+
+Full evidence: `/tmp/paddr-layer-eeff8259/final/`. Concise contact sheet:
+`/tmp/paddr-layer-eeff8259/contact-sheet.png`. Both are referenced by the updated
+comparison README. Original baseline before images and live README images remain
+unchanged; current after images and new direct focus/setup crops are refreshed.
+
+The existing exporter now uses the macOS 26 `SCScreenshotConfiguration` API with
+native default output dimensions and no fixture-window animation. Earlier captures
+could catch window presentation scaling; final logs record exact window/image sizes
+and filter scale. Current full windows are 1080 pixels wide at reported scale 1.0,
+without requested resizing. Only the fixture window is captured, only with existing
+Screen Recording access; no permission is requested or changed. `*.composited.png`
+contains actual native glass and surface depth. Plain PNGs remain cached renders;
+`stroke-samples-opaque-{1,2}x-*` deliberately proves static opaque geometry at explicit
+raster scales. These do not claim physical Retina display verification.
+
+Inspected final light/dark native evidence covers both-Zones four-corners/zero-neutral,
+actual focused left-pad corners, primary/secondary/profile/selectors, the targeted
+missing-access Open setup state, expanded pointer tuning/native slider and switch
+accents, opaque Increased Contrast/Reduce Transparency/Reduce Motion fallbacks,
+RTL, selected-hovered same/other segments, all zone layouts and long labels. Direct
+native corner/setup crops are checked in; contact-sheet enlargements use nearest
+sampling so they do not smooth away pixel irregularities. Ordinary fixtures are
+access-granted; missing access is confined to permission examples. The 1x/2x opaque
+samples include the same focus and primary/secondary rim geometry.
+
+Fresh independent review remains pending. Full manual keyboard, VoiceOver,
+Voice Control, Switch Control, physical controller/output/disconnect paths, inactive
+live pointer walks, physical Retina rendering and macOS 26 runtime rendering remain
+unverified. The key-window-dependent map focus test still skips with its assertions
+intact. Native captures show the distinct focus cue but do not certify that skipped
+SwiftUI arrow-dispatch path. Follow the existing manual checklist; expect aligned
+leading edges in inline states, coherent stacking/mirroring, one activation/semantic
+stop, concentric visible focus, no clipped rims/shadows and opaque static fallbacks.

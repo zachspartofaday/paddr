@@ -560,6 +560,7 @@ final class MenuViewPresentationTests: XCTestCase {
                         let increased = contrast == .increased
                         XCTAssertEqual(appearance.usesOpaqueFallback, reduceTransparency)
                         XCTAssertEqual(appearance.hasIncreasedContrast, increased)
+                        XCTAssertEqual(appearance.showsSurfaceDepth, !reduceTransparency && !increased)
                         XCTAssertEqual(appearance.usesShapeDifferentiation, differentiateWithoutColor)
                         XCTAssertEqual(appearance.reducesMotion, reduceMotion)
                         XCTAssertEqual(appearance.strokeWidth, increased ? 1.5 : 1)
@@ -918,8 +919,7 @@ final class MenuViewPresentationTests: XCTestCase {
 
     func testAdaptivePadHeaderMovesTheSameSelectorBelowTitleOnlyWhenNeeded() throws {
         let layout = PaddrAdaptiveHeaderLayout(
-            spacing: PaddrStyle.Spacing.s2,
-            layoutDirection: .leftToRight
+            spacing: PaddrStyle.Spacing.s2
         ) {
             SettingsControlEdgeProbe(identifier: "header-title")
                 .frame(width: 120, height: 28)
@@ -989,8 +989,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertLessThanOrEqual(stackedSelectorFrame.maxX, hostingView.bounds.maxX + 0.5)
 
         let rightToLeftLayout = PaddrAdaptiveHeaderLayout(
-            spacing: PaddrStyle.Spacing.s2,
-            layoutDirection: .rightToLeft
+            spacing: PaddrStyle.Spacing.s2
         ) {
             SettingsControlEdgeProbe(identifier: "rtl-header-title")
                 .frame(width: 120, height: 28)
@@ -998,6 +997,7 @@ final class MenuViewPresentationTests: XCTestCase {
                 .frame(width: PaddrStyle.behaviorPickerWidth, height: 24)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .environment(\.layoutDirection, .rightToLeft)
         let rightToLeftHost = NSHostingView(rootView: rightToLeftLayout)
         rightToLeftHost.frame = NSRect(
             origin: .zero,

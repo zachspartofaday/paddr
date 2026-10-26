@@ -3,9 +3,11 @@ import SwiftUI
 /// Keeps a card title and its trailing control on one row when their intrinsic
 /// widths fit, then moves that same control below the title at constrained widths.
 /// A custom layout avoids mounting parallel copies of stateful native controls.
+/// Placement uses logical coordinates; SwiftUI mirrors them once for RTL.
 struct PaddrAdaptiveHeaderLayout: Layout {
     let spacing: CGFloat
-    let layoutDirection: LayoutDirection
+    var alignsPadInspector = false
+    var forceStacked = false
 
     func sizeThatFits(
         proposal: ProposedViewSize,
@@ -38,7 +40,7 @@ struct PaddrAdaptiveHeaderLayout: Layout {
             return
         }
 
-        let titleX = leadingX(for: geometry.titleSize.width, in: bounds)
+        let titleX = bounds.minX
         if geometry.usesInlineLayout {
             subviews[0].place(
                 at: CGPoint(
@@ -50,7 +52,7 @@ struct PaddrAdaptiveHeaderLayout: Layout {
             )
             subviews[1].place(
                 at: CGPoint(
-                    x: trailingX(for: geometry.controlSize.width, in: bounds),
+                    x: bounds.minX + geometry.controlLeading,
                     y: bounds.midY - (geometry.controlSize.height / 2)
                 ),
                 anchor: .topLeading,
@@ -64,7 +66,7 @@ struct PaddrAdaptiveHeaderLayout: Layout {
             )
             subviews[1].place(
                 at: CGPoint(
-                    x: leadingX(for: geometry.controlSize.width, in: bounds),
+                    x: bounds.minX,
                     y: bounds.minY + geometry.titleSize.height + spacing
                 ),
                 anchor: .topLeading,
@@ -82,8 +84,15 @@ struct PaddrAdaptiveHeaderLayout: Layout {
         let naturalTitleSize = subviews[0].sizeThatFits(.unspecified)
         let controlSize = subviews[1].sizeThatFits(.unspecified)
         let inlineWidth = naturalTitleSize.width + spacing + controlSize.width
-        let availableWidth = availableWidth ?? inlineWidth
-        let usesInlineLayout = availableWidth >= inlineWidth
+        let idealInlineWidth = alignsPadInspector
+            ? max(inlineWidth, PaddrPadColumns.minimumInlineWidth) : inlineWidth
+        let availableWidth = availableWidth ?? idealInlineWidth
+        let controlLeading = alignsPadInspector
+            ? PaddrPadColumns.inspectorLeading(in: availableWidth)
+            : availableWidth - controlSize.width
+        let usesInlineLayout = !forceStacked && availableWidth >= inlineWidth
+            && controlLeading >= naturalTitleSize.width + spacing
+            && controlLeading + controlSize.width <= availableWidth
         let titleSize = usesInlineLayout
             ? naturalTitleSize
             : subviews[0].sizeThatFits(
@@ -91,11 +100,12 @@ struct PaddrAdaptiveHeaderLayout: Layout {
             )
 
         return HeaderGeometry(
+            controlLeading: controlLeading,
             titleSize: titleSize,
             controlSize: controlSize,
             usesInlineLayout: usesInlineLayout,
             contentWidth: usesInlineLayout
-                ? inlineWidth
+                ? idealInlineWidth
                 : max(titleSize.width, controlSize.width),
             height: usesInlineLayout
                 ? max(titleSize.height, controlSize.height)
@@ -106,17 +116,10 @@ struct PaddrAdaptiveHeaderLayout: Layout {
     private func finiteWidth(_ width: CGFloat?) -> CGFloat? {
         width.flatMap { $0.isFinite ? max(0, $0) : nil }
     }
-
-    private func leadingX(for width: CGFloat, in bounds: CGRect) -> CGFloat {
-        layoutDirection == .leftToRight ? bounds.minX : bounds.maxX - width
-    }
-
-    private func trailingX(for width: CGFloat, in bounds: CGRect) -> CGFloat {
-        layoutDirection == .leftToRight ? bounds.maxX - width : bounds.minX
-    }
 }
 
 private struct HeaderGeometry {
+    let controlLeading: CGFloat
     let titleSize: CGSize
     let controlSize: CGSize
     let usesInlineLayout: Bool

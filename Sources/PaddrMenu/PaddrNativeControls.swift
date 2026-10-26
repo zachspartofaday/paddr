@@ -6,7 +6,7 @@ import SwiftUI
 @MainActor
 enum PaddrControlDrawing {
     static func shape(_ rect: CGRect, radius: CGFloat) -> CGPath {
-        RoundedRectangle(cornerRadius: radius, style: .continuous).path(in: rect).cgPath
+        PaddrControlShape(radius: radius).path(in: rect).cgPath
     }
 
     static func fill(_ rect: CGRect, radius: CGFloat, color: Color) {
@@ -16,10 +16,14 @@ enum PaddrControlDrawing {
         context.fillPath()
     }
 
+    static func strokePath(_ rect: CGRect, radius: CGFloat, width: CGFloat) -> CGPath {
+        PaddrControlShape(radius: radius, insetAmount: width / 2).path(in: rect).cgPath
+    }
+
     static func stroke(_ rect: CGRect, radius: CGFloat, color: Color, width: CGFloat = 1) {
         guard let context = NSGraphicsContext.current?.cgContext else { return }
         context.setShouldAntialias(true)
-        context.addPath(shape(rect.insetBy(dx: width / 2, dy: width / 2), radius: max(0, radius - width / 2)))
+        context.addPath(strokePath(rect, radius: radius, width: width))
         context.setStrokeColor(NSColor(color).cgColor)
         context.setLineWidth(width)
         context.strokePath()
@@ -181,7 +185,8 @@ final class PaddrPopUpButton: NSPopUpButton {
                 color: isHighlighted ? PaddrStyle.controlPressed : PaddrStyle.controlHover)
         }
         PaddrControlDrawing.stroke(bounds, radius: PaddrStyle.Control.radius,
-            color: isEnabled ? PaddrStyle.textSecondary : PaddrStyle.boundary, width: increasedContrast ? 2 : 1.5)
+            color: isEnabled ? increasedContrast ? PaddrStyle.textPrimary : PaddrStyle.textSecondary : PaddrStyle.boundary,
+            width: PaddrStyle.Control.outlineWidth)
         if let iconName {
             drawSymbol(iconName, in: CGRect(x: bounds.midX - 7, y: bounds.midY - 7, width: 14, height: 14))
         } else {
@@ -295,7 +300,7 @@ final class PaddrTuningSwitchButton: NSButton {
     override func draw(_ dirtyRect: NSRect) {
         drawChrome()
         // Focus belongs outside the material/track and must not be clipped by it.
-        PaddrControlDrawing.focus(self, rect: trackRect.insetBy(dx: -3, dy: -3), radius: 7)
+        PaddrControlDrawing.focus(self, rect: trackRect.insetBy(dx: -3, dy: -3), radius: PaddrStyle.Control.radius + 3)
     }
     private func drawChrome() {
         let context = NSGraphicsContext.current?.cgContext
@@ -307,7 +312,8 @@ final class PaddrTuningSwitchButton: NSButton {
                 color: state == .on ? PaddrStyle.controlTint : PaddrStyle.workspace)
         }
         PaddrControlDrawing.stroke(trackRect, radius: PaddrStyle.Control.radius,
-            color: isEnabled ? PaddrStyle.textSecondary : PaddrStyle.boundary, width: increasedContrast ? 2 : 1.5)
+            color: isEnabled ? increasedContrast ? PaddrStyle.textPrimary : PaddrStyle.textSecondary : PaddrStyle.boundary,
+            width: PaddrStyle.Control.outlineWidth)
         if (isHovered || isHighlighted) && isEnabled {
             PaddrControlDrawing.fill(trackRect, radius: PaddrStyle.Control.radius, color: isHighlighted ? PaddrStyle.controlPressed : PaddrStyle.controlHover)
         }

@@ -39,6 +39,9 @@ struct PaddrAppearance: Equatable {
     /// Controls use native glass only when neither setting requires an opaque boundary.
     var usesControlGlass: Bool { !usesOpaqueFallback && !hasIncreasedContrast }
 
+    /// Depth is decorative; accessibility fallbacks keep opaque structural edges.
+    var showsSurfaceDepth: Bool { !usesOpaqueFallback && !hasIncreasedContrast }
+
     /// Border and separator thickness.
     var strokeWidth: CGFloat { hasIncreasedContrast ? 1.5 : 1 }
 

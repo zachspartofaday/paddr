@@ -17,6 +17,7 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
     let showsDivider: Bool
     let equalizesColumnHeights: Bool
     let columnSpacing: CGFloat
+    let alignsPadInspector: Bool
     @ViewBuilder let leading: () -> Leading
     @ViewBuilder let trailing: () -> Trailing
 
@@ -26,12 +27,14 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
         breakpoint: CGFloat,
         leadingWidth: CGFloat,
         showsDivider: Bool = true,
+        alignsPadInspector: Bool = false,
         @ViewBuilder leading: @escaping () -> Leading,
         @ViewBuilder trailing: @escaping () -> Trailing
     ) {
         self.breakpoint = breakpoint
         self.leadingWidth = leadingWidth
         self.showsDivider = showsDivider
+        self.alignsPadInspector = alignsPadInspector
         equalizesColumnHeights = false
         columnSpacing = PaddrStyle.previewInspectorSpacing
         self.leading = leading
@@ -49,6 +52,7 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
         self.breakpoint = breakpoint
         leadingWidth = nil
         showsDivider = false
+        alignsPadInspector = false
         equalizesColumnHeights = true
         columnSpacing = PaddrStyle.cardSpacing
         self.leading = leading
@@ -64,6 +68,7 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
         self.breakpoint = breakpoint
         leadingWidth = nil
         showsDivider = false
+        alignsPadInspector = false
         equalizesColumnHeights = false
         columnSpacing = PaddrStyle.Spacing.s5
         self.leading = leading
@@ -73,15 +78,18 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
     var body: some View {
         let usesColumns = availableWidth >= breakpoint && !dynamicTypeSize.isAccessibilitySize
         let usesEqualHeightColumns = usesColumns && equalizesColumnHeights
+        let resolvedSpacing = alignsPadInspector ? PaddrPadColumns.spacing(in: availableWidth) : columnSpacing
+        let resolvedLeadingWidth = alignsPadInspector
+            ? PaddrPadColumns.previewWidth(in: availableWidth) : leadingWidth
         let layout = usesEqualHeightColumns
             ? AnyLayout(PaddrEqualHeightColumnsLayout(spacing: columnSpacing))
             : usesColumns
-                ? AnyLayout(HStackLayout(alignment: .top, spacing: columnSpacing))
+                ? AnyLayout(HStackLayout(alignment: .top, spacing: resolvedSpacing))
                 : AnyLayout(VStackLayout(alignment: .leading, spacing: PaddrStyle.Spacing.s4))
 
         layout {
             leading()
-                .frame(width: usesColumns ? leadingWidth : nil, alignment: .topLeading)
+                .frame(width: usesColumns ? resolvedLeadingWidth : nil, alignment: .topLeading)
                 .frame(
                     minWidth: usesColumns && leadingWidth != nil ? nil : 0,
                     maxWidth: usesColumns && leadingWidth != nil ? nil : .infinity,
@@ -108,5 +116,26 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
             guard width > 0 else { return }
             availableWidth = width
         }
+    }
+}
+
+/// Shared column geometry for the mode header and every preview/inspector pair.
+/// Surplus width belongs to the map column, leaving the trailing control column
+/// aligned to the fixed 272-point mode control. The map itself stays 190 points.
+enum PaddrPadColumns {
+    static let minimumInlineWidth = PaddrStyle.Metrics.zoneMapWidth
+        + PaddrStyle.behaviorPickerWidth + PaddrStyle.Spacing.s2
+
+    static func spacing(in availableWidth: CGFloat) -> CGFloat {
+        guard availableWidth >= minimumInlineWidth else { return PaddrStyle.previewInspectorSpacing }
+        return min(PaddrStyle.previewInspectorSpacing,
+            availableWidth - PaddrStyle.Metrics.zoneMapWidth - PaddrStyle.behaviorPickerWidth)
+    }
+    static func previewWidth(in availableWidth: CGFloat) -> CGFloat {
+        max(PaddrStyle.Metrics.zoneMapWidth,
+            availableWidth - PaddrStyle.behaviorPickerWidth - spacing(in: availableWidth))
+    }
+    static func inspectorLeading(in availableWidth: CGFloat) -> CGFloat {
+        previewWidth(in: availableWidth) + spacing(in: availableWidth)
     }
 }

@@ -59,8 +59,8 @@ enum PointerTuningPresentation {
 }
 
 struct PadConfigurationView: View {
-    @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.locale) private var locale
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var tuningExpanded: Bool
 
@@ -106,7 +106,8 @@ struct PadConfigurationView: View {
         VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
             PaddrAdaptiveHeaderLayout(
                 spacing: PaddrStyle.Spacing.s2,
-                layoutDirection: layoutDirection
+                alignsPadInspector: true,
+                forceStacked: dynamicTypeSize.isAccessibilitySize
             ) {
                 Text(title)
                     .paddrTypography(.cardTitle)
@@ -286,6 +287,7 @@ struct PadConfigurationView: View {
             breakpoint: PaddrStyle.previewInspectorColumnsBreakpoint,
             leadingWidth: PaddrStyle.Metrics.zoneMapWidth,
             showsDivider: false,
+            alignsPadInspector: true,
             leading: { previewSection },
             trailing: { settingsSection(settings) }
         )
@@ -475,8 +477,8 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
             PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius, color: PaddrStyle.workspace)
         }
         PaddrControlDrawing.stroke(bounds, radius: PaddrStyle.Control.radius,
-            color: isEnabled ? PaddrStyle.textSecondary : PaddrStyle.boundary,
-            width: controlAppearance.hasIncreasedContrast ? 2 : 1.5)
+            color: isEnabled ? controlAppearance.hasIncreasedContrast ? PaddrStyle.textPrimary : PaddrStyle.textSecondary
+                : PaddrStyle.boundary, width: PaddrStyle.Control.outlineWidth)
         for index in 0..<segmentCount {
             let rect = segmentRect(index)
             let selected = isSelected(forSegment: index)

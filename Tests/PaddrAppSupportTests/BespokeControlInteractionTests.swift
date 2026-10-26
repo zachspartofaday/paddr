@@ -425,7 +425,10 @@ final class BespokeControlInteractionTests: XCTestCase {
             await settle(host)
             let control = try XCTUnwrap(descendants(PaddrModeSegmentedControl.self, host).first)
             XCTAssertTrue(window.makeFirstResponder(control))
-            for (state, index) in [("other", 1), ("selected", 1)] {
+            // An inactive CLI host can consume its first native mouse event for
+            // activation. Prime with the already-selected item; counted presses
+            // below still require exactly one dispatch and the expected value.
+            for (state, index) in [("activation", 3), ("other", 1), ("selected", 1)] {
                 let initial = control.selectedSegment
                 let location = control.convert(CGPoint(x: control.segmentRect(index).midX, y: 16), to: nil)
                 let down = try XCTUnwrap(NSEvent.mouseEvent(with: .leftMouseDown, location: location,
@@ -457,8 +460,11 @@ final class BespokeControlInteractionTests: XCTestCase {
                 control.mouseDown(with: down)
                 XCTAssertTrue(observedPress)
                 XCTAssertNil(control.pressedSegment)
-                XCTAssertEqual(value, .mouse, "\(theme)/\(state), key=\(window.isKeyWindow)")
-                XCTAssertEqual(writes, beforeWrites + 1, "\(theme)/\(state)")
+                XCTAssertEqual(value, state == "activation" ? .dpad : .mouse,
+                    "\(theme)/\(state), key=\(window.isKeyWindow)")
+                if state != "activation" {
+                    XCTAssertEqual(writes, beforeWrites + 1, "\(theme)/\(state)")
+                }
                 XCTAssertEqual(control.selectedSegment, index, "\(theme)/\(state)")
             }
         }
@@ -495,8 +501,17 @@ final class BespokeControlInteractionTests: XCTestCase {
         let host = NSHostingView(rootView: VStack(spacing: 16) {
             PadModePicker(selection: .constant(.dpad), accessibilityIdentifier: "paddr.pad-mode.left")
             PadModePreview(mode: .scroll, deadzone: 0).frame(width: 190, height: 182)
-        })
-        let window = window(host, width: 272, height: 230)
+                .overlay { PaddrPadFocusRing() }
+            HStack {
+                Button("Save & Apply") {}.paddrActionButton(.primary)
+                Button("Open setup…") {}.paddrActionButton(.secondary)
+            }
+        }
+        // Explicit opaque geometry evidence: cached AppKit display cannot capture
+        // a mixed regular/clear native glass composition. Normal material is
+        // verified by the WindowServer exporter, never inferred from these PNGs.
+        .environment(\._accessibilityReduceTransparency, true))
+        let window = window(host, width: 272, height: 278)
         defer { window.close() }
         await settle(host)
         for (theme, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
@@ -504,14 +519,23 @@ final class BespokeControlInteractionTests: XCTestCase {
             for scale in [1, 2] {
                 let bitmap = try raster(host, scale: scale)
                 XCTAssertEqual(bitmap.pixelsWide, 272 * scale)
-                XCTAssertEqual(bitmap.pixelsHigh, 230 * scale)
+                XCTAssertEqual(bitmap.pixelsHigh, 278 * scale)
+                var rimColor: NSColor?
+                host.effectiveAppearance.performAsCurrentDrawingAppearance {
+                    rimColor = NSColor(PaddrStyle.textSecondary).usingColorSpace(.sRGB)
+                }
+                let expectedRim = try XCTUnwrap(rimColor)
+                for y in [CGFloat(0.5), 1.5] {
+                    XCTAssertLessThan(distance(try sample(bitmap, CGPoint(x: 136, y: y)), expectedRim), 0.06,
+                        "The structural rim must cover both complete pixels/points without a fractional ghost seam")
+                }
                 let selected = try sample(bitmap, CGPoint(x: 238, y: 6))
                 let idle = try sample(bitmap, CGPoint(x: 102, y: 6))
                 XCTAssertGreaterThan(distance(selected, idle), 0.3)
                 if let path = ProcessInfo.processInfo.environment["PADDR_UI_EVIDENCE_DIR"] {
                     let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
                     try png.write(to: URL(fileURLWithPath: path)
-                        .appendingPathComponent("stroke-samples-\(scale)x-\(theme).png"))
+                        .appendingPathComponent("stroke-samples-opaque-\(scale)x-\(theme).png"))
                 }
             }
         }
@@ -560,6 +584,7 @@ final class BespokeControlInteractionTests: XCTestCase {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: height),
             styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
+        window.animationBehavior = .none
         window.contentView = host
         return window
     }
@@ -579,20 +604,38 @@ private final class EscapeMenuObserver: NSObject, NSMenuDelegate {
     var closed = false
     var usedFallback = false
     init(app: NSApplication, window: NSWindow) { self.app = app; self.window = window }
+    private weak var trackingMenu: NSMenu?
+    private var escapeTimer: Timer?
+    private var fallbackTimer: Timer?
     func menuWillOpen(_ menu: NSMenu) {
         opened = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
-            if let escape = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
-                timestamp: 0, windowNumber: window.windowNumber, context: nil, characters: "\u{1B}",
-                charactersIgnoringModifiers: "\u{1B}", isARepeat: false, keyCode: 53) {
-                app.postEvent(escape, atStart: true)
-            }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [self] in
-            if !closed { usedFallback = true; menu.cancelTracking() }
+        trackingMenu = menu
+        let escape = Timer(timeInterval: 0.05, target: self, selector: #selector(postEscape), userInfo: nil, repeats: false)
+        let fallback = Timer(timeInterval: 1, target: self, selector: #selector(cancelIfStillOpen), userInfo: nil, repeats: false)
+        escapeTimer = escape
+        fallbackTimer = fallback
+        // Main-queue callbacks aren't guaranteed inside AppKit's nested menu loop.
+        // Its documented event-tracking run-loop mode must deliver the actual key.
+        for timer in [escape, fallback] {
+            RunLoop.main.add(timer, forMode: .eventTracking)
+            RunLoop.main.add(timer, forMode: .default)
         }
     }
-    func menuDidClose(_ menu: NSMenu) { closed = true }
+    @objc private func postEscape() {
+        if let escape = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+            timestamp: 0, windowNumber: window.windowNumber, context: nil, characters: "\u{1B}",
+            charactersIgnoringModifiers: "\u{1B}", isARepeat: false, keyCode: 53) {
+            app.postEvent(escape, atStart: true)
+        }
+    }
+    @objc private func cancelIfStillOpen() {
+        if !closed { usedFallback = true; trackingMenu?.cancelTracking() }
+    }
+    func menuDidClose(_ menu: NSMenu) {
+        closed = true
+        escapeTimer?.invalidate()
+        fallbackTimer?.invalidate()
+    }
 }
 
 @MainActor

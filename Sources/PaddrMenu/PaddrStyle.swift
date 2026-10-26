@@ -69,6 +69,8 @@ enum PaddrStyle {
         static let radius: CGFloat = 7
         static let sideInset: CGFloat = 12
         static let focusWidth: CGFloat = 2
+        static let outlineWidth: CGFloat = 2
+        static let materialInset: CGFloat = outlineWidth / 2
         static let segmentInset: CGFloat = 2
         static let segmentRadius: CGFloat = 5
         static let bindingPlateHeight: CGFloat = 24
@@ -112,6 +114,15 @@ enum PaddrStyle {
 
         static let zoneMapWidth: CGFloat = 190
         static let zoneMapHeight: CGFloat = 182
+    }
+
+    enum Depth {
+        static let workspaceShadowOpacity: Double = 0.10
+        static let workspaceShadowRadius: CGFloat = 6
+        static let workspaceShadowOffset: CGFloat = 2
+        static let padRecessOpacity: Double = 0.18
+        static let padRecessRadius: CGFloat = 3
+        static let padRecessOffset: CGFloat = 2
     }
 
     enum Radius {
@@ -229,12 +240,16 @@ private struct PaddrCardModifier: ViewModifier {
             content
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(PaddrStyle.Inset.card)
-                .background(
-                    appearance.usesOpaqueFallback
-                        ? PaddrStyle.night1
-                        : appearance.surface(elevated: true),
-                    in: .rect(cornerRadius: PaddrStyle.Radius.card)
-                )
+                .background {
+                    RoundedRectangle(cornerRadius: PaddrStyle.Radius.card)
+                        .fill(appearance.surface(elevated: true))
+                        .shadow(color: .black.opacity(appearance.showsSurfaceDepth
+                            ? PaddrStyle.Depth.workspaceShadowOpacity : 0),
+                            radius: PaddrStyle.Depth.workspaceShadowRadius,
+                            y: PaddrStyle.Depth.workspaceShadowOffset)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
                 .overlay {
                     RoundedRectangle(cornerRadius: PaddrStyle.Radius.card)
                         .strokeBorder(

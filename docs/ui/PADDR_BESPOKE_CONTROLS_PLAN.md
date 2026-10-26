@@ -4,7 +4,61 @@ Status: Operator-approved on 2026-10-26; implemented candidate awaiting fresh in
 Date: 2026-10-26
 Implementation baseline: `d0c99d8d079e24c6ecf727b9a8d4247921ba0b06` (merged PR #95, frozen v1.1.0). Original council baseline: PR #92.
 
-## Operator refinement — 2026-10-26
+## Current operator refinement — alignment, rims and depth
+
+Source: `ef6e53fcdb926297f4cee4d7a24b88a54b7d0f5f`, 2026-10-26. The new crops
+identify the lower form column starting before the mode control, irregular control
+rims, and a focus corner that does not follow the pad. The operator now explicitly
+requests layered depth. This section supersedes older no-shadow/no-depth guidance
+below; the teal/glass, geometry and interaction decisions remain.
+
+Keep the six core palette roles: light blue `#2859CF`, dark Compass teal `#78C7BD`,
+dark selected fill `#254C48`, dark neutral canvas `#20262D`, workspace `#2B333C`,
+and foreground-on-teal `#1C2630`. Keep system type, fixed 192-point menus,
+272-point mode control and 190 × 182 maps. Use semantic leading alignment:
+
+```text
+Title         | Off Pointer Scroll Zones
+190-point map | Label
+              | 192-point selector / native slider
+```
+
+The shared column rule gives surplus width to the map's *column*, never its sensor
+shape: preview column = max(190, editor width − 272 − gutter). The gutter is
+normally 16; it yields down to the existing 8-point spacing step only when that
+keeps the complete map/control pair inline (470–478-point editor widths). Both
+header and every mode's lower split consume it. At constrained widths the existing 414-point lower
+split breakpoint stays; the header stacks when its complete 272-point control no
+longer fits that column. Accessibility sizes stack both. Logical coordinates mirror
+once through SwiftUI for RTL. This preserves mounted controls and compactness.
+
+Use one concentric geometry for control rims and focus, with native glass inset
+under a solid 2-point structural rim. This keeps its native material/light/depth
+without a competing fractional edge. Primary actions put the approved accent
+beneath native clear glass tinted with that same accent, retaining real material
+above the color and readable text; secondary surfaces use regular glass. Opaque
+fallbacks use the same silhouette;
+Increased Contrast strengthens color rather than adding a second border. Grow the
+pad focus path outward 4 points *and* grow its radius from 14 to 18, retaining its
+corner centers and a distinct rounded-dash cue outside selected regions.
+
+Depth has three roles: the existing neutral window, a workspace lifted by a quiet
+6-point/2-point-offset 10% black shadow, and stable opaque pads with a shallow
+3-point/2-point-offset 18% inner shadow. Native control glass supplies control depth.
+No extra cards, glow, fake gradients, animation or map refraction. Reduce
+Transparency and Increased Contrast omit decorative shadows; opaque surfaces,
+selection, focus and enabled content remain. Reduce Motion still disables
+interactive material motion.
+
+Critique: a Zones-only 10-point inset would drift at other widths; the shared
+column budget answers the actual layout cause. Expanding a focus rectangle alone
+cannot produce concentric corners. Native edges alone were rendered as an option
+but were too faint for the brief, so the final rim remains explicit and readable.
+Depth stays on surface boundaries, rather than decorating every row or changing
+sensor geometry. Validate actual native/composited light/dark, focused corners,
+primary/secondary/Open setup, pointer tuning, fallbacks, RTL and 1x/2x rasters.
+
+## Earlier operator refinement — teal and glass
 
 This update supersedes the earlier flat/no-material and outline-only selection
 recommendations below. The source candidate is `095fede96d07b4e22cbb0126661efed15ba52d59`.

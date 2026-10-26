@@ -20,6 +20,7 @@ struct ButtonZoneConfigurationView: View {
             breakpoint: PaddrStyle.previewInspectorColumnsBreakpoint,
             leadingWidth: PaddrStyle.Metrics.zoneMapWidth,
             showsDivider: false,
+            alignsPadInspector: true,
             leading: { mapSection },
             trailing: { inspector }
         )
