@@ -4,8 +4,8 @@ Paddr adds pointer movement, scrolling, touch-tap actions, button zones, and rea
 
 Apple's native controller service handles the controller's buttons, sticks, and triggers. Paddr reads the puck reports and turns trackpad gestures and assigned rear buttons into normal mouse and keyboard input.
 
-> [!WARNING]
-> Paddr is an early, hardware-specific beta. **macOS 27 Developer Beta 8 (build `26A5425a`) is known compatible** with a puck-connected Steam Controller 2, based on the maintainer's current setup. Developer Beta 5 was also confirmed previously. Other beta builds and connection paths are not confirmed; future macOS changes may require Paddr updates. Please report reproducible problems in [Issues](https://github.com/zachspartofaday/Paddr/issues).
+> [!NOTE]
+> The maintainer has confirmed Paddr works with a puck-connected Steam Controller 2 on **released macOS 27** and **macOS 27.2 release candidate**. Bluetooth and direct USB remain unvalidated. Please report reproducible problems in [Issues](https://github.com/zachspartofaday/Paddr/issues).
 
 See [CHANGELOG.md](CHANGELOG.md) for release history and current compatibility notes.
 
@@ -13,7 +13,13 @@ See [CHANGELOG.md](CHANGELOG.md) for release history and current compatibility n
 
 The configuration window follows macOS light and dark appearance and keeps both trackpads independently editable. Profile selection and **Save & Apply** stay visible above the scrolling workspace; **Enable output** and output readiness stay below it. Common settings remain visible, while **Pointer tuning** reveals advanced controls and summarizes the enabled tuning when collapsed. Paddr manages the window size: it uses a 1080-point width when the screen allows, grows when Pointer tuning opens, and shrinks when it closes. Manual resizing is disabled. The window stays within the available screen area; scrolling remains available when the content is too tall to fit.
 
-The screenshots render the native views with inert example data: permissions still needed, no puck connected, and output off. The bindings are example drafts, not built-in presets. [View the light appearance](docs/images/paddr-profile-overview-light.png).
+The screenshots render the native views with inert example data: no puck connected and output off. The main examples show permissions still needed; the access-granted example below simulates both permissions granted. The bindings are example drafts, not built-in presets. [View the light appearance](docs/images/paddr-profile-overview-light.png).
+
+Opening **Pointer tuning** expands the window to keep the acceleration, smoothing, and tap-stability controls visible. Switching to shorter content shrinks it again.
+
+![Paddr managed window with left Pointer tuning expanded, right Zones, and the Enable output and permission footer visible](docs/images/paddr-auto-sized-tuning.png)
+
+[View the shorter window with both pads in Zones](docs/images/paddr-auto-sized-zones.png). Screenshot provenance and regeneration instructions are in [the image evidence notes](docs/images/README.md).
 
 ## What Paddr adds
 
@@ -59,7 +65,7 @@ Paddr does not require Steam to be installed or running. Apple's native controll
 
 Requirements:
 
-- macOS 27 with Apple's `SteamControllerHIDServicePlugin.plugin`; Developer Beta 8 (`26A5425a`) is known compatible, and Developer Beta 5 was previously confirmed;
+- macOS 27 or later with Apple's `SteamControllerHIDServicePlugin.plugin`; confirmed environments are released macOS 27 and macOS 27.2 release candidate;
 - Steam Controller 2 connected through the puck;
 - Input Monitoring permission to receive puck reports; and
 - Accessibility permission to emit mapped mouse and keyboard events.
@@ -77,6 +83,8 @@ Puck mode is the only confirmed connection. Bluetooth and direct USB remain unva
    mouse and keyboard actions. You can edit profiles before granting access.
 
 ![Paddr Guide Allow Access page, step 3 of 4, with separate Input Monitoring and Accessibility Request and Open Settings buttons](docs/images/paddr-permissions.png)
+
+[View the workspace with access granted](docs/images/paddr-access-ready-light.png). This example still has output off and no controller connected; granting access does not enable output automatically.
 
 4. Choose **Duplicate to Edit** for the built-in **Default** profile, rename the copy if desired, configure both trackpads, and choose **Save & Apply**. Default always remains left Scroll/right Pointer and cannot be renamed, edited, or deleted. Its tuning remains available to inspect.
 
@@ -107,16 +115,16 @@ Each region can hold a keyboard key, left mouse button, or right mouse button un
 
 ## Build locally
 
-Xcode Beta with the macOS 27 SDK is currently required:
+Xcode 27 with the macOS 27 SDK is required:
 
 ```bash
-DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer \
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 BUILD_SCRATCH_PATH="$PWD/.build/xcode27" \
 scripts/build-app.sh
 open dist/Paddr.app
 ```
 
-Paddr builds for arm64 and retains macOS 26.0 as its deployment target in case Apple back-deploys controller support.
+Paddr builds for arm64. The binary deployment target remains macOS 26.0; confirmed controller support requires macOS 27 or later.
 
 ## CLI
 
@@ -147,7 +155,7 @@ scripts/paddr.sh --left-mode dpad --left-layout grid-nine \
 - Output is CGEvent mouse, scroll, and keyboard input—not native gamepad axes.
 - Paddr does not suppress or remap Apple's native controller buttons.
 - Games may switch prompts when controller and mouse input alternate.
-- macOS beta or HID service changes may break compatibility.
+- Compatibility depends on Apple's native controller service and the puck connection.
 - Broad hardware and game testing is still needed.
 - Per-game and per-app profiles are planned for a future release.
 
