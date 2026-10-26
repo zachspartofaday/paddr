@@ -65,7 +65,8 @@ xcrun actool \
     --minimum-deployment-target 26.0 \
     --app-icon AppIcon \
     --output-partial-info-plist "$asset_info_path" \
-    "$repo_dir/Assets/Assets.xcassets"
+    "$repo_dir/Assets/Assets.xcassets" \
+    "$repo_dir/Assets/AppIcon.icon"
 /usr/libexec/PlistBuddy -c "Merge $asset_info_path" "$contents_path/Info.plist"
 
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$contents_path/Info.plist")" = "Paddr"

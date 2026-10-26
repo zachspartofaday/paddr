@@ -52,6 +52,8 @@ BUILD_SCRATCH_PATH="$(mktemp -d)/build" \
 scripts/build-app.sh
 ```
 
+Release packaging runs `Paddr --artifact-smoke-test`, which checks executable startup and built-in configuration encoding without constructing the app, loading personal profiles, requesting permissions, or probing HID. The separate `--smoke-test` diagnostic reads configuration and probes the receiver; it is not an inert packaging check.
+
 If your change affects a physical launch path, say what you tested manually. Useful checks include pointer movement, scroll, keyboard and mouse-button zones, touch taps, permission refresh, closing and reopening the configuration window, and puck unplug/replug while an output is held.
 
 ## Pull requests
@@ -67,13 +69,32 @@ The repository does not publish, notarize, or upload artifacts from contributor 
 
 ## Brand assets
 
-`Assets/PaddrIcon.png` is the single source of truth for the app icon. Regenerate the checked-in AppIcon renditions after changing it:
+`Assets/AppIcon.icon` is the editable Icon Composer source for the Compass app icon.
+Its four SVG zones retain the grey/teal palette, while the system renders Liquid Glass
+highlights, refraction, translucency, and shadows. Edit the source with Icon Composer
+from Xcode 27; keep masks, baked lighting, and shadows out of the SVG layers.
+
+The app build compiles the layered source alongside `Assets/Assets.xcassets`, selecting
+`AppIcon`. The layered source takes precedence; macOS chooses the appropriate appearance
+and design generation. Refraction is a generation-27 effect and has no visible effect
+on macOS 26.
+
+Regenerate the checked-in flattened `Assets/PaddrIcon.png` and fallback AppIcon catalog
+after changing the layered source:
 
 ```bash
 scripts/generate-app-icon.sh
 ```
 
-The generator requires a square PNG at least 1024 pixels wide and writes only the filenames declared by the AppIcon catalog.
+The generator requires the selected Xcode 27 installation (or `DEVELOPER_DIR`) and its
+Icon Composer tools. It renders the Default appearance using design generation 27,
+adds a transparent macOS canvas inset, and regenerates the catalog's declared sizes.
+The PNG and catalog are flattened fallbacks, not the source of native glass behaviour.
+Preview Default, Dark, and Mono appearances and small icon sizes in Icon Composer
+before accepting artwork changes.
+
+See Apple's [Icon Composer documentation](https://developer.apple.com/documentation/xcode/creating-your-app-icon-using-icon-composer)
+for layer preparation, appearance variants, and compatibility behaviour.
 
 `@zachspartofaday` is the code owner and sole merge authority. Community review is welcome, but only the maintainer approves and merges changes.
 
