@@ -48,6 +48,51 @@ final class BespokeControlInteractionTests: XCTestCase {
         XCTAssertFalse(control.isAccessibilityEnabled())
     }
 
+    func testTuningSwitchMirrorsBothStatesWithoutRemountingOrWriting() async throws {
+        for initialValue in [false, true] {
+            var value = initialValue
+            var writes = 0
+            let toggle = PaddrTuningSwitch(title: "Pointer smoothing",
+                isOn: Binding(get: { value }, set: { value = $0; writes += 1 }),
+                accessibilityIdentifier: "test.tuning.rtl")
+            let host = NSHostingView(rootView: toggle.environment(\.layoutDirection, .leftToRight))
+            let window = window(host, width: 52, height: 32)
+            defer { window.close() }
+            await settle(host)
+            let control = try XCTUnwrap(descendants(PaddrTuningSwitchButton.self, host).first)
+            XCTAssertTrue(window.makeFirstResponder(control))
+            let ltrThumb = control.thumbRect
+            XCTAssertEqual(ltrThumb.minX - control.trackRect.minX, initialValue ? 23 : 3)
+
+            host.rootView = toggle.environment(\.layoutDirection, .rightToLeft)
+            await settle(host)
+            XCTAssertTrue(descendants(PaddrTuningSwitchButton.self, host).first === control)
+            XCTAssertTrue(window.firstResponder === control)
+            XCTAssertEqual(control.thumbRect.minX, control.bounds.width - ltrThumb.maxX)
+            XCTAssertEqual(value, initialValue)
+            XCTAssertEqual(writes, 0, "Changing direction must not mutate the setting")
+            XCTAssertEqual((control.accessibilityValue() as? NSNumber)?.boolValue, initialValue)
+            try export(control, name: "switch-rtl-\(initialValue ? "on" : "off")")
+
+            XCTAssertTrue(control.accessibilityPerformPress())
+            await settle(host)
+            XCTAssertEqual(value, !initialValue)
+            XCTAssertEqual(writes, 1)
+            XCTAssertEqual(control.thumbRect.minX - control.trackRect.minX, value ? 3 : 23)
+            control.keyDown(with: try key(" ", code: 49))
+            await settle(host)
+            XCTAssertEqual(value, initialValue)
+            XCTAssertEqual(writes, 2)
+            XCTAssertTrue(window.firstResponder === control)
+
+            host.rootView = toggle.environment(\.layoutDirection, .leftToRight)
+            await settle(host)
+            XCTAssertTrue(descendants(PaddrTuningSwitchButton.self, host).first === control)
+            XCTAssertEqual(control.thumbRect, ltrThumb)
+            XCTAssertEqual(writes, 2)
+        }
+    }
+
     func testModeGroupArrowsRemainSingleSelectionAndRetainFirstResponder() async throws {
         var mode = PadMode.mouse
         var writes = 0

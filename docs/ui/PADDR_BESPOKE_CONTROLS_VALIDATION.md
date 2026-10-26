@@ -479,3 +479,39 @@ intact. Native captures show the distinct focus cue but do not certify that skip
 SwiftUI arrow-dispatch path. Follow the existing manual checklist; expect aligned
 leading edges in inline states, coherent stacking/mirroring, one activation/semantic
 stop, concentric visible focus, no clipped rims/shadows and opaque static fallbacks.
+
+## Independent cumulative review and tuning-switch RTL repair
+
+A fresh independent GPT-6.1 Sol/high reviewer examined base `d0c99d8` through
+`5a47d00a7c93b95a8fc6fa987214fbe01905eb50`, including all 18 production paths,
+six test files, their consumers, documentation and native composited evidence.
+It found one P2: tuning-switch thumbs retained LTR endpoints in RTL, unlike the
+native output switch. No other actionable defect was identified. The reviewer
+inspected prior validation receipts and did not run builds or interactive checks.
+
+The bounded repair propagates SwiftUI layout direction into the existing AppKit
+switch and mirrors only its thumb endpoints. State, action dispatch, accessibility
+semantics, track geometry and output behavior are unchanged. The mounted regression
+tests both initial states through LTR → RTL → LTR, verifies no remount or focus loss,
+no setting write on direction changes, and exactly one write per accessibility or
+Space activation. It failed four geometry assertions before the repair and passes
+afterward. Light/dark RTL On/Off cached crops establish static thumb geometry only.
+
+Validation commands and receipts:
+
+- `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test -Xswiftc -warnings-as-errors --filter BespokeControlInteractionTests/testTuningSwitchMirrorsBothStatesWithoutRemountingOrWriting`
+  reproduced the defect: `/tmp/paddr-rtl-switch-red.log`.
+- The whole `BespokeControlInteractionTests` suite passes with its existing focus
+  skip: `/tmp/paddr-rtl-switch-green.log`; captures `/tmp/paddr-rtl-switch-evidence/`.
+- `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer PADDR_UI_EVIDENCE_DIR=/tmp/paddr-rtl-switch-final swift test -Xswiftc -warnings-as-errors`
+  passes **528 tests: 527 passed, one existing focus skip**, with both exporters:
+  `/tmp/paddr-rtl-switch-full.log`.
+- Canonical localization, warnings-as-errors arm64 release app/CLI builds, CLI
+  checks, and release identity/production fixtures pass. Receipts are
+  `/tmp/paddr-rtl-switch-{localization,build,cli-build,cli,identity,production}.log`.
+  The first CLI invocation used an incorrect assumed executable path; rerunning
+  with `swift build --show-bin-path` passed without changing code or assertions.
+
+This is an evidenced fix of the review finding, not a claim that Sol reviewed a
+later SHA. Current-head external Codex review remains separate. All manual and
+platform gaps above remain, including the earlier reconnect-timeout uncertainty.

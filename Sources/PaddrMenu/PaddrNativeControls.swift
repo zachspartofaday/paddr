@@ -245,6 +245,7 @@ struct PaddrNativeTuningSwitch: NSViewRepresentable {
         control.state = isOn ? .on : .off
         control.isEnabled = context.environment.isEnabled
         control.controlAppearance = PaddrAppearance(environment: context.environment)
+        control.userInterfaceLayoutDirection = context.environment.layoutDirection == .rightToLeft ? .rightToLeft : .leftToRight
         control.setAccessibilityLabel(String(localized: title))
         control.cell?.setAccessibilityLabel(String(localized: title))
         control.setAccessibilityIdentifier(accessibilityIdentifier)
@@ -294,7 +295,8 @@ final class PaddrTuningSwitchButton: NSButton {
     }
     var thumbRect: CGRect {
         let metrics = PaddrStyle.Control.TuningSwitch.self
-        return CGRect(origin: CGPoint(x: trackRect.minX + metrics.inset + (state == .on ? metrics.travel : 0),
+        let thumbAtRight = (state == .on) != (userInterfaceLayoutDirection == .rightToLeft)
+        return CGRect(origin: CGPoint(x: trackRect.minX + metrics.inset + (thumbAtRight ? metrics.travel : 0),
                                       y: trackRect.minY + metrics.inset), size: metrics.thumb)
     }
     override func draw(_ dirtyRect: NSRect) {

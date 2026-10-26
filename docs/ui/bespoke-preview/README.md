@@ -50,5 +50,7 @@ commit and exact-head package identity. Earlier `iteration-*` and `failed-final`
 experiments; they are not acceptance evidence.
 
 See [the validation record](../PADDR_BESPOKE_CONTROLS_VALIDATION.md) for commands,
-source/rendered coverage and remaining manual gaps. Prior independent reviews
-predate this new refinement; fresh review remains the parent's responsibility.
+source/rendered coverage and remaining manual gaps. The fresh cumulative Sol review
+at `5a47d00` found one tuning-switch RTL defect, repaired with a failing-before,
+passing-after mounted-control regression. See the validation record for its scope;
+the review does not certify untested live interaction or later commits.
