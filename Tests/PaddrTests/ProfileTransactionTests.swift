@@ -93,9 +93,14 @@ final class ProfileTransactionTests: XCTestCase {
         try client.save(document, to: destination)
         XCTAssertEqual(try ConfigurationProfileStore.load(from: source).document, .default)
         XCTAssertNotNil(try ConfigurationProfileStore.load(from: destination).document.profile(matching: "Exported"))
+        // Export consumes the prior snapshot; load again so this failure exercises
+        // a changed source, rather than merely the load-before-save precondition.
+        _ = try client.loadInput()
         try ConfigurationProfileStore.save(document, to: source)
         let exportedBytes = try Data(contentsOf: destination)
-        XCTAssertThrowsError(try client.save(.default, to: destination))
+        XCTAssertThrowsError(try client.save(.default, to: destination)) {
+            XCTAssertTrue(String(describing: $0).contains("changed in another"))
+        }
         XCTAssertEqual(try Data(contentsOf: destination), exportedBytes)
     }
 

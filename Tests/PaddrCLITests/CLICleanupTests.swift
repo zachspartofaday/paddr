@@ -5,7 +5,7 @@ import PaddrCLIKit
 @testable import PaddrCore
 
 final class CLICleanupTests: XCTestCase {
-    func testShutdownRetainsKeysAndMouseUntilRecoveryForEveryTermination() throws {
+    func testShutdownRetainsKeysAndMouseUntilRecoveryAfterReturnOrThrow() throws {
         let key = try KeyCatalog.resolve("space")
         for failsRuntime in [false, true] {
             for requestedStop in [false, true] {
