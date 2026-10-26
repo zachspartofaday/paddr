@@ -1445,6 +1445,88 @@ final class MenuViewPresentationTests: XCTestCase {
         }
     }
 
+    func testProfileWorkAlongsideEnabledSessionDoesNotReplaceNeutralGuidance() async throws {
+        // Both metadata writes and saving a new draft can run beside the current
+        // enabled session. Neither prevents that session from observing neutral input.
+        for renamesProfile in [true, false] {
+            var document = ConfigurationProfileDocument.default
+            let profile = try document.createProfile(named: "Editable")
+            try document.activateProfile(id: profile.id)
+            let loadedDocument = document
+            let store = BlockingProfileStore()
+            defer { store.releaseSave() }
+            let session = PresentationSession()
+            let model = PaddrMenuModel(dependencies: MenuDependencies(
+                session: session,
+                loadProfiles: { ConfigurationProfileLoadResult(document: loadedDocument) },
+                saveProfiles: store.save,
+                probeReceiver: { "Fake receiver" },
+                accessibilityTrusted: { _ in true },
+                inputMonitoringAccess: { _ in .granted },
+                openPrivacySettings: { _ in },
+                sleep: { duration in try await Task.sleep(for: duration) },
+                reconnectDelay: { _ in throw CancellationError() }
+            ))
+            let initialized = await waitUntil { model.isInitialized }
+            XCTAssertTrue(initialized)
+            let started = await waitUntil { await session.startCount == 1 }
+            XCTAssertTrue(started)
+            await session.send(.controllerConnected)
+            let connected = await waitUntil { model.controllerConnected }
+            XCTAssertTrue(connected)
+            let host = NSHostingView(rootView: ApplyBarView(model: model)
+                .environment(\.accessibilityEnabled, true))
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 300),
+                styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            defer { window.close() }
+            window.contentView = host
+            model.isEnabled = true
+            let waiting = await waitUntil { model.status == .waitingForNeutral }
+            XCTAssertTrue(waiting)
+            try await Task.sleep(for: .milliseconds(300))
+            await settle(host)
+            let neutralInstruction = String(localized: PaddrReadinessNextAction.releaseTrackpads.title)
+            XCTAssertEqual(footerNextAction(in: host), neutralInstruction)
+
+            if renamesProfile {
+                XCTAssertTrue(model.renameActiveProfile(to: "Renamed"))
+            } else {
+                model.configuration.left.sensitivity = 3
+                model.saveAndApply()
+            }
+            let saving = await waitUntil { store.didStartSave }
+            XCTAssertTrue(saving)
+            XCTAssertEqual(model.readiness.nextAction, .releaseTrackpads)
+            await settle(host)
+            XCTAssertEqual(footerNextAction(in: host), neutralInstruction)
+            try await Task.sleep(for: .milliseconds(300))
+            await settle(host)
+            XCTAssertEqual(footerNextAction(in: host), neutralInstruction,
+                "Unrelated persistence must not replace the actionable neutral instruction")
+
+            await session.send(.outputArmed)
+            let activeBeforeSave = await waitUntil { model.isRunning }
+            XCTAssertTrue(activeBeforeSave, "The existing session may activate before this save completes")
+            XCTAssertFalse(model.canManageProfiles, "The save must still be pending when output arms")
+            await settle(host)
+            XCTAssertNil(footerNextAction(in: host))
+            store.releaseSave()
+            let saved = await waitUntil { model.canManageProfiles }
+            XCTAssertTrue(saved)
+            if renamesProfile {
+                XCTAssertEqual(model.activeProfile.name, "Renamed")
+                let starts = await session.startCount
+                XCTAssertEqual(starts, 1, "A rename must not restart the session")
+            } else {
+                let restarted = await waitUntil { await session.startCount == 2 }
+                XCTAssertTrue(restarted)
+                XCTAssertEqual(model.savedConfiguration.left.sensitivity, 3)
+            }
+            _ = await session.stop()
+        }
+    }
+
     private func footerNextAction(in view: NSView) -> String? {
         var visited = Set<ObjectIdentifier>()
         func find(_ object: AnyObject) -> String? {

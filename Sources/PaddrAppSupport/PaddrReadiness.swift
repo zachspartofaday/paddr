@@ -11,7 +11,7 @@ public struct PaddrReadinessInput: Equatable, Sendable {
     public let isRunning: Bool
     public let isReleasingOutput: Bool
     public let canToggleOutput: Bool
-    public let isApplyingProfile: Bool
+    public let isPreparingActivation: Bool
 
     public init(
         isInitialized: Bool,
@@ -24,7 +24,7 @@ public struct PaddrReadinessInput: Equatable, Sendable {
         isRunning: Bool,
         isReleasingOutput: Bool,
         canToggleOutput: Bool,
-        isApplyingProfile: Bool = false
+        isPreparingActivation: Bool = false
     ) {
         self.isInitialized = isInitialized
         self.puckConnected = puckConnected
@@ -36,7 +36,7 @@ public struct PaddrReadinessInput: Equatable, Sendable {
         self.isRunning = isRunning
         self.isReleasingOutput = isReleasingOutput
         self.canToggleOutput = canToggleOutput
-        self.isApplyingProfile = isApplyingProfile
+        self.isPreparingActivation = isPreparingActivation
     }
 }
 
@@ -166,9 +166,9 @@ public enum PaddrReadinessResolver {
         if !input.isInitialized {
             nextAction = .waitForInitialization
         } else if input.isEnabled, !input.isRunning, !input.isReleasingOutput,
-                  input.isApplyingProfile {
-            // Starting/replacing a session awaits persistence before it can
-            // observe neutral input, even if the previous controller is connected.
+                  input.isPreparingActivation {
+            // Only an activation/replacement obligation blocks neutral-input
+            // observation. Metadata writes beside an enabled session do not.
             nextAction = .waitForProfileOperation
         } else if !input.puckConnected {
             nextAction = .refreshPuck

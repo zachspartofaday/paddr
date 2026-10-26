@@ -117,7 +117,9 @@ public final class PaddrMenuModel {
     }
     @ObservationIgnored private var persistenceWaiters: [CheckedContinuation<Void, Never>] = []
     private var replacesActiveConfiguration = false
-    @ObservationIgnored private var activationCommitPending = false {
+    // Readiness observes this activation obligation independently of unrelated
+    // profile metadata writes that leave the current session able to arm output.
+    private var activationCommitPending = false {
         didSet {
             guard oldValue != activationCommitPending else { return }
             resumePersistenceWaiters()
@@ -214,7 +216,7 @@ public final class PaddrMenuModel {
                 isRunning: isRunning,
                 isReleasingOutput: isReleasingOutput,
                 canToggleOutput: canToggleOutput,
-                isApplyingProfile: profileOperationInProgress
+                isPreparingActivation: activationCommitPending || replacesActiveConfiguration
             )
         )
     }

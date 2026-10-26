@@ -25,7 +25,8 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
   wait; output readiness, release safety gates, errors, and permission guidance remain immediate.
 - When enabling output during a pending profile save, describe profile preparation
   instead of asking for neutral input. Footer text, delayed display, and announcements
-  now share the same readiness result.
+  now share the same readiness result. Renames and saves alongside an already-enabled
+  session preserve neutral guidance because they do not block that session from arming.
 
 - Add a per-pad Pointer acceleration switch, retaining its strength when disabled.
   Existing profiles keep their effective acceleration; the CLI's numeric options
