@@ -140,6 +140,8 @@ scripts/paddr.sh --observe-only --verbose --duration 10
 
 Profiles are stored at `~/.config/Paddr/config.json`. On first profile-aware load, an existing raw left/right configuration is atomically migrated: unchanged defaults activate **Default**, while customized values become the active **Previous configuration** profile. Existing raw and canonical configurations retain the former coupled center-radius tracking behavior until changed; fresh profile stores and newly created configurations use full-pad pointer tracking. A failed migration leaves the original file intact and reports its path.
 
+GUI and CLI profile edits use a shared storage lock and reject saves based on an older file version. If another process changes the profiles, Paddr keeps your unsaved draft and reports a conflict. Copy your edits before reopening the app to load the current profiles. Explicit exports to a different path deliberately replace that destination; they still reject a changed source.
+
 `--list-profiles` prints each name and stable ID; `--select-profile` persists an exact name or ID selection. Use `--profile-store PATH` for a different canonical document. An explicit `--config PATH` remains a read-only compatibility input for an existing legacy raw configuration (or canonical document); invalid paths fail instead of loading defaults. Mapping flags—including per-pad center-tap tracking, pointer smoothing/strength, and tap stabilization/tolerance—change only the effective CLI draft unless `--write-config PATH` persists it. With canonical input, that write preserves the complete profile document and updates its active profile; with legacy raw input, it creates a new canonical document from the effective configuration. Profile list/select operations are mutually exclusive with runtime and mapping options. Run `scripts/paddr.sh --help` for the complete flag list and numeric ranges.
 
 Example:
@@ -149,6 +151,8 @@ Example:
 scripts/paddr.sh --left-mode dpad --left-layout grid-nine \
   --left-grid-top-left q --left-grid-center space --left-grid-bottom-right c
 ```
+
+If a key or mouse-button release fails during CLI shutdown, the process stays alive and retries until the held input is released. It prints recovery guidance instead of abandoning cleanup; restoring Accessibility access may be necessary.
 
 ## Limitations and roadmap
 

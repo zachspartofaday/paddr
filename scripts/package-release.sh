@@ -29,7 +29,6 @@ staged_zip_path="$stage_output_dir/Paddr.zip"
 staged_digest_path="$staged_zip_path.sha256"
 archive_stage="$package_stage/archive"
 backup_dir="$package_stage/previous"
-smoke_pid=
 transaction_active=false
 transaction_interrupted=false
 backed_up_app=false
@@ -72,10 +71,6 @@ rollback_outputs() {
 }
 
 cleanup() {
-    if test -n "$smoke_pid" && kill -0 "$smoke_pid" 2>/dev/null; then
-        kill "$smoke_pid" 2>/dev/null || true
-        wait "$smoke_pid" 2>/dev/null || true
-    fi
     if test "$transaction_active" = true; then
         if ! rollback_outputs; then
             echo "Preserving the release stage for manual recovery: $package_stage" >&2
@@ -101,17 +96,9 @@ TMPDIR="$stage_temporary_root" \
 
 binary="$staged_app_path/Contents/MacOS/Paddr"
 
-"$binary" >/dev/null 2>&1 &
-smoke_pid=$!
-sleep 2
-if ! kill -0 "$smoke_pid" 2>/dev/null; then
-    wait "$smoke_pid"
-    echo "App smoke test exited unexpectedly." >&2
-    exit 1
-fi
-kill "$smoke_pid"
-wait "$smoke_pid" 2>/dev/null || true
-smoke_pid=
+# This path returns before NSApplication, profile storage, TCC and HID are created.
+# A successful process exit is required; survival for a fixed delay is not a check.
+"$binary" --artifact-smoke-test
 
 cp -R "$staged_app_path" "$archive_stage/Paddr.app"
 ditto -c -k --keepParent --norsrc "$archive_stage/Paddr.app" "$staged_zip_path"

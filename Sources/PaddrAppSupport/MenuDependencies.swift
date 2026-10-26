@@ -47,21 +47,24 @@ public struct MenuDependencies: Sendable {
         await background.probeReceiver()
     }
 
-    public static let live = MenuDependencies(
-        session: TrackpadSession(),
-        loadProfiles: { try ConfigurationProfileStore.load() },
-        saveProfiles: { try ConfigurationProfileStore.save($0) },
-        probeReceiver: { TritonHIDDevice.probe()?.description },
-        accessibilityTrusted: Permissions.accessibilityTrusted,
-        inputMonitoringAccess: Permissions.inputMonitoringAccess,
-        openPrivacySettings: { anchor in
-            guard let url = URL(
-                string: "x-apple.systempreferences:com.apple.preference.security?\(anchor)"
-            ) else { return }
-            NSWorkspace.shared.open(url)
-        },
-        sleep: { try await Task.sleep(for: $0) }
-    )
+    public static var live: MenuDependencies {
+        let liveProfileStore = ConfigurationProfileStoreClient()
+        return MenuDependencies(
+            session: TrackpadSession(),
+            loadProfiles: { try liveProfileStore.load() },
+            saveProfiles: { try liveProfileStore.save($0) },
+            probeReceiver: { TritonHIDDevice.probe()?.description },
+            accessibilityTrusted: Permissions.accessibilityTrusted,
+            inputMonitoringAccess: Permissions.inputMonitoringAccess,
+            openPrivacySettings: { anchor in
+                guard let url = URL(
+                    string: "x-apple.systempreferences:com.apple.preference.security?\(anchor)"
+                ) else { return }
+                NSWorkspace.shared.open(url)
+            },
+            sleep: { try await Task.sleep(for: $0) }
+        )
+    }
 }
 
 private actor BackgroundMenuDependencies {
