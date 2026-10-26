@@ -104,6 +104,7 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
                 Divider()
             }
             trailing()
+                .frame(width: alignsPadInspector ? PaddrStyle.Width.control : nil, alignment: .topLeading)
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .topLeading)
                 .frame(
                     maxHeight: usesEqualHeightColumns ? .infinity : nil,
@@ -121,10 +122,9 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
 
 /// Shared column geometry for the mode header and every preview/inspector pair.
 /// Surplus width belongs to the map column, leaving the trailing control column
-/// aligned to the fixed 272-point mode control. The map itself stays 190 points.
+/// aligned to the shared fixed-width control family. The map itself stays 190 points.
 enum PaddrPadColumns {
-    static let minimumInlineWidth = PaddrStyle.Metrics.zoneMapWidth
-        + PaddrStyle.behaviorPickerWidth + PaddrStyle.Spacing.s2
+    static let minimumInlineWidth = PaddrStyle.previewInspectorColumnsBreakpoint
 
     static func spacing(in availableWidth: CGFloat) -> CGFloat {
         guard availableWidth >= minimumInlineWidth else { return PaddrStyle.previewInspectorSpacing }

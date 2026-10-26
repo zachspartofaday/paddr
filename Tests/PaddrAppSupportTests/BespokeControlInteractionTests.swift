@@ -98,12 +98,12 @@ final class BespokeControlInteractionTests: XCTestCase {
         var writes = 0
         let host = NSHostingView(rootView: PadModePicker(selection: Binding(get: { mode },
             set: { mode = $0; writes += 1 }), accessibilityIdentifier: "paddr.pad-mode.left"))
-        let window = window(host, width: 272, height: 32)
+        let window = window(host, width: 240, height: 32)
         defer { window.close() }
         await settle(host)
         let control = try XCTUnwrap(descendants(PaddrModeSegmentedControl.self, host).first)
-        XCTAssertEqual(control.bounds.size, NSSize(width: 272, height: 32))
-        XCTAssertEqual(control.segmentRect(0).size, NSSize(width: 65.5, height: 28))
+        XCTAssertEqual(control.bounds.size, NSSize(width: 240, height: 32))
+        XCTAssertEqual(control.segmentRect(0).size, NSSize(width: 56.5, height: 24))
         XCTAssertEqual(control.segmentRect(1).minX - control.segmentRect(0).maxX, 2)
         XCTAssertEqual(control.trackingMode, .selectOne)
         XCTAssertEqual(control.accessibilityLabel(), "Left trackpad behavior")
@@ -147,16 +147,125 @@ final class BespokeControlInteractionTests: XCTestCase {
         XCTAssertEqual(writes, 3)
     }
 
+    func testModeSegmentsMirrorWithoutRemountingWritingOrLosingFocus() async throws {
+        var value = PadMode.mouse
+        var writes = 0
+        let picker = PadModePicker(selection: Binding(get: { value }, set: { value = $0; writes += 1 }),
+            accessibilityIdentifier: "paddr.pad-mode.left")
+        let host = NSHostingView(rootView: picker.environment(\.layoutDirection, .leftToRight))
+        let window = window(host, width: 240, height: 32)
+        defer { window.close() }
+        await settle(host)
+        let control = try XCTUnwrap(descendants(PaddrModeSegmentedControl.self, host).first)
+        XCTAssertTrue(window.makeFirstResponder(control))
+        let ltr = (0..<4).map { control.segmentRect($0) }
+        host.rootView = picker.environment(\.layoutDirection, .rightToLeft)
+        await settle(host)
+        XCTAssertTrue(descendants(PaddrModeSegmentedControl.self, host).first === control)
+        XCTAssertTrue(window.firstResponder === control)
+        for index in 0..<4 {
+            XCTAssertEqual(control.segmentRect(index).minX, 240 - ltr[index].maxX)
+            XCTAssertEqual(control.segment(at: CGPoint(x: control.segmentRect(index).midX, y: 16)), index)
+        }
+        XCTAssertEqual(writes, 0)
+        control.keyDown(with: try key("\u{F702}", code: 123))
+        XCTAssertEqual(value, .scroll, "Left arrow moves to the item physically on the left in RTL")
+        XCTAssertEqual(writes, 1)
+        control.keyDown(with: try key("\u{F703}", code: 124))
+        XCTAssertEqual(value, .mouse)
+        XCTAssertEqual(writes, 2)
+        host.rootView = picker.environment(\.layoutDirection, .leftToRight)
+        await settle(host)
+        XCTAssertEqual((0..<4).map { control.segmentRect($0) }, ltr)
+        XCTAssertTrue(window.firstResponder === control)
+        XCTAssertEqual(writes, 2)
+    }
+
+    func testModeMouseActivationMatchesInsetSegmentsAndIgnoresTrackGaps() async throws {
+        for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+            var value = PadMode.mouse
+            var writes = 0
+            let host = NSHostingView(rootView: PadModePicker(selection: Binding(get: { value },
+                set: { value = $0; writes += 1 }), accessibilityIdentifier: "paddr.pad-mode.left")
+                .environment(\.layoutDirection, direction))
+            let window = window(host, width: 240, height: 32)
+            defer { window.close() }
+            await settle(host)
+            let mode = try XCTUnwrap(descendants(PaddrModeSegmentedControl.self, host).first)
+            func event(_ type: NSEvent.EventType, _ point: CGPoint) throws -> NSEvent {
+                try XCTUnwrap(NSEvent.mouseEvent(with: type, location: mode.convert(point, to: nil),
+                    modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber, context: nil,
+                    eventNumber: 0, clickCount: 1, pressure: type == .leftMouseDown ? 1 : 0))
+            }
+            for index in 0..<4 {
+                let rect = mode.segmentRect(index)
+                XCTAssertEqual(rect.minY, 4)
+                XCTAssertEqual(mode.bounds.maxY - rect.maxY, 4)
+                for x in [rect.minX + 0.1, rect.maxX - 0.1] {
+                    let point = CGPoint(x: x, y: rect.midY)
+                    let before = writes
+                    NSApplication.shared.postEvent(try event(.leftMouseUp, point), atStart: true)
+                    mode.mouseDown(with: try event(.leftMouseDown, point))
+                    XCTAssertEqual(mode.selectedSegment, index)
+                    XCTAssertEqual(writes, before + 1)
+                }
+            }
+            let before = writes
+            for point in [CGPoint(x: 1, y: 16), CGPoint(x: 239, y: 16), CGPoint(x: 90, y: 2),
+                          CGPoint(x: 90, y: 30), CGPoint(x: 61.5, y: 16),
+                          CGPoint(x: 120, y: 16), CGPoint(x: 178.5, y: 16), CGPoint(x: 4.01, y: 4.01)] {
+                XCTAssertNil(mode.segment(at: point))
+                mode.mouseDown(with: try event(.leftMouseDown, point))
+                XCTAssertEqual(writes, before, "Track borders, rounded corners and gaps do not select")
+            }
+            let center = CGPoint(x: mode.segmentRect(1).midX, y: 16)
+            NSApplication.shared.postEvent(try event(.leftMouseUp, CGPoint(x: -2, y: 16)), atStart: true)
+            mode.mouseDown(with: try event(.leftMouseDown, center))
+            XCTAssertEqual(writes, before, "Releasing outside cancels the press")
+            XCTAssertNil(mode.pressedSegment)
+            XCTAssertTrue(window.firstResponder === mode)
+        }
+    }
+
+    func testPadSurroundStaysContinuousPastCornerTangenciesAtBothRasterScales() async throws {
+        let host = NSHostingView(rootView: PadModePreview(mode: .mouse, deadzone: 0)
+            .frame(width: 190, height: 182).background(PaddrStyle.workspace))
+        let window = window(host, width: 190, height: 182)
+        defer { window.close() }
+        await settle(host)
+        for (theme, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+            host.appearance = NSAppearance(named: appearance)
+            for scale in [1, 2] {
+                let bitmap = try raster(host, scale: scale)
+                if let path = ProcessInfo.processInfo.environment["PADDR_UI_EVIDENCE_DIR"] {
+                    try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
+                    let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                    try png.write(to: URL(fileURLWithPath: path).appendingPathComponent("pointer-surround-\(scale)x-\(theme).png"))
+                }
+                for offset in [CGFloat(0.5), 1.5, 2.5, 3.5, 4.5] {
+                    let top = try sample(bitmap, CGPoint(x: 95, y: offset))
+                    let left = try sample(bitmap, CGPoint(x: offset, y: 91))
+                    for step in 18...70 {
+                        XCTAssertLessThan(distance(try sample(bitmap, CGPoint(x: CGFloat(step), y: offset)), top), 0.025,
+                            "Top rim/recess must not break at the corner tangent: \(theme)/\(scale)/\(offset)/\(step)")
+                        XCTAssertLessThan(distance(try sample(bitmap, CGPoint(x: offset, y: CGFloat(step))), left), 0.025,
+                            "Left rim/recess must not break at the corner tangent: \(theme)/\(scale)/\(offset)/\(step)")
+                    }
+                }
+            }
+        }
+    }
+
     func testNativeMenusPreserveNoneRawCheckmarksAndOneTypedWrite() async throws {
         var value: String? = "code:123"
         var writes = 0
         let host = NSHostingView(rootView: OptionalOutputBindingPicker(
             selection: Binding(get: { value }, set: { value = $0; writes += 1 }), title: "Touch tap action"))
-        let window = window(host, width: 192, height: 100)
+        let window = window(host, width: 240, height: 100)
         defer { window.close() }
         await settle(host)
         let control = try XCTUnwrap(descendants(PaddrPopUpButton.self, host).first)
-        XCTAssertEqual(control.bounds.width, 192, accuracy: 0.5)
+        XCTAssertEqual(control.bounds.width, 240, accuracy: 0.5)
         XCTAssertEqual(control.bounds.height, 32, accuracy: 0.5)
         XCTAssertEqual(control.itemArray.filter { $0.state == .on }.count, 1)
         XCTAssertEqual(control.titleOfSelectedItem, OutputBindingText.string(for: "code:123"))
@@ -185,7 +294,7 @@ final class BespokeControlInteractionTests: XCTestCase {
                 selection: Binding(get: { value }, set: { value = $0; writes += 1 }),
                 options: [.init(value: 0, title: "Default"), .init(value: 1, title: "Editable")])
                 .environment(\.layoutDirection, direction))
-            let window = window(host, width: 192, height: 32)
+            let window = window(host, width: 240, height: 32)
             defer { window.close() }
             await settle(host)
             let control = try XCTUnwrap(descendants(PaddrPopUpButton.self, host).first)
@@ -212,7 +321,7 @@ final class BespokeControlInteractionTests: XCTestCase {
             let picker = PaddrMenuPicker(title: "Profile", selection: .constant(0),
                 options: [.init(value: 0, title: value), .init(value: 1, title: "Default")])
             let host = NSHostingView(rootView: picker.environment(\.layoutDirection, .leftToRight))
-            let window = window(host, width: 192, height: 160)
+            let window = window(host, width: 240, height: 160)
             defer { window.close() }
             await settle(host)
             let control = try XCTUnwrap(descendants(PaddrPopUpButton.self, host).first)
@@ -230,7 +339,7 @@ final class BespokeControlInteractionTests: XCTestCase {
             XCTAssertTrue(descendants(PaddrPopUpButton.self, host).first === control)
             XCTAssertEqual(control.userInterfaceLayoutDirection, .rightToLeft)
             XCTAssertEqual(control.valueAlignment, .right)
-            XCTAssertEqual(control.bounds.width, 192, accuracy: 0.5)
+            XCTAssertEqual(control.bounds.width, 240, accuracy: 0.5)
             XCTAssertEqual(control.bounds.height, height, accuracy: 0.5)
             XCTAssertEqual(control.valueRect.minX, control.bounds.width - ltrText.maxX)
             XCTAssertEqual(control.chevronRect.minX, control.bounds.width - ltrChevron.maxX)
@@ -249,11 +358,11 @@ final class BespokeControlInteractionTests: XCTestCase {
         let host = NSHostingView(rootView: PaddrMenuPicker(title: "Profile",
             selection: Binding(get: { value }, set: { value = $0; writes += 1 }),
             options: [.init(value: 0, title: long), .init(value: 1, title: "Default")]).disabled(true))
-        host.frame = NSRect(x: 0, y: 0, width: 192, height: 160)
+        host.frame = NSRect(x: 0, y: 0, width: 240, height: 160)
         await settle(host)
         let control = try XCTUnwrap(descendants(PaddrPopUpButton.self, host).first)
         XCTAssertGreaterThan(control.bounds.height, 32)
-        XCTAssertEqual(control.bounds.height, control.height(for: 192), accuracy: 0.5)
+        XCTAssertEqual(control.bounds.height, control.height(for: 240), accuracy: 0.5)
         control.selectItem(at: 1)
         _ = control.sendAction(control.action, to: control.target)
         XCTAssertEqual(value, 0)
@@ -335,21 +444,23 @@ final class BespokeControlInteractionTests: XCTestCase {
         try export(host, name: "focused-zone-map")
     }
 
-    func testFilledModeSelectionAndLocalHoverSurviveMaterialAndOpaqueFallbacks() async throws {
+    func testOpaqueModeSelectionAndLocalHoverRetainFilledAndDisabledStates() async throws {
         let host = NSHostingView(rootView: PadModePicker(selection: .constant(.dpad),
             accessibilityIdentifier: "paddr.pad-mode.left")
             .environment(\._accessibilityReduceTransparency, false)
+            .environment(\._colorSchemeContrast, .standard)
             .environment(\._accessibilityReduceMotion, false))
-        let window = window(host, width: 272, height: 32)
+        let window = window(host, width: 240, height: 32)
         defer { window.close() }
         await settle(host)
         let control = try XCTUnwrap(descendants(PaddrModeSegmentedControl.self, host).first)
         for theme in [NSAppearance.Name.aqua, .darkAqua] {
             host.appearance = NSAppearance(named: theme)
-            for fallback in [false, true] {
+            for (fallback, contrast) in [(true, ColorSchemeContrast.standard), (false, .increased)] {
                 host.rootView = PadModePicker(selection: .constant(.dpad), accessibilityIdentifier: "paddr.pad-mode.left")
                     .environment(\._accessibilityReduceTransparency, fallback)
-                    .environment(\._accessibilityReduceMotion, fallback)
+                    .environment(\._colorSchemeContrast, contrast)
+                    .environment(\._accessibilityReduceMotion, true)
                 await settle(host)
                 control.updateHover(at: CGPoint(x: -1, y: -1))
                 let before = try raster(control)
@@ -363,16 +474,16 @@ final class BespokeControlInteractionTests: XCTestCase {
                 XCTAssertLessThan(distance(selected, try sample(different, selectedPoint)), 0.01,
                     "Hovering Pointer must leave selected Zones intact")
                 XCTAssertGreaterThan(distance(other, try sample(different, otherPoint)), 0.01)
-                try export(host, name: "mode-hover-other-\(fallback ? "opaque" : "glass")")
+                try export(host, name: "mode-hover-other-\(fallback ? "opaque" : "contrast")")
                 control.updateHover(at: CGPoint(x: control.segmentRect(3).midX, y: 16))
                 let same = try raster(control)
                 XCTAssertGreaterThan(distance(selected, try sample(same, selectedPoint)), 0.01)
                 XCTAssertGreaterThan(distance(try sample(same, selectedPoint), other), 0.3)
-                try export(host, name: "mode-hover-selected-\(fallback ? "opaque" : "glass")")
+                try export(host, name: "mode-hover-selected-\(fallback ? "opaque" : "contrast")")
                 control.isEnabled = false
                 let disabled = try raster(control)
                 XCTAssertGreaterThan(distance(try sample(disabled, selectedPoint), try sample(disabled, otherPoint)), 0.1)
-                try export(host, name: "mode-disabled-\(fallback ? "opaque" : "glass")")
+                try export(host, name: "mode-disabled-\(fallback ? "opaque" : "contrast")")
                 control.isEnabled = true
             }
         }
@@ -380,7 +491,7 @@ final class BespokeControlInteractionTests: XCTestCase {
 
     func testMaterialFallbackRetainsNativeHitAccessibilityAndFocusOwners() async throws {
         let host = NSHostingView(rootView: materialFixture(PaddrAppearance()))
-        let window = window(host, width: 540, height: 40)
+        let window = window(host, width: 560, height: 40)
         defer { window.close() }
         await settle(host)
         let menu = try XCTUnwrap(descendants(PaddrPopUpButton.self, host).first)
@@ -425,7 +536,7 @@ final class BespokeControlInteractionTests: XCTestCase {
         var writes = 0
         let host = NSHostingView(rootView: PadModePicker(selection: Binding(get: { .dpad }, set: { _ in writes += 1 }),
             accessibilityIdentifier: "paddr.pad-mode.left"))
-        let window = window(host, width: 272, height: 32)
+        let window = window(host, width: 240, height: 32)
         defer { window.close() }
         await settle(host)
         let control = try XCTUnwrap(descendants(PaddrModeSegmentedControl.self, host).first)
@@ -441,7 +552,7 @@ final class BespokeControlInteractionTests: XCTestCase {
             }
         }
         for point in [CGPoint(x: -1, y: 16), CGPoint(x: 273, y: 16), CGPoint(x: 80, y: -1),
-                      CGPoint(x: 80, y: 33), CGPoint(x: 68.5, y: 16)] {
+                      CGPoint(x: 80, y: 33), CGPoint(x: 61.5, y: 16)] {
             control.updateHover(at: point)
             XCTAssertNil(control.hoveredSegment)
         }
@@ -464,7 +575,7 @@ final class BespokeControlInteractionTests: XCTestCase {
             let host = NSHostingView(rootView: PadModePicker(selection: Binding(get: { value }, set: { value = $0; writes += 1 }),
                 accessibilityIdentifier: "paddr.pad-mode.left"))
             host.appearance = NSAppearance(named: appearance)
-            let window = window(host, width: 272, height: 32)
+            let window = window(host, width: 240, height: 32)
             defer { window.close() }
             window.makeKeyAndOrderFront(nil)
             await settle(host)
@@ -517,7 +628,7 @@ final class BespokeControlInteractionTests: XCTestCase {
 
     func testSelectorAndSwitchHoverRemainSecondaryWithoutChangingValues() async throws {
         let host = NSHostingView(rootView: materialFixture(PaddrAppearance()))
-        let window = window(host, width: 540, height: 40)
+        let window = window(host, width: 560, height: 40)
         defer { window.close() }
         await settle(host)
         let menu = try XCTUnwrap(descendants(PaddrPopUpButton.self, host).first)
@@ -574,7 +685,7 @@ final class BespokeControlInteractionTests: XCTestCase {
                     XCTAssertLessThan(distance(try sample(bitmap, CGPoint(x: 136, y: y)), expectedRim), 0.06,
                         "The structural rim must cover both complete pixels/points without a fractional ghost seam")
                 }
-                let selected = try sample(bitmap, CGPoint(x: 238, y: 6))
+                let selected = try sample(bitmap, CGPoint(x: 225, y: 6))
                 let idle = try sample(bitmap, CGPoint(x: 102, y: 6))
                 XCTAssertGreaterThan(distance(selected, idle), 0.3)
                 if let path = ProcessInfo.processInfo.environment["PADDR_UI_EVIDENCE_DIR"] {

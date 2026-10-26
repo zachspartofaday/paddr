@@ -5,18 +5,20 @@ struct PaddrButtonSurface: View {
     let prominent: Bool
     let enabled: Bool
     let appearance: PaddrAppearance
+    var radius: CGFloat = PaddrStyle.Control.radius
+    var materialInset: CGFloat = PaddrStyle.Control.materialInset
     var body: some View {
-        let shape = PaddrControlShape()
+        let shape = PaddrControlShape(radius: radius)
         if !appearance.usesControlGlass {
             shape.fill(prominent ? PaddrStyle.controlTint : PaddrStyle.workspace)
         } else {
-            let materialShape = PaddrControlShape(radius: PaddrStyle.Control.radius - PaddrStyle.Control.materialInset)
+            let materialShape = PaddrControlShape(radius: radius - materialInset)
             materialShape.fill(.clear)
                 .glassEffect((prominent ? Glass.clear.tint(PaddrStyle.controlTint) : Glass.regular)
                     .interactive(enabled && !appearance.reducesMotion), in: materialShape)
                 // The native material edge sits under the opaque structural rim,
                 // rather than competing with a second fractional outline.
-                .padding(PaddrStyle.Control.materialInset)
+                .padding(materialInset)
                 .background {
                     // Prominent color is beneath the clear native glass pass;
                     // it never paints over and hides the material.

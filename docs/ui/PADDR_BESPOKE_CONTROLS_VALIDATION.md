@@ -515,3 +515,144 @@ Validation commands and receipts:
 This is an evidenced fix of the review finding, not a claim that Sol reviewed a
 later SHA. Current-head external Codex review remains separate. All manual and
 platform gaps above remain, including the earlier reconnect-timeout uncertainty.
+
+
+## Shared-edge, pad-surround and inset native-glass refinement
+
+Implemented from the required PR #96 source
+`6b0551fe246a5be3ec12658e5a30e341653669fd` in the host-created
+`t3/8a0553bb` worktree. The parent `ui/bespoke-controls` remains at that source;
+no parent checkout edits, push, PR mutation, installation or release occurred.
+The source's clean external review predates this change. **Fresh candidate review
+is pending.** Published signed/notarized 1.1.0 at `d0c99d8` remains immutable.
+
+### Current geometry and behavior
+
+- One **240-point** family covers mode rows, all menu variants, and the full
+  slider/readout inspector. Both logical edges align in both pad editors, every
+  mode and expanded tuning. The numerical column remains 40 points, trailing
+  aligned; its measured trailing edge is derived from the native slider alignment
+  rect plus the actual 8-point gutter and 40-point readout frame. Native full-window
+  crops independently show the glyph edges. The map remains **190 × 182**.
+- The shared inline minimum is **438 points** (190 + 240 + 8); the gutter grows
+  to 16 at 446. Two full editors require a **900-point workspace** (a 980-point
+  window with current chrome). A 940-point window now stacks full editors.
+  Accessibility text stacks them independently of width. Enlarged native menu and
+  mode text retains vertical growth. Profile/rear menus share 240 points; complete
+  rear binding pairs wrap into two rows per ordinary editor column without clipping.
+- Selected mode geometry is **56.5 × 24** at base size, with **4-point inset**,
+  **2-point gaps** and **3-point concentric corners**. The same shape drives
+  drawing, hover and mouse tracking. Borders, gaps and rounded cutouts do not
+  activate; release outside cancels; valid presses dispatch exactly once.
+  Native select-one state, radio-group semantics and focus remain. RTL mode labels,
+  selected material and horizontal arrow direction now agree.
+- The selected native clear glass is tinted blue in light appearance and Compass
+  teal in dark, over an accent base beneath the material. AppKit no longer paints
+  an opaque selected fill over that glass. Track glass remains regular. Hover and
+  press stay local. Increased Contrast/Reduce Transparency use filled opaque
+  selection; Reduce Motion disables interactive material motion.
+- The pad path is explicitly circular at radius 14, matching selected-zone CGPath
+  geometry. This removes the continuous-path stroke spike at the top tangent.
+  The opaque content is clipped once; its normal rim is 1 point (2 under Increased
+  Contrast). A real extended exterior supplies the shallow inner shadow instead
+  of alpha inversion at the Canvas bounds. The radius-18 dashed focus path stays
+  4 points outside the radius-14 pad, separate from zone selection.
+
+### Host and guidance receipts
+
+Actual toolchain: `/Applications/Xcode.app/Contents/Developer`, Swift **6.4**,
+SDK **27.0**, arm64, macOS **27.2 / 26B118**. Compiler command lines confirm Swift
+language mode 6 and macOS deployment 26.0. `Package.swift` retains tools version
+6.3; no deployment, toolchain or isolation settings were changed. The live thread
+configuration reports GPT-6.1 Sol/high, full-access, default interaction mode.
+Coordinate remains inactive; this implementer is a sole leaf.
+
+All five requested installed SKILL.md files were read and SHA-256 verified against
+the supplied hashes: `frontend-design`, `swiftui-pro`, `apple-interface-pro`,
+`apple-accessibility-pro`, and `swift-focusengine-pro`. Relevant SwiftUI layout,
+localization, AppKit/SwiftUI accessibility, macOS focus, interface layout/color/
+motion and removed-signal references were applied. Accepted personal Codex
+integration and dispatch/setup guidance were read using `git show` at Platform
+`e306df32db241cc9b755702255d5bf3e6f056f03`; no live Platform replacement was used.
+
+### Validation receipts
+
+All paths below are under **`/tmp/paddr-refinement-8a0553bb/`**. Every canonical
+Swift command uses `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
+
+| Check | Result | Receipt |
+| --- | --- | --- |
+| Full `PADDR_UI_EVIDENCE_DIR=.../final-validated swift test -Xswiftc -warnings-as-errors` | **532 tests: 531 passed, 1 existing map-focus skip, zero failures**; both exporters enabled | `tests-final.log` |
+| Localization extraction/catalog compile | Pass | `localization.log` |
+| Warnings-as-errors arm64 release build | Pass | `build-release.log` |
+| Warnings-as-errors arm64 release CLI build | Pass | `build-cli.log` |
+| `test-cli.sh` using actual `swift build -c release --arch arm64 --show-bin-path` result | Pass | `cli.log`, `cli-bin-path.log` |
+| Release identity fixtures | Pass | `identity.log` |
+| Release production fixtures | Pass | `production.log` |
+| Native selected-glass light/dark, RTL, local hover, disabled and static Reduce Motion capture assertions | Pass; enabled selected text samples **6.50–7.06:1** | `tests-final.log`, `final-validated/mode-glass-*.composited.png` |
+| Pad tangency pixels at 1x/2x, light/dark; existing zone/focus geometry | Pass | `pad-fixed.log`, `tests-final.log`, `final-validated/pointer-surround-{1,2}x-*.png` |
+| Exact-head ad-hoc package, identity/signature/inert smoke | Verified in local handoff after commit | `package.log`, `package-verification.log`, `HANDOFF.md` |
+
+The same-mounted alignment matrix covers both sides, all four modes, LTR/RTL,
+regular/accessibility1/accessibility5 text and widths 413, 418, 437.5, 438, 442.5,
+446, 488 and 680. It checks both menu edges, complete numerical-row trailing edges,
+Sensitivity's leading edge and header identity. Existing focused-switch/menu RTL,
+menu cancellation/raw binding, mounted reflow, profile safety, screen-cap sizing,
+output/footer and model behavior tests remain intact. Native segment mouse tests
+cover both ends of every segment in LTR/RTL, rounded cutouts, track edges, all gaps,
+outside release cancellation and exactly-once dispatch. Semantic and keyboard tests
+retain their native radio-group and disabled assertions.
+
+Failure evidence is retained rather than replaced: `targeted-3.log` caught glass
+mirroring without native-label mirroring (10 failed compositor assertions) before
+the RTL repair; `targeted-4.log` passed. `pad-diagnosis-2.log` caught the continuous
+path's tangent spike at 1x before the circular-path fix; `pad-fixed.log` passed the
+same assertions. `targeted-1.log` demonstrates why cached control-only renders
+cannot assert a glass selection. Those selected-material checks now use SCK; the
+opaque pixel checks keep their filled/hover/disabled assertions and separately
+exercise Reduce Transparency and Increased Contrast. Initial full-suite failures
+in `tests-complete.log` reflect the superseded 940-point two-editor geometry and a
+generic header fixture that no longer crossed its stacking threshold; the fixtures
+now exercise the actual thresholds while retaining their compactness, containment,
+identity and non-overlap assertions. Preliminary compile failures are retained in
+`targeted-2.log` and `tests-complete-2.log` and corrected in final receipts.
+
+### Captures and visual inspection
+
+Full cached and native composited captures: `final-validated/`. Contact sheet:
+`contact-sheet.png`; deterministic native crop/contact-sheet script:
+`contact-sheet.swift`. Checked-in `docs/ui/bespoke-preview/` now contains current
+light/dark overview, both Zones, inset selection, pointer surround, aligned controls,
+RTL, focus corner and contact sheet evidence. The live README screenshots and
+original published-release before images are untouched.
+
+Normal full-window fixtures have **system access granted**; missing permissions
+are isolated to the explicit setup/guide-permission fixtures. ScreenCaptureKit
+captures only each inert fixture window, with already-granted Screen Recording
+access, no permission request and no global appearance/TCC changes. WindowServer
+reports **1x** and captures the actual native material; the separate 2x cached pad
+and opaque-control rasters test geometry, not a physical Retina display. Cached
+mixed-glass accessibility renders omit layers on this host, so they are not used
+to establish readability. `readme-accessibility-{top,lower}-{light,dark}.composited.png`
+instead shows both ends of the accessibility5 fixture at its actual screen cap;
+scrolling exposes the complete lower editor/rear bindings while chrome stays fixed.
+Only these explicitly scrolling fixtures omit the exporter's full-document-fit
+assertion; the ordinary native captures and existing screen-cap tests retain it.
+
+| Domain | Coverage in this refinement |
+| --- | --- |
+| Accessibility (`apple-accessibility-pro`) | Source/native AX tests and rendered accessibility-size/contrast/fallback fixtures; full assistive-technology walk **not verified** |
+| Focus (`swift-focusengine-pro`) | Mounted AppKit responder/keyboard regressions and rendered concentric focus; SwiftUI key-window-dependent map arrow dispatch **skipped**, assertions unchanged |
+| Layout | Both edges/readouts, shared budget, all modes/both sides, constrained reflow, RTL, profile/rear containment; inspected full/cropped native renders |
+| Writing/typography | Existing copy/catalog preserved; native menu/mode vertical reflow and readout roles retained; localization passed |
+| Color/tokens | Existing adaptive palette retained; native composited selected-text contrast plus existing semantic contrast tests passed |
+| Polish/motion | Native selected glass, local feedback, inset track, pad tangency and concentric focus inspected; opaque/static fallbacks tested |
+
+Self-inspection found no remaining actionable interface defect in the exercised
+source/rendered states. This is an implementer's verification, not independent
+acceptance. Full manual keyboard, VoiceOver, Voice Control, Switch Control, live
+hardware/output/disconnect, inactive pointer feel, physical Retina and macOS 26
+runtime remain unverified. The map-focus test still cannot obtain a key SwiftUI
+window. The earlier reconnect-pressure timeout remains unexplained despite later
+passing suites; it is not erased or reclassified by this successful run. No live
+hardware smoke, personal profile access or production app launch was performed.

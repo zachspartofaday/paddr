@@ -4,7 +4,71 @@ Status: Operator-approved on 2026-10-26; implemented candidate awaiting fresh in
 Date: 2026-10-26
 Implementation baseline: `d0c99d8d079e24c6ecf727b9a8d4247921ba0b06` (merged PR #95, frozen v1.1.0). Original council baseline: PR #92.
 
-## Current operator refinement — alignment, rims and depth
+## Current operator refinement — shared edges, clean pads and inset glass
+
+Source: `6b0551fe246a5be3ec12658e5a30e341653669fd`, 2026-10-26. This
+refinement supersedes the 192-point menus, 272-point mode row, 2-point mode inset,
+continuous pad path, 1.5-point normal pad rim and inverted-alpha pad shadow below.
+The earlier sections remain historical rationale, not current numeric contracts.
+
+Keep system type, light blue `#2859CF`, dark Compass teal `#78C7BD`, the neutral
+canvas/workspace palette and 190 × 182 sensor maps. Use **240 points** for the mode
+row, all selector variants and the complete slider/readout column. The native
+slider and 40-point trailing numerical column consume that shared width; expanded
+pointer tuning uses the same edges. Profile and rear selectors share the family.
+Rear bindings wrap as complete label/selector pairs: two ~264-point rows plus a
+16-point gap cannot fit a normal 488-point editor column. Do not compress menus
+or clip their labels to retain the former single rear row.
+
+```text
+Title         | Off Pointer Scroll Zones | 240 points
+190-point map | Label                    |
+              | selector                 |
+              | native slider      value |
+```
+
+`PaddrPadColumns` consumes the same width budget as the lower split. Surplus width
+belongs to the map column. The inline minimum is **438 = 190 + 240 + 8** points;
+the gutter grows to 16 by 446 points. Below 438 points, or at accessibility text
+sizes, the same header and settings controls stack with a common leading edge.
+Two full editors require **900 = 2 × 438 + 24** points of workspace, corresponding
+to a 980-point configuration window with its current 40-point chrome insets. A
+940-point window now stacks complete editors rather than squeezing the controls.
+RTL mirrors the column placement once and mirrors native mode segments to match
+the selected material; horizontal arrow navigation follows physical direction.
+
+The selected segment has a **4-point track inset**, a separate **2-point gap**,
+**56.5 × 24** base geometry and **3-point concentric corners** inside the 7-point
+track. Drawn, hovered and mouse-activated segments use one shape; track borders,
+gaps and rounded cutouts do not select. Release outside cancels. Retain native
+select-one state, target/action, radio-group accessibility, keyboard focus and
+menus. Enlarged native text grows vertically without truncation.
+
+Selection uses an accent base under actual tinted native clear Liquid Glass,
+with native text/hover/press drawing above it. Its material is never covered by
+a second opaque selected fill. The outer track remains regular native glass.
+Increased Contrast and Reduce Transparency retain filled opaque selection;
+Reduce Motion retains the same selected silhouette without interactive glass
+motion. No fake gradient or extra border is added.
+
+Use an explicit **circular 14-point pad path**, matching the existing CGPath zone
+outline. The previous continuous path produced a visible stroke spike where its
+curve met the top straight edge. Clip the opaque content once. A **1-point**
+normal rim (2 points in Increased Contrast) follows the same path. The shallow
+18%/3-point/2-point-offset recess is cast from an explicit extended exterior,
+rather than inverted alpha at the Canvas boundary. The 4-point-outset dashed
+focus path grows its radius to 18 and remains distinct from zone selection.
+
+Critique: stretching all controls to 272 would add width without improving the
+four mode labels; 240 retains their readable native text and shares the change
+between modes and menus. A heavier rim would conceal the reported seam without
+fixing it. Explicit circular arcs and a real shadow exterior remove its causes.
+Validate same-mounted edges and numerical columns across modes, both pad sides,
+RTL, breakpoint widths and accessibility sizes; inspect native composited glass,
+selected/hovered/disabled states and 1x/2x pad tangencies. This candidate requires
+fresh independent review; earlier clean reviews cover only their original heads.
+
+## Earlier operator refinement — alignment, rims and depth
 
 Source: `ef6e53fcdb926297f4cee4d7a24b88a54b7d0f5f`, 2026-10-26. The new crops
 identify the lower form column starting before the mode control, irregular control
@@ -111,14 +175,14 @@ and accessibility work; matching a silhouette does not establish behavior parity
 | Element | Proposed shape and size | Interaction contract |
 | --- | --- | --- |
 | Primary and secondary buttons | 32-point base/minimum visible height, continuous rounded rectangle with radius 7, 12-point horizontal insets. Icon-only actions use a 32-point square when appropriate. | Existing native Button actions, shortcuts, roles, disabled gates, and confirmation paths. Save & Apply retains existing primary emphasis. |
-| Dropdown selectors | 192-point width, 32-point base/minimum height, radius 7; leading selected value and one trailing chevron pair, 12-point side insets. Apply to profile, layout, selected area, action, touch tap, and rear bindings. | Custom closed trigger with a system menu. Preserve typed selection, selected-item checkmarks, None/raw bindings, pending-profile labels, cancellation, and focus return. |
-| Off / Pointer / Scroll / Zones | Preserve 272-point overall width; 32-point base height, radius 7, 2-point shell inset and gaps. Four equal segments (65.5 points at base size), 28-point inner height and radius 5. | Exactly one selected option; distinct left/right group identity, selected/disabled semantics, and native-equivalent keyboard navigation. No independent toggle interpretation. |
+| Dropdown selectors | Shared 240-point width, 32-point base/minimum height, radius 7; leading selected value and one trailing chevron pair, 12-point side insets. Apply to profile, layout, selected area, action, touch tap, and rear bindings. | Custom closed trigger with a system menu. Preserve typed selection, selected-item checkmarks, None/raw bindings, pending-profile labels, cancellation, and focus return. |
+| Off / Pointer / Scroll / Zones | Shared 240-point overall width; 32-point base height, radius 7, 4-point shell inset and separate 2-point gaps. Four equal segments (56.5 points at base size), 24-point inner height and radius 3. | Exactly one selected option; distinct left/right group identity, selected/disabled semantics, and native-equivalent keyboard navigation. No independent toggle interpretation. |
 | Tuning switches | Squared rounded track: 44 × 24 points, radius 7; thumb 18 × 18, radius 4; 3-point inset and 20-point travel. Keep the current 52-point horizontal reservation and a 32-point row target. Apply to acceleration, smoothing, tap stabilization, and pointer tracking. | One accessible binary control, correct On/Off and disabled states, one binding write per activation. Retain strength when disabled and existing model behavior. |
 | Enable output | Keep the current native switch with its visible label, status, and save-before-enable explanation. | Preserve the already approved operational control and its model setter. It stays visually recognizable as the app-wide output control. |
 | Sliders and numerical readouts | Keep current native slider interaction and the 40-point readout column. | No changes to ranges, stepping, stored values, or output behavior in this styling pass. |
 
 These are base dimensions, not permission to clip enlarged text. Controls may grow
-vertically when text requires it. Within the 272-point mode group, fit real labels
+vertically when text requires it. Within the 240-point mode group, fit real labels
 using compact insets; do not shrink/truncate text merely to copy an upstream inset.
 
 ### Visual states
@@ -170,7 +234,7 @@ Pinned Quilter reference: `29b226c0dc03938ee2d2b831c0dbff46c36f3eba`.
 Pinned CoreKit reference: `18b3dc83990ae5623926f61ee18bf2f20b2e099c`.
 
 - [Quilter metrics](https://github.com/zachspartofaday/LimitlessQuilter/blob/29b226c0dc03938ee2d2b831c0dbff46c36f3eba/Sources/LimitlessQuilterApp/DesignSystem/DesignSystemTokens.swift#L348): standard controls are 38 points high, radius 7, outline 1; a 24-point toolbar variant establishes that density varies by context.
-- [Menu selector](https://github.com/zachspartofaday/LimitlessQuilter/blob/29b226c0dc03938ee2d2b831c0dbff46c36f3eba/Sources/LimitlessQuilterApp/DesignSystem/DesignSystemMenuSelectorViews.swift#L17): native Menu with a custom trigger, default width 190, horizontal padding 12. Paddr retains its approved 192-point width.
+- [Menu selector](https://github.com/zachspartofaday/LimitlessQuilter/blob/29b226c0dc03938ee2d2b831c0dbff46c36f3eba/Sources/LimitlessQuilterApp/DesignSystem/DesignSystemMenuSelectorViews.swift#L17): native Menu with a custom trigger, default width 190, horizontal padding 12. Paddr originally used 192 points; the current shared-edge refinement uses 240 points.
 - [Segmented controls](https://github.com/zachspartofaday/LimitlessQuilter/blob/29b226c0dc03938ee2d2b831c0dbff46c36f3eba/Sources/LimitlessQuilterApp/DesignSystem/DesignSystemPanelControlStylesSegmented.swift#L85): 2-point inset/gaps and a smaller-radius selected segment. Paddr adapts the 38-point shell to 32.
 - [Checkbox toggle](https://github.com/zachspartofaday/LimitlessQuilter/blob/29b226c0dc03938ee2d2b831c0dbff46c36f3eba/Sources/LimitlessQuilterApp/DesignSystem/DesignSystemPanelControls.swift#L665): 17-point rounded checkbox, radius 4. The proposed Paddr track/thumb switch is a NEW design informed by those shapes, not a Quilter switch copied from source.
 - [CoreKit registry](https://github.com/zachspartofaday/LimitlessQuilterCoreKit/blob/18b3dc83990ae5623926f61ee18bf2f20b2e099c/docs/UI_TOKEN_REGISTRY.md#L6): internal token data; the documented Quilter pin does not consume it. It is not a ready-made native UI package to import into Paddr.
@@ -209,7 +273,7 @@ therefore includes bespoke tuning switches while keeping Enable output native.
    behavior and menu/switch keyboard/focus/VoiceOver behavior before replacement.
    Primary files: `PaddrStyle.swift`, control-specific adapters.
 2. **Build one representative set together.** Implement one styled Button, a custom
-   192-point system-menu trigger, the four-choice mode adapter, and a squared tuning
+   240-point system-menu trigger, the four-choice mode adapter, and a squared tuning
    switch. Use existing inert fixtures. Check geometry and input semantics before
    migrating every call site. Revise any component that fails those checks; do not
    silently ship a visual compromise or weaken the acceptance tests.

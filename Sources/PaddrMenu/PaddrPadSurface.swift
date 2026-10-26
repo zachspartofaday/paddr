@@ -9,8 +9,10 @@ struct PaddrPadShape: InsettableShape {
         return copy
     }
     func path(in rect: CGRect) -> Path {
+        // Match the circular CGPath used by selected-zone outlines. Explicit
+        // arcs also avoid continuous-path stroke spikes at corner tangencies.
         Path(roundedRect: rect.insetBy(dx: insetAmount, dy: insetAmount),
-             cornerRadius: max(0, PaddrStyle.Radius.pad - insetAmount))
+             cornerRadius: max(0, PaddrStyle.Radius.pad - insetAmount), style: .circular)
     }
 }
 
@@ -24,10 +26,16 @@ struct PaddrPadSurface: ViewModifier {
                     Canvas { context, size in
                         let path = PaddrPadShape().path(in: CGRect(origin: .zero, size: size))
                         context.clip(to: path)
+                        // Give the blur a real exterior on all four sides. Inverting
+                        // alpha at the Canvas bounds truncates that exterior and
+                        // produces seams where the corners meet straight edges.
+                        let reach = 4 * PaddrStyle.Depth.padRecessRadius + PaddrStyle.Depth.padRecessOffset
+                        var exterior = Path(CGRect(origin: .zero, size: size).insetBy(dx: -reach, dy: -reach))
+                        exterior.addPath(path)
                         context.addFilter(.shadow(color: .black.opacity(PaddrStyle.Depth.padRecessOpacity),
                             radius: PaddrStyle.Depth.padRecessRadius, y: PaddrStyle.Depth.padRecessOffset,
-                            options: [.shadowOnly, .invertsAlpha]))
-                        context.fill(path, with: .color(.black))
+                            options: .shadowOnly))
+                        context.fill(exterior, with: .color(.black), style: FillStyle(eoFill: true))
                     }
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
@@ -36,7 +44,7 @@ struct PaddrPadSurface: ViewModifier {
             .overlay {
                 PaddrPadShape()
                     .strokeBorder(appearance.hasIncreasedContrast ? PaddrStyle.textPrimary : PaddrStyle.textSecondary,
-                                  lineWidth: appearance.hasIncreasedContrast ? 2 : 1.5)
+                                  lineWidth: appearance.hasIncreasedContrast ? 2 : 1)
                     .allowsHitTesting(false)
             }
     }

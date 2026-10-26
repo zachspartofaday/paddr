@@ -71,8 +71,9 @@ enum PaddrStyle {
         static let focusWidth: CGFloat = 2
         static let outlineWidth: CGFloat = 2
         static let materialInset: CGFloat = outlineWidth / 2
-        static let segmentInset: CGFloat = 2
-        static let segmentRadius: CGFloat = 5
+        static let segmentInset: CGFloat = 4
+        static let segmentGap: CGFloat = 2
+        static let segmentRadius: CGFloat = radius - segmentInset
         static let bindingPlateHeight: CGFloat = 24
         static let bindingPlateRadius: CGFloat = 5
         enum TuningSwitch {
@@ -134,14 +135,14 @@ enum PaddrStyle {
         static let pad: CGFloat = 14
     }
 
-    /// Width budgets for native labels and controls. Pointer tuning reserves a further
-    /// disclosure inset at the minimum editor width.
+    /// Width budgets for native labels and controls. Pad modes, menus and tuning
+    /// readouts share one moderate-width inspector column.
     enum Width {
         /// Numeric value column, monospaced and trailing-aligned.
         static let readout: CGFloat = 40
         static let toggle: CGFloat = 52
-        /// Settings-row pickers.
-        static let control: CGFloat = 192
+        /// Modes, selectors and the complete slider/readout rows.
+        static let control: CGFloat = 240
         /// The area-layout picker, whose longest value is "Four-way radial".
         static let controlMedium: CGFloat = control
         /// The profile picker, which sits in the full-width top band rather than a column.
@@ -223,9 +224,8 @@ enum PaddrStyle {
     static let minimumPadColumnWidth = previewInspectorColumnsBreakpoint
     static let previewInspectorSpacing = Spacing.s4
     static let previewInspectorColumnsBreakpoint = Metrics.zoneMapWidth
-        + minimumPadSectionWidth + Spacing.s4
-        + previewInspectorSpacing
-    static let behaviorPickerWidth: CGFloat = 272
+        + minimumPadSectionWidth + Spacing.s2
+    static let behaviorPickerWidth = Width.control
 }
 
 private struct PaddrTypographyModifier: ViewModifier {

@@ -389,6 +389,7 @@ struct PaddrNativeModePicker: NSViewRepresentable {
 
     func updateNSView(_ control: PaddrModeSegmentedControl, context: Context) {
         control.controlAppearance = PaddrAppearance(environment: context.environment)
+        control.userInterfaceLayoutDirection = context.environment.layoutDirection == .rightToLeft ? .rightToLeft : .leftToRight
         update(control, coordinator: context.coordinator, isEnabled: context.environment.isEnabled)
     }
 
@@ -421,17 +422,36 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
     }
     func segment(at point: CGPoint) -> Int? {
         guard isEnabled else { return nil }
-        return (0..<segmentCount).first { isEnabled(forSegment: $0) && segmentRect($0).contains(point) }
+        return (0..<segmentCount).first {
+            isEnabled(forSegment: $0) && PaddrControlDrawing.shape(segmentRect($0),
+                radius: PaddrStyle.Control.segmentRadius).contains(point)
+        }
     }
     func updateHover(at point: CGPoint) { hoveredSegment = segment(at: point); needsDisplay = true }
     override func mouseEntered(with event: NSEvent) { updateHover(at: convert(event.locationInWindow, from: nil)) }
     override func mouseMoved(with event: NSEvent) { updateHover(at: convert(event.locationInWindow, from: nil)) }
     override func mouseExited(with event: NSEvent) { hoveredSegment = nil; needsDisplay = true }
     override func mouseDown(with event: NSEvent) {
-        pressedSegment = segment(at: convert(event.locationInWindow, from: nil))
+        guard let window, let initial = segment(at: convert(event.locationInWindow, from: nil)) else { return }
+        window.makeFirstResponder(self)
+        pressedSegment = initial
         needsDisplay = true
         defer { pressedSegment = nil; needsDisplay = true }
-        super.mouseDown(with: event)
+        // NSSegmentedCell tracks full equal-width slots, including the visible
+        // track inset and gaps. Track the actual drawn segments instead; retain
+        // the native cell's select-one state, action and radio accessibility.
+        while let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp],
+            until: .distantFuture, inMode: .eventTracking, dequeue: true) {
+            pressedSegment = segment(at: convert(next.locationInWindow, from: nil))
+            needsDisplay = true
+            if next.type == .leftMouseUp {
+                if let index = pressedSegment {
+                    selectedSegment = index
+                    _ = sendAction(action, to: target)
+                }
+                return
+            }
+        }
     }
     override var alignmentRectInsets: NSEdgeInsets { NSEdgeInsetsZero }
     override func keyDown(with event: NSEvent) {
@@ -442,8 +462,10 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
         }
         let offset: Int
         switch event.keyCode {
-        case 123, 126: offset = -1
-        case 124, 125: offset = 1
+        case 123: offset = userInterfaceLayoutDirection == .rightToLeft ? 1 : -1
+        case 124: offset = userInterfaceLayoutDirection == .rightToLeft ? -1 : 1
+        case 126: offset = -1
+        case 125: offset = 1
         case 49: return // The select-one group's current item is already selected.
         default: super.keyDown(with: event); return
         }
@@ -455,17 +477,17 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
     }
     override var isFlipped: Bool { true }
     override var intrinsicContentSize: NSSize {
+        let bounds = CGRect(x: 0, y: 0, width: PaddrStyle.behaviorPickerWidth, height: PaddrStyle.Control.height)
+        let textWidth = PaddrModeGeometry.segmentRect(0, in: bounds, count: segmentCount).width - 4
         let textHeight = (0..<segmentCount).map {
-            PaddrControlDrawing.height(label(forSegment: $0) ?? "", width: (PaddrStyle.behaviorPickerWidth - 10) / 4 - 4,
+            PaddrControlDrawing.height(label(forSegment: $0) ?? "", width: textWidth,
                 font: font ?? .preferredFont(forTextStyle: .body))
         }.max() ?? 16
         return NSSize(width: PaddrStyle.behaviorPickerWidth, height: max(PaddrStyle.Control.height, textHeight + 12))
     }
     func segmentRect(_ index: Int) -> CGRect {
-        let inset = PaddrStyle.Control.segmentInset
-        let width = (bounds.width - 2 * inset - CGFloat(max(0, segmentCount - 1)) * inset) / CGFloat(max(1, segmentCount))
-        return CGRect(x: inset + CGFloat(index) * (width + inset), y: inset,
-                      width: width, height: bounds.height - 2 * inset)
+        let physicalIndex = userInterfaceLayoutDirection == .rightToLeft ? segmentCount - 1 - index : index
+        return PaddrModeGeometry.segmentRect(physicalIndex, in: bounds, count: segmentCount)
     }
     override func becomeFirstResponder() -> Bool { needsDisplay = true; return super.becomeFirstResponder() }
     override func resignFirstResponder() -> Bool { needsDisplay = true; return super.resignFirstResponder() }
@@ -483,7 +505,7 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
             let rect = segmentRect(index)
             let selected = isSelected(forSegment: index)
             let enabled = isEnabled && isEnabled(forSegment: index)
-            if selected {
+            if selected && !controlAppearance.usesControlGlass {
                 PaddrControlDrawing.fill(rect, radius: PaddrStyle.Control.segmentRadius,
                     color: enabled ? PaddrStyle.controlTint : PaddrStyle.boundary)
             }
@@ -500,11 +522,40 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
     }
 }
 
+/// One geometry for native drawing/tracking and the selected native-glass background.
+enum PaddrModeGeometry {
+    static func segmentRect(_ index: Int, in bounds: CGRect, count: Int) -> CGRect {
+        let inset = PaddrStyle.Control.segmentInset
+        let gap = PaddrStyle.Control.segmentGap
+        let width = (bounds.width - 2 * inset - CGFloat(max(0, count - 1)) * gap) / CGFloat(max(1, count))
+        return CGRect(x: bounds.minX + inset + CGFloat(index) * (width + gap), y: bounds.minY + inset,
+            width: width, height: bounds.height - 2 * inset)
+    }
+}
+
 struct PadModePicker: View {
+    @Environment(\.isEnabled) private var isEnabled
     @Binding var selection: PadMode
     let accessibilityIdentifier: String
     var body: some View {
         PaddrNativeModePicker(selection: $selection, accessibilityIdentifier: accessibilityIdentifier)
-            .paddrControlMaterial()
+            .background {
+                PaddrAppearanceReader { appearance in
+                    GeometryReader { proxy in
+                        PaddrButtonSurface(prominent: false, enabled: isEnabled, appearance: appearance)
+                        let index = [PadMode.disabled, .mouse, .scroll, .dpad].firstIndex(of: selection) ?? 0
+                        let rect = PaddrModeGeometry.segmentRect(index, in: CGRect(origin: .zero, size: proxy.size), count: 4)
+                        if appearance.usesControlGlass {
+                            PaddrButtonSurface(prominent: true, enabled: isEnabled, appearance: appearance,
+                                radius: PaddrStyle.Control.segmentRadius, materialInset: 0)
+                                .opacity(isEnabled ? 1 : 0.5)
+                                .frame(width: rect.width, height: rect.height)
+                                .position(x: rect.midX, y: rect.midY)
+                        }
+                    }
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
     }
 }

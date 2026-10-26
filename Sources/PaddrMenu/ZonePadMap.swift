@@ -14,8 +14,7 @@ struct ZonePadMap: View {
             GeometryReader { proxy in
                 Canvas { context, size in
                     let bounds = CGRect(origin: .zero, size: size)
-                    let padShape = PaddrPadShape().path(in: bounds)
-                    context.fill(padShape, with: .color(appearance.surface(elevated: false)))
+                    context.fill(Path(bounds), with: .color(appearance.surface(elevated: false)))
 
                     for zone in layout.zones {
                         let path = path(for: zone, in: bounds)

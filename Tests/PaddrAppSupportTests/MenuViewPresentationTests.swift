@@ -958,8 +958,7 @@ final class MenuViewPresentationTests: XCTestCase {
             "The inline header should protect the declared title-to-control gap"
         )
 
-        let constrainedWidth = PaddrStyle.minimumPadColumnWidth
-            - (2 * PaddrStyle.Inset.card)
+        let constrainedWidth = 120 + PaddrStyle.Spacing.s2 + PaddrStyle.behaviorPickerWidth - 1
         hostingView.frame.size.width = constrainedWidth
         hostingView.layoutSubtreeIfNeeded()
 
