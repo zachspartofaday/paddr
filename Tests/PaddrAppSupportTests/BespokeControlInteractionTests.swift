@@ -132,30 +132,69 @@ final class BespokeControlInteractionTests: XCTestCase {
     }
 
     func testNativeMenuEscapeCancelsWithoutWriteAndRestoresFocus() async throws {
-        let app = NSApplication.shared
-        var value = 0
-        var writes = 0
-        let host = NSHostingView(rootView: PaddrMenuPicker(title: "Profile",
-            selection: Binding(get: { value }, set: { value = $0; writes += 1 }),
-            options: [.init(value: 0, title: "Default"), .init(value: 1, title: "Editable")]))
-        let window = window(host, width: 192, height: 32)
-        defer { window.close() }
-        await settle(host)
-        let control = try XCTUnwrap(descendants(PaddrPopUpButton.self, host).first)
-        let menu = try XCTUnwrap(control.menu)
-        let observer = EscapeMenuObserver(app: app, window: window)
-        menu.delegate = observer
-        XCTAssertTrue(window.makeFirstResponder(control))
-        window.orderFront(nil)
-        // The observer posts Escape into this inert window's native menu loop;
-        // its fallback cancels tracking so a failed key path cannot hang XCTest.
-        control.performClick(nil)
-        XCTAssertTrue(observer.opened)
-        XCTAssertTrue(observer.closed)
-        XCTAssertFalse(observer.usedFallback)
-        XCTAssertEqual(value, 0)
-        XCTAssertEqual(writes, 0)
-        XCTAssertTrue(window.firstResponder === control)
+        for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+            let app = NSApplication.shared
+            var value = 0
+            var writes = 0
+            let host = NSHostingView(rootView: PaddrMenuPicker(title: "Profile",
+                selection: Binding(get: { value }, set: { value = $0; writes += 1 }),
+                options: [.init(value: 0, title: "Default"), .init(value: 1, title: "Editable")])
+                .environment(\.layoutDirection, direction))
+            let window = window(host, width: 192, height: 32)
+            defer { window.close() }
+            await settle(host)
+            let control = try XCTUnwrap(descendants(PaddrPopUpButton.self, host).first)
+            let menu = try XCTUnwrap(control.menu)
+            let observer = EscapeMenuObserver(app: app, window: window)
+            menu.delegate = observer
+            XCTAssertTrue(window.makeFirstResponder(control))
+            window.orderFront(nil)
+            // Post Escape into the native menu loop; fallback prevents a hung test.
+            control.performClick(nil)
+            XCTAssertTrue(observer.opened)
+            XCTAssertTrue(observer.closed)
+            XCTAssertFalse(observer.usedFallback)
+            XCTAssertEqual(value, 0)
+            XCTAssertEqual(writes, 0)
+            XCTAssertTrue(window.firstResponder === control)
+        }
+    }
+
+    func testClosedMenuMirrorsContentWithoutChangingSelectionOrWidth() async throws {
+        let values = ["None", "A deliberately long profile name that must wrap without covering its chevrons",
+                      "ملف World of Warcraft 123"]
+        for (index, value) in values.enumerated() {
+            let picker = PaddrMenuPicker(title: "Profile", selection: .constant(0),
+                options: [.init(value: 0, title: value), .init(value: 1, title: "Default")])
+            let host = NSHostingView(rootView: picker.environment(\.layoutDirection, .leftToRight))
+            let window = window(host, width: 192, height: 160)
+            defer { window.close() }
+            await settle(host)
+            let control = try XCTUnwrap(descendants(PaddrPopUpButton.self, host).first)
+            let ltrText = control.valueRect
+            let ltrChevron = control.chevronRect
+            let height = control.bounds.height
+            XCTAssertEqual(control.userInterfaceLayoutDirection, .leftToRight)
+            XCTAssertEqual(control.valueAlignment, .left)
+            XCTAssertLessThan(ltrText.maxX, ltrChevron.minX)
+            try export(control, name: "selector-ltr-\(index)")
+
+            // Change the environment on the same mounted selector.
+            host.rootView = picker.environment(\.layoutDirection, .rightToLeft)
+            await settle(host)
+            XCTAssertTrue(descendants(PaddrPopUpButton.self, host).first === control)
+            XCTAssertEqual(control.userInterfaceLayoutDirection, .rightToLeft)
+            XCTAssertEqual(control.valueAlignment, .right)
+            XCTAssertEqual(control.bounds.width, 192, accuracy: 0.5)
+            XCTAssertEqual(control.bounds.height, height, accuracy: 0.5)
+            XCTAssertEqual(control.valueRect.minX, control.bounds.width - ltrText.maxX)
+            XCTAssertEqual(control.chevronRect.minX, control.bounds.width - ltrChevron.maxX)
+            XCTAssertLessThan(control.chevronRect.maxX, control.valueRect.minX)
+            XCTAssertEqual(control.titleOfSelectedItem, value)
+            XCTAssertEqual(control.selectedItem?.state, .on)
+            XCTAssertEqual(control.itemArray.filter { $0.state == .on }.count, 1)
+            try export(control, name: "selector-rtl-\(index)")
+        }
     }
 
     func testLongMenuValueGrowsAndDisabledSelectionCannotWrite() async throws {

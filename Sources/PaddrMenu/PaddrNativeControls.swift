@@ -119,6 +119,7 @@ struct PaddrMenuPicker<Value: Equatable>: NSViewRepresentable {
         }
         control.isEnabled = context.environment.isEnabled
         control.increasedContrast = context.environment.colorSchemeContrast == .increased
+        control.userInterfaceLayoutDirection = context.environment.layoutDirection == .rightToLeft ? .rightToLeft : .leftToRight
         control.setAccessibilityLabel(String(localized: title))
         control.cell?.setAccessibilityLabel(String(localized: title))
         control.setAccessibilityValue(accessibilityValue ?? control.titleOfSelectedItem)
@@ -154,6 +155,17 @@ final class PaddrPopUpButton: NSPopUpButton {
     }
     override func becomeFirstResponder() -> Bool { needsDisplay = true; return super.becomeFirstResponder() }
     override func resignFirstResponder() -> Bool { needsDisplay = true; return super.resignFirstResponder() }
+    var valueRect: CGRect {
+        CGRect(x: userInterfaceLayoutDirection == .rightToLeft ? 32 : 12, y: 4,
+               width: max(0, bounds.width - 44), height: bounds.height - 8)
+    }
+    var chevronRect: CGRect {
+        CGRect(x: userInterfaceLayoutDirection == .rightToLeft ? 12 : bounds.maxX - 24,
+               y: bounds.midY - 7, width: 12, height: 14)
+    }
+    var valueAlignment: NSTextAlignment {
+        userInterfaceLayoutDirection == .rightToLeft ? .right : .left
+    }
     override func draw(_ dirtyRect: NSRect) {
         PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius, color: (isHovered || isHighlighted) && isEnabled ? PaddrStyle.canvas : PaddrStyle.workspace)
         PaddrControlDrawing.stroke(bounds, radius: PaddrStyle.Control.radius,
@@ -161,12 +173,11 @@ final class PaddrPopUpButton: NSPopUpButton {
         if let iconName {
             drawSymbol(iconName, in: CGRect(x: bounds.midX - 7, y: bounds.midY - 7, width: 14, height: 14))
         } else {
-            PaddrControlDrawing.text(titleOfSelectedItem ?? "", rect: CGRect(x: 12, y: 4,
-                width: max(0, bounds.width - 44), height: bounds.height - 8),
+            PaddrControlDrawing.text(titleOfSelectedItem ?? "", rect: valueRect,
                 font: font ?? .preferredFont(forTextStyle: .body),
-                color: isEnabled ? PaddrStyle.textPrimary : PaddrStyle.textSecondary)
-            drawSymbol("chevron.up.chevron.down", in: CGRect(x: bounds.maxX - 24,
-                y: bounds.midY - 7, width: 12, height: 14))
+                color: isEnabled ? PaddrStyle.textPrimary : PaddrStyle.textSecondary,
+                alignment: valueAlignment)
+            drawSymbol("chevron.up.chevron.down", in: chevronRect)
         }
         PaddrControlDrawing.focus(self, rect: bounds, radius: PaddrStyle.Control.radius)
     }
@@ -362,6 +373,7 @@ struct PaddrActionMenu: NSViewRepresentable {
         }
         control.isEnabled = context.environment.isEnabled
         control.increasedContrast = context.environment.colorSchemeContrast == .increased
+        control.userInterfaceLayoutDirection = context.environment.layoutDirection == .rightToLeft ? .rightToLeft : .leftToRight
         control.setAccessibilityLabel(String(localized: title))
         control.cell?.setAccessibilityLabel(String(localized: title))
         control.setAccessibilityValue(accessibilityValue)

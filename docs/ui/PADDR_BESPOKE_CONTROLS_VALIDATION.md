@@ -169,3 +169,41 @@ Before operator acceptance:
 Remaining risks are the unverified live assistive/input paths and macOS 26 rendering
 (the host runs 27.2). The implementation changes presentation/adapters only and leaves
 runtime safety tests intact; this does not replace independent review or manual proof.
+
+## Independent review and selector-direction repair
+
+A fresh GPT-6.1 Sol/high reviewer inspected the full candidate `8d4f31d` and
+its supplied source/rendered evidence. The verdict approved those tiers with one
+MEDIUM regression: the closed selector drew its value and chevrons in fixed LTR
+positions. Live interaction acceptance remained incomplete, as recorded above.
+
+The parent corrected the native pop-up adapter to receive SwiftUI layout direction.
+The drawing uses mirrored value/chevron rectangles and leading text alignment;
+menu contents, typed bindings and width remain unchanged. The icon-only action
+menu receives the same direction without moving its centered icon. Tuning-switch
+behavior is unchanged by this repair.
+
+`testClosedMenuMirrorsContentWithoutChangingSelectionOrWidth` changes direction on
+the same mounted selector and checks mirrored, non-overlapping content; stable
+width/height and identity; and unchanged selected values/checkmarks. It covers
+short, long and mixed Arabic/English/numeric values. With the previous drawing
+restored, it failed 12 assertions (`/tmp/paddr-bespoke-rtl-before.log`); with the
+repair it passes. The native menu Escape test now runs in both directions and
+verifies opening/closing, no fallback cancellation, no binding write, and focus
+return. These remain synthetic native-event checks, not a full manual key loop.
+
+Light/dark LTR/RTL control captures are named `selector-{ltr,rtl}-{0,1,2}-{light,dark}.png`
+in `/tmp/paddr-bespoke-rtl/` and the final evidence directory. Their appearance was
+inspected, including wrapping and mixed-direction text. The full acceptance rerun
+uses `/tmp/paddr-bespoke-final/` and `/tmp/paddr-bespoke-final-*.log`.
+
+The separate frozen 1.1.0 release was subsequently notarized, stapled and published
+from `d0c99d8` on 2026-10-26. No bespoke UI changes are included in that release.
+
+Final parent rerun after the direction fix: **518 tests, 517 passed and the same
+one key-window-dependent focus test skipped**, with both exporters enabled.
+Localization, warnings-as-errors release app/CLI builds, CLI checks, release identity
+and production fixtures all pass. Logs: `/tmp/paddr-bespoke-final-tests.log`,
+`-localization.log`, `-build.log`, `-cli-build.log`, `-cli.log`, `-identity.log`,
+`-production.log`. Fresh exact-commit ad-hoc packaging is recorded separately in
+`/tmp/paddr-bespoke-final-package.log`. Manual gaps listed above remain open.
