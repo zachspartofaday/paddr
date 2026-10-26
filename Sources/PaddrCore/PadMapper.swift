@@ -426,7 +426,7 @@ public struct PadMapper: Sendable {
             rawDY: rawDY,
             previousTimestamp: previousTimestamp,
             timestamp: timestamp,
-            amount: configuration.mouseAcceleration
+            amount: configuration.mouseAccelerationEnabled ? configuration.mouseAcceleration : 0
         )
         let dx = rawDX / Self.mouseRawUnitsPerPoint * gain * configuration.sensitivity
         let dy = -rawDY / Self.mouseRawUnitsPerPoint * gain * configuration.sensitivity
@@ -445,7 +445,7 @@ public struct PadMapper: Sendable {
             rawDY: rawDY,
             previousTimestamp: previousTimestamp,
             timestamp: timestamp,
-            amount: configuration.mouseAcceleration
+            amount: configuration.mouseAccelerationEnabled ? configuration.mouseAcceleration : 0
         )
         pendingSmoothedDX += rawDX / Self.mouseRawUnitsPerPoint
             * gain

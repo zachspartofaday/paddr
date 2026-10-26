@@ -756,6 +756,17 @@ final class PaddrTests: XCTestCase {
         XCTAssertEqual(stale.dx, 1)
     }
 
+    func testDisabledAccelerationUsesLinearOutputWithoutDiscardingStrength() throws {
+        for enabled in [false, true] {
+            let configuration = PadConfiguration(mode: .mouse, mouseAcceleration: 1, mouseAccelerationEnabled: enabled)
+            var mapper = PadMapper(side: .right, configuration: configuration)
+            _ = try mapper.process(sample(touched: true, time: 1_000_000))
+            XCTAssertEqual(try mapper.process(sample(touched: true, x: 700, time: 2_000_000)),
+                [.mouseMove(dx: enabled ? 4 : 1, dy: 0)])
+            XCTAssertEqual(configuration.mouseAcceleration, 1)
+        }
+    }
+
     func testMouseAccelerationRestartsAfterLiftWithoutAJump() throws {
         var mapper = PadMapper(
             side: .right,

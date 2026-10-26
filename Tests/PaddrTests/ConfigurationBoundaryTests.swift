@@ -253,6 +253,20 @@ final class ConfigurationBoundaryTests: XCTestCase {
         )
     }
 
+    func testAccelerationSwitchMigratesLegacyProfilesAndPersistsDisabledStrength() throws {
+        for amount in [0.0, 0.75] {
+            let legacy = try JSONDecoder().decode(PadConfiguration.self,
+                from: Data("{\"mode\":\"mouse\",\"mouseAcceleration\":\(amount)}".utf8))
+            XCTAssertEqual(legacy.mouseAccelerationEnabled, amount > 0)
+            XCTAssertEqual(legacy.mouseAcceleration, amount)
+        }
+        let disabled = PadConfiguration(mode: .mouse, mouseAcceleration: 0.75, mouseAccelerationEnabled: false)
+        let decoded = try JSONDecoder().decode(PadConfiguration.self, from: JSONEncoder().encode(disabled))
+        XCTAssertEqual(decoded, disabled)
+        XCTAssertFalse(decoded.mouseAccelerationEnabled)
+        XCTAssertEqual(decoded.mouseAcceleration, 0.75)
+    }
+
     func testMouseAccelerationRoundTripsIndependentlyForBothPads() throws {
         var expected = PaddrConfiguration.default
         expected.left.mouseAcceleration = 0.25

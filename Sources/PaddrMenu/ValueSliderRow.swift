@@ -35,7 +35,7 @@ struct ValueSliderRow: View {
                     .accessibilityValue(valueText)
                 Text(valueText)
                     .paddrTypography(.value)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(PaddrStyle.textSecondary)
                     .frame(width: PaddrStyle.Width.readout, alignment: .trailing)
                     .accessibilityHidden(true)
             }
@@ -83,7 +83,7 @@ struct ToggleValueSliderRow: View {
                     .accessibilityIdentifier(accessibilityIdentifier + ".strength")
                 Text(valueText)
                     .paddrTypography(.value)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(PaddrStyle.textSecondary)
                     .frame(width: PaddrStyle.Width.readout, alignment: .trailing)
                     .accessibilityHidden(true)
             }

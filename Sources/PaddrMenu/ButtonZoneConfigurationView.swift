@@ -4,9 +4,11 @@ import PaddrCore
 
 struct ButtonZoneConfigurationView: View {
     @Binding var configuration: PadConfiguration
+    let isEditable: Bool
     @State private var selectedZone: ButtonZone
 
-    init(configuration: Binding<PadConfiguration>) {
+    init(configuration: Binding<PadConfiguration>, isEditable: Bool = true) {
+        self.isEditable = isEditable
         _configuration = configuration
         _selectedZone = State(
             initialValue: configuration.wrappedValue.zoneLayout.zones[0]
@@ -37,23 +39,20 @@ struct ButtonZoneConfigurationView: View {
 
     private var mapSection: some View {
         VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
-            PaddrSectionHeader("Area map")
             padMap
                 .frame(
                     width: PaddrStyle.Metrics.zoneMapWidth,
                     height: PaddrStyle.Metrics.zoneMapHeight
                 )
-                .frame(maxWidth: .infinity, alignment: .center)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var inspector: some View {
         VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
-            PaddrSectionHeader("Zone settings")
-
-            PaddrSettingsRow(title: "Mode", systemImage: "square.grid.2x2") {
-                areaLayoutPicker
+            PaddrSettingsRow(title: "Layout", systemImage: "square.grid.2x2") {
+                areaLayoutPicker.disabled(!isEditable)
             }
 
             PaddrSettingsRow(title: "Selected area", systemImage: selectedZone.systemImage) {
@@ -65,6 +64,7 @@ struct ButtonZoneConfigurationView: View {
                     selection: $configuration[bindingFor: selectedZone],
                     width: PaddrStyle.Width.control
                 )
+                .disabled(!isEditable)
             }
 
             if configuration.zoneLayout != .gridNine {
@@ -77,6 +77,7 @@ struct ButtonZoneConfigurationView: View {
                             ),
                             in: 0...Double(1).nextDown
                         )
+                        .disabled(!isEditable)
                         .accessibilityLabel("Neutral zone size")
                         .accessibilityValue(
                             configuration.dpadDeadzone.formatted(.percent.precision(.fractionLength(0)))
@@ -84,7 +85,7 @@ struct ButtonZoneConfigurationView: View {
                         .help("Touches inside the neutral zone do not emit an action.")
                         Text(configuration.dpadDeadzone.formatted(.percent.precision(.fractionLength(0))))
                             .paddrTypography(.value)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(PaddrStyle.textSecondary)
                             .frame(width: PaddrStyle.Width.readout, alignment: .trailing)
                             .accessibilityHidden(true)
                     }
@@ -92,6 +93,7 @@ struct ButtonZoneConfigurationView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+        .environment(\.paddrStacksSettingLabels, true)
         .accessibilityElement(children: .contain)
     }
 
@@ -103,8 +105,7 @@ struct ButtonZoneConfigurationView: View {
         }
         .labelsHidden()
         .pickerStyle(.menu)
-        .paddrMenuSelector()
-        .frame(width: PaddrStyle.Width.controlMedium, alignment: .trailing)
+        .paddrMappingSelector()
         .help("Choose how the trackpad is divided into button areas.")
     }
 
@@ -116,8 +117,7 @@ struct ButtonZoneConfigurationView: View {
         }
         .labelsHidden()
         .pickerStyle(.menu)
-        .paddrMenuSelector()
-        .frame(width: PaddrStyle.Width.control, alignment: .trailing)
+        .paddrMappingSelector()
         .paddrAccessibilityID("zones", "selected-area")
         .help("Choose the trackpad area to configure.")
     }

@@ -7,18 +7,33 @@ import PaddrAppSupport
 
 @MainActor
 final class FamilyConsoleContrastTests: XCTestCase {
-    func testProminentControlPairMeetsTextContrast() throws {
-        let tint = try resolved(PaddrStyle.controlTint)
-        let foreground = try resolved(PaddrStyle.controlForeground)
+    func testProminentControlPairMeetsTextContrastInBothAppearances() throws {
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let appearance = try XCTUnwrap(NSAppearance(named: name))
+            let tint = try resolved(PaddrStyle.controlTint, appearance: appearance)
+            let foreground = try resolved(PaddrStyle.controlForeground, appearance: appearance)
+            XCTAssertGreaterThanOrEqual(foreground.contrastRatio(with: tint), 4.5, name.rawValue)
+        }
+    }
 
-        XCTAssertGreaterThanOrEqual(foreground.contrastRatio(with: tint), 4.5)
+    func testWorkspaceTextMeetsContrastInBothAppearances() throws {
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let appearance = try XCTUnwrap(NSAppearance(named: name))
+            for backgroundColor in [PaddrStyle.night0, PaddrStyle.night1] {
+                let background = try resolved(backgroundColor, appearance: appearance)
+                for textColor in [PaddrStyle.textPrimary, PaddrStyle.textSecondary, PaddrStyle.textTertiary] {
+                    let foreground = try resolved(textColor, appearance: appearance)
+                    XCTAssertGreaterThanOrEqual(foreground.contrastRatio(with: background), 4.5, name.rawValue)
+                }
+            }
+        }
     }
 
     func testMenuBarSemanticTintsMeetLightAndDarkNonTextContrast() throws {
         let lightAppearance = try XCTUnwrap(NSAppearance(named: .aqua))
         let darkAppearance = try XCTUnwrap(NSAppearance(named: .darkAqua))
         let lightBackground = SRGBColor(red: 1, green: 1, blue: 1, alpha: 1)
-        let darkBackground = try resolved(PaddrStyle.night1)
+        let darkBackground = try resolved(PaddrStyle.night1, appearance: darkAppearance)
 
         for role in [MenuBarTintRole.active, .warning] {
             let dynamicColor = try XCTUnwrap(PaddrMenuBarPalette.color(for: role))
@@ -29,157 +44,102 @@ final class FamilyConsoleContrastTests: XCTestCase {
         }
     }
 
-    func testSelectedZoneBoundaryAndCaptionMeetRenderedContrast() throws {
-        let background = try resolved(PaddrStyle.night1)
-        let boundary = try resolved(PaddrStyle.selectionBoundary)
-        let appearances = [
-            PaddrAppearance(colorSchemeContrast: .standard),
-            PaddrAppearance(colorSchemeContrast: .increased)
-        ]
-
-        for appearance in appearances {
-            let topSurface = try resolved(appearance.surface(elevated: true))
-                .composited(over: background)
-            let bottomSurface = try resolved(appearance.surface(elevated: false))
-                .composited(over: background)
-            let selectedTop = try resolved(PaddrStyle.selectedZoneFillTop)
-                .composited(over: topSurface)
-            let selectedBottom = try resolved(PaddrStyle.selectedZoneFillBottom)
-                .composited(over: bottomSurface)
-
-            XCTAssertGreaterThanOrEqual(boundary.contrastRatio(with: selectedTop), 3)
-            XCTAssertGreaterThanOrEqual(boundary.contrastRatio(with: selectedBottom), 3)
+    func testSelectedZoneBoundaryAndCaptionMeetRenderedContrastInBothAppearances() throws {
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let drawingAppearance = try XCTUnwrap(NSAppearance(named: name))
+            let background = try resolved(PaddrStyle.night1, appearance: drawingAppearance)
+            let boundary = try resolved(PaddrStyle.selectionBoundary, appearance: drawingAppearance)
+            for contrast in [ColorSchemeContrast.standard, .increased] {
+                let appearance = PaddrAppearance(colorSchemeContrast: contrast)
+                for elevated in [false, true] {
+                    let surface = try resolved(appearance.surface(elevated: elevated), appearance: drawingAppearance)
+                        .composited(over: background)
+                    for fill in [PaddrStyle.selectedZoneFillTop, PaddrStyle.selectedZoneFillBottom] {
+                        let selected = try resolved(fill, appearance: drawingAppearance).composited(over: surface)
+                        XCTAssertGreaterThanOrEqual(boundary.contrastRatio(with: selected), 3,
+                            "Selected zone boundary: \(name.rawValue), \(contrast), elevated=\(elevated)")
+                    }
+                }
+            }
+            let captionFill = try resolved(PaddrStyle.selectedZoneCaptionFill, appearance: drawingAppearance)
+            let captionForeground = try resolved(PaddrStyle.selectedZoneCaptionForeground, appearance: drawingAppearance)
+            XCTAssertGreaterThanOrEqual(captionForeground.contrastRatio(with: captionFill), 4.5, name.rawValue)
         }
-
-        let captionFill = try resolved(PaddrStyle.selectedZoneCaptionFill)
-        let captionForeground = try resolved(PaddrStyle.selectedZoneCaptionForeground)
-        XCTAssertGreaterThanOrEqual(captionForeground.contrastRatio(with: captionFill), 4.5)
     }
 
-    func testPointerTapBoundaryMeetsRenderedContrastThroughFullSurfaceStack() throws {
-        let background = try resolved(PaddrStyle.night1)
-        let boundary = try resolved(PaddrStyle.selectionBoundary)
-        let tapFill = try resolved(PaddrStyle.selectedTapFill)
-        let appearances = [
-            PaddrAppearance(colorSchemeContrast: .standard),
-            PaddrAppearance(colorSchemeContrast: .increased)
-        ]
-
-        for appearance in appearances {
-            let card = try resolved(appearance.surface(elevated: true))
-                .composited(over: background)
-            let section = try resolved(appearance.surface(elevated: false))
-                .composited(over: card)
-            for elevated in [false, true] {
-                let pad = try resolved(appearance.surface(elevated: elevated))
-                    .composited(over: section)
-                let renderedTapFill = tapFill.composited(over: pad)
-                XCTAssertGreaterThanOrEqual(
-                    boundary.contrastRatio(with: renderedTapFill),
-                    3,
-                    "Pointer boundary failed for elevated=\(elevated), appearance=\(appearance)"
-                )
+    func testPointerTapBoundaryMeetsRenderedContrastInBothAppearances() throws {
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let drawingAppearance = try XCTUnwrap(NSAppearance(named: name))
+            let background = try resolved(PaddrStyle.night1, appearance: drawingAppearance)
+            let boundary = try resolved(PaddrStyle.selectionBoundary, appearance: drawingAppearance)
+            let tapFill = try resolved(PaddrStyle.selectedTapFill, appearance: drawingAppearance)
+            for contrast in [ColorSchemeContrast.standard, .increased] {
+                let appearance = PaddrAppearance(colorSchemeContrast: contrast)
+                for elevated in [false, true] {
+                    let pad = try resolved(appearance.surface(elevated: elevated), appearance: drawingAppearance)
+                        .composited(over: background)
+                    XCTAssertGreaterThanOrEqual(boundary.contrastRatio(with: tapFill.composited(over: pad)), 3,
+                        "Pointer boundary: \(name.rawValue), \(contrast), elevated=\(elevated)")
+                }
             }
         }
     }
 
-    func testPermissionBordersMeetRenderedNonTextContrast() throws {
-        let background = try resolved(PaddrStyle.night1)
-        let appearances = [
-            PaddrAppearance(colorSchemeContrast: .standard),
-            PaddrAppearance(colorSchemeContrast: .increased)
-        ]
-
-        for appearance in appearances {
-            let card = try resolved(appearance.surface(elevated: true))
-                .composited(over: background)
-            for semanticColor in [PaddrStyle.successGreen, PaddrStyle.cautionAmber] {
-                let semantic = try resolved(semanticColor)
-                let tile = semantic
-                    .withAlpha(PaddrStyle.permissionFillOpacity)
-                    .composited(over: card)
-                let border = semantic
-                    .withAlpha(
-                        appearance.strokeOpacity(PaddrStyle.permissionStrokeOpacity)
-                    )
-                    .composited(over: tile)
-
-                XCTAssertGreaterThanOrEqual(border.contrastRatio(with: tile), 3)
+    func testPermissionStatusAndDetailTextMeetContrastInBothAppearances() throws {
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let appearance = try XCTUnwrap(NSAppearance(named: name))
+            for surface in [PaddrStyle.canvas, PaddrStyle.workspace] {
+                let background = try resolved(surface, appearance: appearance)
+                for text in [PaddrStyle.successText, PaddrStyle.warningText, PaddrStyle.textSecondary] {
+                    let foreground = try resolved(text, appearance: appearance)
+                    XCTAssertGreaterThanOrEqual(foreground.contrastRatio(with: background), 4.5, name.rawValue)
+                }
             }
         }
     }
 
-    func testPermissionSuccessTextMeetsRenderedContrast() throws {
-        let background = try resolved(PaddrStyle.night1)
-        let success = try resolved(PaddrStyle.successGreen)
-        let successText = try resolved(PaddrStyle.successText)
-        let appearances = [
-            PaddrAppearance(colorSchemeContrast: .standard),
-            PaddrAppearance(colorSchemeContrast: .increased)
-        ]
-
-        for appearance in appearances {
-            let card = try resolved(appearance.surface(elevated: true))
-                .composited(over: background)
-            let tile = success
-                .withAlpha(PaddrStyle.permissionFillOpacity)
-                .composited(over: card)
-            XCTAssertGreaterThanOrEqual(successText.contrastRatio(with: tile), 4.5)
-        }
-    }
-
-    func testIncreasedContrastStrengthensSurfaceFillsAndStrokes() throws {
+    func testIncreasedContrastStrengthensBoundariesWithoutReintroducingTransparency() throws {
         let standard = PaddrAppearance(colorSchemeContrast: .standard)
         let increased = PaddrAppearance(colorSchemeContrast: .increased)
-
-        XCTAssertEqual(try resolved(standard.surface(elevated: false)).alpha, 0.05, accuracy: 0.001)
-        XCTAssertEqual(try resolved(standard.surface(elevated: true)).alpha, 0.08, accuracy: 0.001)
-        XCTAssertEqual(try resolved(standard.surfaceStroke).alpha, 0.10, accuracy: 0.001)
-        XCTAssertEqual(try resolved(increased.surface(elevated: false)).alpha, 0.09, accuracy: 0.001)
-        XCTAssertEqual(try resolved(increased.surface(elevated: true)).alpha, 0.14, accuracy: 0.001)
-        XCTAssertEqual(try resolved(increased.surfaceStroke).alpha, 0.28, accuracy: 0.001)
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let drawingAppearance = try XCTUnwrap(NSAppearance(named: name))
+            for elevated in [false, true] {
+                let surface = try resolved(standard.surface(elevated: elevated), appearance: drawingAppearance)
+                let increasedSurface = try resolved(increased.surface(elevated: elevated), appearance: drawingAppearance)
+                XCTAssertEqual(surface.alpha, 1, accuracy: 0.001)
+                XCTAssertEqual(increasedSurface.alpha, 1, accuracy: 0.001)
+                let standardBoundary = try resolved(standard.surfaceStroke, appearance: drawingAppearance)
+                let increasedBoundary = try resolved(increased.surfaceStroke, appearance: drawingAppearance)
+                XCTAssertGreaterThan(increasedBoundary.contrastRatio(with: increasedSurface),
+                    standardBoundary.contrastRatio(with: surface), name.rawValue)
+            }
+        }
         XCTAssertGreaterThan(increased.strokeWidth, standard.strokeWidth)
     }
 
-    func testReadyStatusUsesSuccessSemantic() throws {
-        let ready = try resolved(StatusBadgeState.ready.color)
-        let readyText = try resolved(StatusBadgeState.ready.textColor)
-        let successTone = try resolved(PaddrStyle.successGreen)
-        let successText = try resolved(PaddrStyle.successText)
-        let background = try resolved(PaddrStyle.night1)
-
-        assertEqual(ready, successTone)
-        assertEqual(readyText, successText)
-        XCTAssertGreaterThanOrEqual(readyText.contrastRatio(with: background), 4.5)
-    }
-
-    func testCriticalStatusUsesErrorSemantic() throws {
-        let critical = try resolved(StatusBadgeState.critical.color)
-        let criticalText = try resolved(StatusBadgeState.critical.textColor)
-        let errorTone = try resolved(PaddrStyle.errorText)
-        let background = try resolved(PaddrStyle.night1)
-
-        assertEqual(critical, errorTone)
-        assertEqual(criticalText, errorTone)
-        XCTAssertGreaterThanOrEqual(criticalText.contrastRatio(with: background), 4.5)
+    func testStatusSemanticsRemainReadableInBothAppearances() throws {
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let appearance = try XCTUnwrap(NSAppearance(named: name))
+            let background = try resolved(PaddrStyle.night1, appearance: appearance)
+            for (state, tone, text) in [
+                (StatusBadgeState.ready, PaddrStyle.successGreen, PaddrStyle.successText),
+                (StatusBadgeState.critical, PaddrStyle.errorText, PaddrStyle.errorText)
+            ] {
+                let foreground = try resolved(state.textColor, appearance: appearance)
+                assertEqual(try resolved(state.color, appearance: appearance), try resolved(tone, appearance: appearance))
+                assertEqual(foreground, try resolved(text, appearance: appearance))
+                XCTAssertGreaterThanOrEqual(foreground.contrastRatio(with: background), 4.5, name.rawValue)
+            }
+        }
     }
 
     private func resolved(
         _ color: Color,
+        appearance: NSAppearance? = nil,
         file: StaticString = #filePath,
         line: UInt = #line
     ) throws -> SRGBColor {
-        let nsColor = try XCTUnwrap(
-            NSColor(color).usingColorSpace(.sRGB),
-            file: file,
-            line: line
-        )
-        return SRGBColor(
-            red: nsColor.redComponent,
-            green: nsColor.greenComponent,
-            blue: nsColor.blueComponent,
-            alpha: nsColor.alphaComponent
-        )
+        try resolved(NSColor(color), appearance: appearance, file: file, line: line)
     }
 
     private func resolved(

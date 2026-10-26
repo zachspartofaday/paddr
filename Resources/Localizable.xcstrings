@@ -2135,6 +2135,93 @@
     },
     "Hold this rear button to hold its assigned action. None sends no input.": {
       "comment": "Help for each rear-button action picker."
+    },
+    "Acceleration %arg": {},
+    "Allow Paddr to read your controller and send your mapped actions. You can edit profiles before granting access.": {},
+    "Allow access": {},
+    "Battery %arg": {},
+    "Connection details": {},
+    "Done": {},
+    "Enable Paddr in Accessibility, then enable output again.": {},
+    "Enable output": {},
+    "No additional tuning enabled": {},
+    "Open setup…": {},
+    "Output stopped because of an error. Check the puck and controller, then enable output again.": {},
+    "Pointer dead zone": {},
+    "Pointer tuning": {},
+    "Smoothing %arg": {},
+    "Tap radius %arg": {},
+    "Tap stabilization %arg": {},
+    "The Paddr menu shows receiver and controller status with the Enable output switch. When output starts, release both trackpads and any assigned rear buttons to return to neutral before mapped input activates.": {},
+    "Turning on saves your pending changes.": {},
+    "Input Monitoring access needed": {
+      "comment": "Persistent setup banner when Input Monitoring has not been granted."
+    },
+    "Accessibility access needed": {
+      "comment": "Persistent setup banner when Accessibility has not been granted."
+    },
+    "Controller not connected": {
+      "comment": "Visible controller connection summary in the output footer."
+    },
+    "Output is off.": {
+      "comment": "Output status when mapped actions are disabled."
+    },
+    "Output is active.": {
+      "comment": "Output status while mapped input is running."
+    },
+    "Output stopped.": {
+      "comment": "Output status after mapped input stops."
+    },
+    "Output is unavailable while Paddr prepares the current profile.": {
+      "comment": "Disabled output-switch explanation during initialization."
+    },
+    "Output is unavailable until mapped keys and mouse buttons finish releasing.": {
+      "comment": "Disabled output-switch explanation while releasing held input."
+    },
+    "Output is unavailable while the profile operation finishes.": {
+      "comment": "Disabled output-switch explanation during a profile operation."
+    },
+    "Enable or disable output": {
+      "comment": "Help for the native Enable output switch."
+    },
+    "%arg Turning on saves your pending changes.": {
+      "comment": "Accessible output-switch help; the argument is the current disabled reason, followed by the pending-save effect."
+    },
+    "Allow access to use your mappings": {
+      "comment": "Native configuration footer and window layout controls.",
+      "extractionState": "manual"
+    },
+    "Input Monitoring and Accessibility are needed. You can keep editing.": {
+      "comment": "Native configuration footer and window layout controls.",
+      "extractionState": "manual"
+    },
+    "Input Monitoring is needed to read your controller. You can keep editing.": {
+      "comment": "Native configuration footer and window layout controls.",
+      "extractionState": "manual"
+    },
+    "Accessibility is needed to send your mapped actions. You can keep editing.": {
+      "comment": "Native configuration footer and window layout controls.",
+      "extractionState": "manual"
+    },
+    "Access is ready.": {
+      "comment": "Native configuration footer and window layout controls.",
+      "extractionState": "manual"
+    },
+    "Output status": {
+      "comment": "Native configuration footer and window layout controls.",
+      "extractionState": "manual"
+    },
+    "Reset Window Size": {
+      "comment": "Native configuration footer and window layout controls.",
+      "extractionState": "manual"
+    },
+    "Pointer Acceleration Strength": {
+      "comment": "Pointer acceleration switch and strength control.",
+      "extractionState": "manual"
+    },
+    "Higher values increase fast-motion gain. Turning acceleration off keeps your strength setting.": {
+      "comment": "Pointer acceleration switch and strength control.",
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

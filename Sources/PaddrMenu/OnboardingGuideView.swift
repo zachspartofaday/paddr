@@ -36,7 +36,6 @@ struct OnboardingGuideView: View {
         )
         .background { PanelBackgroundView() }
         .foregroundStyle(PaddrStyle.textPrimary)
-        .preferredColorScheme(.dark)
     }
 
     private var header: some View {
@@ -46,7 +45,7 @@ struct OnboardingGuideView: View {
             Spacer()
             Text("Step \(pager.pageNumber) of \(OnboardingPager.pageCount)")
                 .paddrTypography(.rowLabel)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(PaddrStyle.textSecondary)
         }
         .padding(.horizontal, PaddrStyle.Spacing.s5)
         .padding(.vertical, PaddrStyle.Spacing.s4)
@@ -88,7 +87,7 @@ struct OnboardingGuideView: View {
                     symbol: "play.circle.fill",
                     title: LocalizedStringResource("Start Output Safely"),
                     detail: LocalizedStringResource(
-                        "The Paddr menu shows receiver and controller status with the Mapped output toggle. When output starts, release both trackpads and any assigned rear buttons to return to neutral before mapped input activates."
+                        "The Paddr menu shows receiver and controller status with the Enable output switch. When output starts, release both trackpads and any assigned rear buttons to return to neutral before mapped input activates."
                     )
                 )
             }
@@ -115,7 +114,7 @@ struct OnboardingGuideView: View {
         HStack(alignment: .top, spacing: PaddrStyle.Spacing.s5) {
             Image(systemName: symbol)
                 .font(.system(size: 48, weight: .medium))
-                .foregroundStyle(PaddrStyle.accentGradient)
+                .foregroundStyle(PaddrStyle.accentText)
                 .frame(width: 72, height: 72)
                 .accessibilityHidden(true)
 
@@ -124,7 +123,7 @@ struct OnboardingGuideView: View {
                     .paddrTypography(.cardTitle)
                 Text(detail)
                     .paddrTypography(.rowLabel)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(PaddrStyle.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 actions()
             }
@@ -135,51 +134,7 @@ struct OnboardingGuideView: View {
     }
 
     private var permissionControls: some View {
-        VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
-            HStack(spacing: PaddrStyle.Spacing.s2) {
-                Label(
-                    model.inputMonitoringGranted ? "Input Monitoring ready" : "Input Monitoring needed",
-                    systemImage: model.inputMonitoringGranted ? "checkmark.circle.fill" : "exclamationmark.circle"
-                )
-                .foregroundStyle(model.inputMonitoringGranted ? PaddrStyle.activeText : PaddrStyle.warningText)
-                .accessibilityLabel(
-                    model.inputMonitoringGranted
-                        ? Text("Input Monitoring access is ready")
-                        : Text("Input Monitoring access is needed")
-                )
-
-                Button("Request", action: model.requestInputMonitoring)
-                    .paddrActionButton(.primary)
-                    .accessibilityLabel("Request Input Monitoring")
-                    .paddrAccessibilityID("guide", "input-monitoring", "request")
-                Button("Open Settings", action: model.openInputMonitoringSettings)
-                    .paddrActionButton(.secondary)
-                    .accessibilityLabel("Open Input Monitoring Settings")
-                    .paddrAccessibilityID("guide", "input-monitoring", "settings")
-            }
-
-            HStack(spacing: PaddrStyle.Spacing.s2) {
-                Label(
-                    model.accessibilityTrusted ? "Accessibility ready" : "Accessibility needed",
-                    systemImage: model.accessibilityTrusted ? "checkmark.circle.fill" : "exclamationmark.circle"
-                )
-                .foregroundStyle(model.accessibilityTrusted ? PaddrStyle.activeText : PaddrStyle.warningText)
-                .accessibilityLabel(
-                    model.accessibilityTrusted
-                        ? Text("Accessibility access is ready")
-                        : Text("Accessibility access is needed")
-                )
-
-                Button("Request", action: model.requestAccessibility)
-                    .paddrActionButton(.primary)
-                    .accessibilityLabel("Request Accessibility")
-                    .paddrAccessibilityID("guide", "accessibility", "request")
-                Button("Open Settings", action: model.openAccessibilitySettings)
-                    .paddrActionButton(.secondary)
-                    .accessibilityLabel("Open Accessibility Settings")
-                    .paddrAccessibilityID("guide", "accessibility", "settings")
-            }
-        }
+        PermissionSetupContent(model: model, identifierPrefix: "guide")
     }
 
     private var pageIndicator: some View {

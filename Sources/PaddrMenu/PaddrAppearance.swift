@@ -39,19 +39,13 @@ struct PaddrAppearance: Equatable {
     /// Border and separator thickness.
     var strokeWidth: CGFloat { hasIncreasedContrast ? 1.5 : 1 }
 
-    /// Family-console surfaces become visibly more opaque in Increased Contrast.
-    /// These values match the pinned reference instead of multiplying an already
-    /// translucent color by an opacity of one.
+    /// Opaque semantic surfaces stay readable in either appearance and under Reduce Transparency.
     func surface(elevated: Bool) -> Color {
-        if hasIncreasedContrast {
-            return Color.white.opacity(elevated ? 0.14 : 0.09)
-        }
-        return elevated ? PaddrStyle.elevatedSurface : PaddrStyle.surface
+        elevated ? PaddrStyle.workspace : PaddrStyle.canvas
     }
 
-    /// Family-console strokes strengthen from 10% to 28% white in Increased Contrast.
     var surfaceStroke: Color {
-        hasIncreasedContrast ? Color.white.opacity(0.28) : PaddrStyle.surfaceStroke
+        hasIncreasedContrast ? PaddrStyle.textSecondary : PaddrStyle.boundary
     }
 
     /// A surface's separator opacity: its own standard value, or full strength when the

@@ -359,6 +359,51 @@ final class MenuViewPresentationTests: XCTestCase {
         }
     }
 
+    func testManagedWindowDiscardsSavedSizeAndDisablesManualResizing() {
+        let autosaveName = "PaddrConfigurationWindow.v10.Tests.\(UUID().uuidString)"
+        defer { NSWindow.removeFrame(usingName: autosaveName) }
+        let window = makeWindow(hasToolbar: true, usesFullSizeContent: true)
+        PaddrFamilyWindowChrome.installConfigurationTitle("Paddr", in: window)
+        // Simulate the tall geometry seen in the report before applying the new policy.
+        PaddrFamilyWindowChrome.setUsableLayoutSize(NSSize(width: 941, height: 840), for: window)
+        PaddrFamilyWindowChrome.restoreConfigurationFrame(for: window, autosaveName: autosaveName)
+        let expected = PaddrFamilyWindowChrome.fittedDefaultUsableSize(
+            PaddrStyle.Metrics.defaultWindowSize, minimumSize: PaddrStyle.Metrics.minimumWindowSize,
+            visibleFrame: window.screen?.visibleFrame, for: window)
+        assertSize(window.contentLayoutRect.size, equals: expected)
+
+        let custom = NSSize(width: 960, height: 720)
+        PaddrFamilyWindowChrome.setUsableLayoutSize(custom, for: window)
+        window.saveFrame(usingName: autosaveName)
+        // AppKit assigns only one live window to an autosave name.
+        window.setFrameAutosaveName("")
+        let reopened = makeWindow(hasToolbar: true, usesFullSizeContent: true)
+        PaddrFamilyWindowChrome.installConfigurationTitle("Paddr", in: reopened)
+        PaddrFamilyWindowChrome.restoreConfigurationFrame(for: reopened, autosaveName: autosaveName)
+        assertSize(reopened.contentLayoutRect.size, equals: expected)
+        XCTAssertFalse(reopened.styleMask.contains(.resizable))
+
+        PaddrFamilyWindowChrome.setFreshDefaultUsableFrame(for: reopened)
+        assertSize(reopened.contentLayoutRect.size, equals: expected)
+        reopened.setFrameAutosaveName("")
+    }
+
+    func testManagedWindowScreenCapAndTopEdgeRemainStable() {
+        let window = makeWindow(hasToolbar: true, usesFullSizeContent: true)
+        PaddrFamilyWindowChrome.installConfigurationTitle("Paddr", in: window)
+        window.contentMinSize = .zero
+        let screen = NSRect(x: 0, y: 40, width: 1200, height: 800)
+        PaddrFamilyWindowChrome.setUsableLayoutSize(NSSize(width: 1080, height: 500), for: window)
+        window.setFrameTopLeftPoint(NSPoint(x: 50, y: screen.maxY))
+        PaddrFamilyWindowChrome.fitConfigurationWindow(window, preferredHeight: 1100, visibleFrame: screen)
+        XCTAssertEqual(window.frame.maxY, screen.maxY, accuracy: 0.5)
+        XCTAssertEqual(window.frame.minY, screen.minY, accuracy: 0.5)
+        XCTAssertTrue(screen.contains(window.frame))
+        PaddrFamilyWindowChrome.fitConfigurationWindow(window, preferredHeight: 500, visibleFrame: screen)
+        XCTAssertEqual(window.contentLayoutRect.height, 500, accuracy: 0.5)
+        XCTAssertEqual(window.frame.maxY, screen.maxY, accuracy: 0.5)
+    }
+
     func testFreshDefaultFitsActualScreenAndRetainsUsableMinimum() {
         let window = makeWindow(hasToolbar: false, usesFullSizeContent: true)
         PaddrFamilyWindowChrome.installConfigurationTitle("Paddr", in: window)
@@ -376,13 +421,14 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertLessThanOrEqual(window.frame.maxY, screen.maxY + 0.5)
     }
 
-    func testDefaultScreenFitMeasuresInstalledTitleChrome() {
+    func testScreenFitMeasuresInstalledTitleChromeForOversizedDefault() {
         let window = makeWindow(hasToolbar: false, usesFullSizeContent: true)
         PaddrFamilyWindowChrome.installConfigurationTitle("Paddr", in: window)
-        PaddrFamilyWindowChrome.setUsableLayoutSize(PaddrStyle.Metrics.defaultWindowSize, for: window)
+        let requestedSize = NSSize(width: 1400, height: 1100)
+        PaddrFamilyWindowChrome.setUsableLayoutSize(requestedSize, for: window)
         let screen = NSRect(x: -1200, y: 40, width: 1200, height: 900)
         let size = PaddrFamilyWindowChrome.fittedDefaultUsableSize(
-            PaddrStyle.Metrics.defaultWindowSize,
+            requestedSize,
             minimumSize: PaddrStyle.Metrics.minimumWindowSize,
             visibleFrame: screen, for: window
         )
@@ -471,7 +517,7 @@ final class MenuViewPresentationTests: XCTestCase {
         }
     }
 
-    func testFamilyConsoleLeavesWindowHeightUnderUserAndAutosaveControl() async {
+    func testFixedSizeFixtureDoesNotAutomaticallyResizeItsWindow() async {
         let store = BlockingProfileStore()
         let model = PaddrMenuModel(dependencies: dependencies(store: store))
         defer { store.releaseSave() }
@@ -479,9 +525,9 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertTrue(didInitialize)
 
         let window = makeWindow(hasToolbar: false, usesFullSizeContent: true)
-        window.contentViewController = NSHostingController(
-            rootView: ConfigurationView(model: model)
-        )
+        let controller = NSHostingController(rootView: ConfigurationView(model: model))
+        controller.sizingOptions = []
+        window.contentViewController = controller
         PaddrFamilyWindowChrome.apply(to: window)
         PaddrFamilyWindowChrome.setUsableLayoutSize(
             PaddrStyle.Metrics.defaultWindowSize,
@@ -536,7 +582,8 @@ final class MenuViewPresentationTests: XCTestCase {
                     let hostingView = NSHostingView(
                         rootView: PadConfigurationView(
                             side: .left,
-                            configuration: .constant(configuration)
+                            configuration: .constant(configuration),
+                            initialTuningExpanded: true
                         )
                         .frame(width: width)
                     )
@@ -593,7 +640,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertEqual(frame.midY, hostingView.bounds.midY, accuracy: 0.5)
     }
 
-    func testFlexibleSettingsRowAlignsItsSwitchWithThePickerControlEdge() throws {
+    func testCompactSettingsAlignControlsToTheirLeadingEdge() throws {
         let rows = VStack(spacing: PaddrStyle.Spacing.s3) {
             PaddrSettingsRow(
                 title: "Track pointer inside tap radius",
@@ -609,6 +656,7 @@ final class MenuViewPresentationTests: XCTestCase {
                     .frame(width: PaddrStyle.Width.control)
             }
         }
+        .environment(\.paddrStacksSettingLabels, true)
         .frame(width: PaddrStyle.minimumPadSectionWidth)
         let hostingView = NSHostingView(rootView: rows)
         hostingView.frame = NSRect(
@@ -627,8 +675,8 @@ final class MenuViewPresentationTests: XCTestCase {
             }
         )
         XCTAssertEqual(
-            toggle.convert(toggle.bounds, to: hostingView).maxX,
-            pickerEdge.convert(pickerEdge.bounds, to: hostingView).maxX,
+            toggle.convert(toggle.bounds, to: hostingView).minX,
+            pickerEdge.convert(pickerEdge.bounds, to: hostingView).minX,
             accuracy: 1
         )
     }
@@ -653,7 +701,7 @@ final class MenuViewPresentationTests: XCTestCase {
         )
     }
 
-    func testCardsAndInsetSectionsOwnTheSharedSurfaceMargin() throws {
+    func testWorkspaceOwnsSurfaceMarginWithoutNestedSectionInsets() throws {
         let width: CGFloat = 300
         let contentHeight: CGFloat = 44
 
@@ -706,23 +754,9 @@ final class MenuViewPresentationTests: XCTestCase {
         )
         let sectionFrame = sectionContent.convert(sectionContent.bounds, to: sectionHost)
         XCTAssertEqual(sectionHost.bounds.width, width, accuracy: 0.5)
-        XCTAssertEqual(
-            sectionHost.bounds.height,
-            contentHeight + (2 * PaddrStyle.Inset.section),
-            accuracy: 0.5
-        )
-        XCTAssertEqual(sectionFrame.minX, PaddrStyle.Inset.section, accuracy: 0.5)
-        XCTAssertEqual(
-            sectionHost.bounds.maxX - sectionFrame.maxX,
-            PaddrStyle.Inset.section,
-            accuracy: 0.5
-        )
-        XCTAssertEqual(sectionFrame.minY, PaddrStyle.Inset.section, accuracy: 0.5)
-        XCTAssertEqual(
-            sectionHost.bounds.maxY - sectionFrame.maxY,
-            PaddrStyle.Inset.section,
-            accuracy: 0.5
-        )
+        XCTAssertEqual(sectionHost.bounds.height, contentHeight, accuracy: 0.5)
+        XCTAssertEqual(sectionFrame, sectionHost.bounds,
+            "An inner functional group must not add another enclosing surface or margin")
     }
 
     func testSectionHeadingKeepsNaturalHeightOutsideTheControlRowFamily() {
@@ -733,97 +767,34 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertLessThan(hostingView.fittingSize.height, PaddrStyle.Metrics.row)
     }
 
-    /// The inset section inside one dual-pad column is the binding constraint on the width
-    /// scale. A starved label can wrap mid-word and a slider can push every peer row beyond
-    /// the section border, so the complete row budgets are asserted directly.
-    func testPickerRowFitsItsInlineBranchInsideTheInspectorColumn() {
-        XCTAssertLessThanOrEqual(
-            PaddrStyle.Width.labelColumn + PaddrStyle.Spacing.s3 + PaddrStyle.Width.control,
-            PaddrStyle.minimumPadSectionWidth,
-            "A picker row's inline branch must fit the inspector column"
-        )
-        let modeRow = PaddrSettingsRow(title: "Mode", systemImage: "square.grid.2x2") {
-            Picker("Area layout", selection: .constant(PadZoneLayout.fourCorners)) {
-                Text("Four corners").tag(PadZoneLayout.fourCorners)
+    func testCompactPickerRowsFitTheirInspectorColumn() {
+        let rows = VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
+            PaddrSettingsRow(title: "Layout", systemImage: "square.grid.2x2") {
+                Picker("Area layout", selection: .constant(PadZoneLayout.fourCorners)) {
+                    Text("Four corners").tag(PadZoneLayout.fourCorners)
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: PaddrStyle.Width.controlMedium, alignment: .leading)
             }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .frame(width: PaddrStyle.Width.controlMedium)
+            PaddrSettingsRow(title: "Action", systemImage: "keyboard") {
+                OutputBindingPicker(selection: .constant("Up arrow"))
+            }
         }
+        .environment(\.paddrStacksSettingLabels, true)
         .frame(width: PaddrStyle.minimumPadSectionWidth)
-        let modeHostingView = NSHostingView(rootView: modeRow)
-        modeHostingView.layoutSubtreeIfNeeded()
-        XCTAssertLessThanOrEqual(
-            PaddrStyle.Width.labelColumn
-                + PaddrStyle.Spacing.s3
-                + PaddrStyle.Width.controlMedium,
-            PaddrStyle.minimumPadSectionWidth,
-            "The icon-bearing area-layout row must fit the inspector column"
-        )
-        XCTAssertEqual(modeHostingView.fittingSize.height, PaddrStyle.Metrics.row, accuracy: 0.5)
-
-        let row = PaddrSettingsRow(title: "Action", systemImage: "keyboard") {
-            OutputBindingPicker(
-                selection: .constant("Up arrow"),
-                width: PaddrStyle.Width.control
-            )
+        let host = NSHostingView(rootView: rows)
+        host.frame = NSRect(x: 0, y: 0, width: PaddrStyle.minimumPadSectionWidth,
+            height: host.fittingSize.height)
+        host.layoutSubtreeIfNeeded()
+        XCTAssertLessThanOrEqual(host.fittingSize.width, PaddrStyle.minimumPadSectionWidth + 0.5)
+        XCTAssertGreaterThan(host.fittingSize.height, 2 * PaddrStyle.Metrics.row,
+            "Compact labels must sit above controls instead of competing for the same row")
+        for control in descendants(of: NSControl.self, in: host) {
+            let rect = control.convert(control.bounds, to: host)
+            XCTAssertGreaterThanOrEqual(rect.minX, -0.5)
+            XCTAssertLessThanOrEqual(rect.maxX, host.bounds.maxX + 0.5)
         }
-        .frame(width: PaddrStyle.minimumPadSectionWidth)
-        let hostingView = NSHostingView(rootView: row)
-        hostingView.layoutSubtreeIfNeeded()
-
-        XCTAssertEqual(
-            hostingView.fittingSize.height,
-            PaddrStyle.Metrics.row,
-            accuracy: 0.5,
-            "The inline row no longer fits the inspector column"
-        )
-    }
-
-    func testSliderRowFitsInsideTheInsetPadSection() {
-        let sliderRowWidth = PaddrStyle.Width.labelColumnWide
-            + PaddrStyle.Spacing.s3
-            + PaddrStyle.sliderMinimumWidth
-            + PaddrStyle.Spacing.s2
-            + PaddrStyle.Width.readout
-
-        XCTAssertGreaterThanOrEqual(
-            PaddrStyle.sliderMinimumWidth,
-            120,
-            "The compact breakpoint must preserve a usable native slider"
-        )
-        let longestLabel = NSHostingView(
-            rootView: Label(
-                LocalizedStringResource("Pointer acceleration"),
-                systemImage: "arrow.up.right.and.arrow.down.left"
-            )
-            .paddrTypography(.rowLabel)
-        )
-        longestLabel.layoutSubtreeIfNeeded()
-        XCTAssertLessThanOrEqual(
-            longestLabel.fittingSize.width,
-            PaddrStyle.Width.labelColumnWide,
-            "The compact slider label column must not truncate its longest label"
-        )
-        XCTAssertLessThanOrEqual(
-            sliderRowWidth,
-            PaddrStyle.minimumPadSectionWidth,
-            "A slider row must not push itself or neighboring rows beyond the inset section"
-        )
-        XCTAssertEqual(
-            PaddrStyle.minimumPadSectionWidth,
-            PaddrStyle.minimumPadColumnWidth
-                - (2 * PaddrStyle.Inset.card)
-                - (2 * PaddrStyle.Inset.section),
-            "The width budget must include both card and section horizontal padding"
-        )
-        XCTAssertEqual(
-            PaddrStyle.previewInspectorColumnsBreakpoint,
-            PaddrStyle.Metrics.zoneMapWidth
-                + PaddrStyle.minimumPadSectionWidth
-                + PaddrStyle.previewInspectorSpacing,
-            "The nested split must derive its breakpoint from the complete rendered row"
-        )
     }
 
     /// The public `colorSchemeContrast`, `accessibilityReduceTransparency`, and
@@ -1074,7 +1045,8 @@ final class MenuViewPresentationTests: XCTestCase {
     func testPointerTrackingToggleReflectsDefaultsAndLegacyBindingAtRadiusZero() async throws {
         let defaultView = PadConfigurationView(
             side: .right,
-            configuration: .constant(PadConfiguration(mode: .mouse))
+            configuration: .constant(PadConfiguration(mode: .mouse)),
+            initialTuningExpanded: true
         )
         .frame(width: PaddrStyle.Metrics.minimumWindowSize.width - (2 * PaddrStyle.Spacing.s4))
         let defaultHostingView = NSHostingView(rootView: defaultView)
@@ -1088,7 +1060,7 @@ final class MenuViewPresentationTests: XCTestCase {
         await settle(defaultHostingView)
 
         let defaultSwitches = descendants(of: NSSwitch.self, in: defaultHostingView)
-        XCTAssertEqual(defaultSwitches.count, 3)
+        XCTAssertEqual(defaultSwitches.count, 4)
         let defaultToggle = try XCTUnwrap(defaultSwitches.last)
         XCTAssertEqual(defaultToggle.state, .on)
         XCTAssertEqual(defaultToggle.accessibilityRoleDescription(), "switch")
@@ -1110,7 +1082,8 @@ final class MenuViewPresentationTests: XCTestCase {
         )
         let legacyView = PadConfigurationView(
             side: .right,
-            configuration: legacyBinding
+            configuration: legacyBinding,
+            initialTuningExpanded: true
         )
         .frame(width: PaddrStyle.padColumnWidth)
         let legacyHostingView = NSHostingView(rootView: legacyView)
@@ -1124,7 +1097,7 @@ final class MenuViewPresentationTests: XCTestCase {
         await settle(legacyHostingView)
 
         let legacySwitches = descendants(of: NSSwitch.self, in: legacyHostingView)
-        XCTAssertEqual(legacySwitches.count, 3)
+        XCTAssertEqual(legacySwitches.count, 4)
         let legacyToggle = try XCTUnwrap(legacySwitches.last)
         XCTAssertEqual(legacy.centerTapTrackingMode, .coupled)
         XCTAssertEqual(legacyToggle.state, .off)
@@ -1139,6 +1112,30 @@ final class MenuViewPresentationTests: XCTestCase {
         assertControlFits(legacyToggle, in: legacyHostingView)
     }
 
+    func testAccelerationSwitchRetainsStrengthAndKeepsPadsIndependent() async throws {
+        var configuration = PaddrConfiguration.default
+        configuration.left = PadConfiguration(mode: .mouse, mouseAcceleration: 0.65)
+        configuration.right = PadConfiguration(mode: .mouse, mouseAcceleration: 0.2)
+        let originalRight = configuration.right
+        let host = NSHostingView(rootView: PadConfigurationView(side: .left,
+            configuration: Binding(get: { configuration.left }, set: { configuration.left = $0 }),
+            initialTuningExpanded: true))
+        host.frame = NSRect(x: 0, y: 0, width: 500, height: 800)
+        await settle(host)
+        let toggle = try XCTUnwrap(descendants(of: NSSwitch.self, in: host).first)
+        XCTAssertEqual(toggle.state, .on)
+        toggle.performClick(nil)
+        await settle(host)
+        XCTAssertFalse(configuration.left.mouseAccelerationEnabled)
+        XCTAssertEqual(configuration.left.mouseAcceleration, 0.65)
+        XCTAssertFalse(PointerTuningPresentation.summary(configuration: configuration.left).contains("Acceleration"))
+        toggle.performClick(nil)
+        await settle(host)
+        XCTAssertTrue(configuration.left.mouseAccelerationEnabled)
+        XCTAssertEqual(configuration.left.mouseAcceleration, 0.65)
+        XCTAssertEqual(configuration.right, originalRight)
+    }
+
     func testPointerStabilityControlsExposePerPadDefaultsAndBindings() async throws {
         var configuration = PadConfiguration(mode: .mouse)
         let view = PadConfigurationView(
@@ -1146,7 +1143,8 @@ final class MenuViewPresentationTests: XCTestCase {
             configuration: Binding(
                 get: { configuration },
                 set: { configuration = $0 }
-            )
+            ),
+            initialTuningExpanded: true
         )
         .frame(width: PaddrStyle.padColumnWidth)
         let hostingView = NSHostingView(rootView: view)
@@ -1160,9 +1158,9 @@ final class MenuViewPresentationTests: XCTestCase {
         await settle(hostingView)
 
         let switches = descendants(of: NSSwitch.self, in: hostingView)
-        XCTAssertEqual(switches.count, 3)
-        let smoothing = try XCTUnwrap(switches.first)
-        let stabilization = try XCTUnwrap(switches.dropFirst().first)
+        XCTAssertEqual(switches.count, 4)
+        let smoothing = try XCTUnwrap(switches.dropFirst().first)
+        let stabilization = try XCTUnwrap(switches.dropFirst(2).first)
 
         XCTAssertEqual(smoothing.state, .off)
         XCTAssertEqual(stabilization.state, .on)
@@ -1173,6 +1171,59 @@ final class MenuViewPresentationTests: XCTestCase {
 
         XCTAssertTrue(configuration.pointerSmoothingEnabled)
         XCTAssertFalse(configuration.tapStabilizationEnabled)
+    }
+
+    func testPointerTuningStartsCollapsedAndRemainsInspectableInReadOnlyProfiles() async throws {
+        var configuration = PadConfiguration(mode: .mouse)
+        let binding = Binding(get: { configuration }, set: { configuration = $0 })
+        let collapsed = NSHostingView(rootView: PadConfigurationView(
+            side: .right, configuration: binding, isEditable: false
+        ))
+        collapsed.frame = NSRect(x: 0, y: 0, width: 640, height: 1000)
+        await settle(collapsed)
+        XCTAssertTrue(descendants(of: NSSwitch.self, in: collapsed).isEmpty,
+            "Advanced switches should not compete with sensitivity and touch tap in the initial view")
+
+        let expanded = NSHostingView(rootView: PadConfigurationView(
+            side: .right, configuration: binding, isEditable: false, initialTuningExpanded: true
+        ))
+        expanded.frame = NSRect(x: 0, y: 0, width: 640, height: 1000)
+        await settle(expanded)
+        let switches = descendants(of: NSSwitch.self, in: expanded)
+        XCTAssertEqual(switches.count, 4, "Read-only tuning must remain available for inspection")
+        XCTAssertTrue(switches.allSatisfy { !$0.isEnabled })
+        XCTAssertEqual(configuration, PadConfiguration(mode: .mouse))
+        XCTAssertGreaterThan(expanded.fittingSize.height, collapsed.fittingSize.height)
+    }
+
+    func testPointerTuningSummaryIncludesOnlyEnabledEffectiveSettings() {
+        var configuration = PadConfiguration(mode: .mouse)
+        configuration.mouseAcceleration = 0
+        configuration.pointerSmoothingEnabled = false
+        configuration.tapStabilizationEnabled = false
+        configuration.mouseDeadzone = 0
+        configuration.centerTapTrackingMode = .coupled
+        let locale = Locale(identifier: "en")
+        XCTAssertEqual(PointerTuningPresentation.summary(configuration: configuration, locale: locale),
+            "No additional tuning enabled")
+
+        configuration.pointerSmoothingEnabled = true
+        configuration.pointerSmoothingStrength = 0.35
+        configuration.tapStabilizationEnabled = true
+        configuration.tapStabilizationThresholdPoints = 6
+        configuration.mouseDeadzone = 0.2
+        let summary = PointerTuningPresentation.summary(configuration: configuration, locale: locale)
+        XCTAssertTrue(summary.contains("Smoothing 35%"))
+        XCTAssertTrue(summary.contains("Tap stabilization 6 pt"))
+        XCTAssertTrue(summary.contains("Tap radius 20%"))
+        XCTAssertTrue(summary.contains("Pointer dead zone"))
+        XCTAssertFalse(summary.contains("Acceleration"))
+
+        configuration.pointerSmoothingEnabled = false
+        configuration.centerTapTrackingMode = .decoupled
+        let updated = PointerTuningPresentation.summary(configuration: configuration, locale: locale)
+        XCTAssertFalse(updated.contains("Smoothing"), "A stored strength must not imply disabled smoothing is active")
+        XCTAssertFalse(updated.contains("Pointer dead zone"), "Decoupled tracking must not be described as a dead zone")
     }
 
     func testTapStabilizationUsesCompleteLocalizedToleranceForSliderAccessibilityValue() {
@@ -1267,7 +1318,7 @@ final class MenuViewPresentationTests: XCTestCase {
         )
     }
 
-    func testFiveStatusPillsFitMinimumWindowWidthWithUnavailableBattery() async throws {
+    func testOutputSummaryFitsMinimumWindowWidthWithUnavailableBattery() async throws {
         let store = BlockingProfileStore()
         let model = PaddrMenuModel(dependencies: dependencies(store: store))
         defer { store.releaseSave() }
@@ -1280,7 +1331,7 @@ final class MenuViewPresentationTests: XCTestCase {
         assertApplyBarFitsMinimumWindow(model: model)
     }
 
-    func testFiveStatusPillsFitMinimumWindowWidthWithLongestBatteryValue() async throws {
+    func testOutputSummaryFitsMinimumWindowWidthWithLongestBatteryValue() async throws {
         let store = BlockingProfileStore()
         let session = PresentationSession()
         let model = PaddrMenuModel(
@@ -1321,6 +1372,8 @@ final class MenuViewPresentationTests: XCTestCase {
             )
         )
         await settle(hostingView)
+        hostingView.frame.size.height = hostingView.fittingSize.height
+        await settle(hostingView)
 
         let switches = descendants(of: NSSwitch.self, in: hostingView)
         let outputToggle = try XCTUnwrap(switches.first)
@@ -1331,19 +1384,19 @@ final class MenuViewPresentationTests: XCTestCase {
         )
         XCTAssertEqual(
             String(localized: applyBar.outputToggleAccessibilityLabel),
-            "Mapped output"
+            "Enable output"
         )
         XCTAssertEqual(String(localized: applyBar.outputToggleAccessibilityValue), "Off")
         XCTAssertEqual(
             String(localized: applyBar.outputToggleHelp),
-            "Enable or disable mapped output"
+            "Enable or disable output"
         )
         XCTAssertEqual(outputToggle.accessibilityRoleDescription(), "switch")
         XCTAssertEqual(accessibilityIntegerValue(of: outputToggle), 0)
         XCTAssertEqual(outputToggle.isEnabled, model.canToggleOutput)
         XCTAssertEqual(
             outputToggle.convert(outputToggle.bounds, to: hostingView).maxX,
-            hostingView.bounds.maxX - PaddrStyle.Metrics.outerSpacing,
+            hostingView.bounds.maxX - PaddrStyle.Inset.chrome,
             accuracy: 1
         )
 
@@ -1356,7 +1409,7 @@ final class MenuViewPresentationTests: XCTestCase {
             String(localized: ApplyBarView(model: model).outputToggleAccessibilityValue),
             "On"
         )
-        XCTAssertEqual(hostingView.fittingSize.height, PaddrStyle.Metrics.commandBar, accuracy: 0.5)
+        XCTAssertGreaterThanOrEqual(hostingView.fittingSize.height, PaddrStyle.Metrics.row)
     }
 
     func testResolvedStatusCompactsButRetainsAccessibleIdentityAndValue() {

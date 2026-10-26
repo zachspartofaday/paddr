@@ -18,33 +18,14 @@ struct ZonePadMap: View {
                         roundedRect: bounds,
                         cornerRadius: PaddrStyle.Radius.pad
                     )
-                    context.fill(
-                        padShape,
-                        with: .linearGradient(
-                            Gradient(colors: [
-                                appearance.surface(elevated: true),
-                                appearance.surface(elevated: false)
-                            ]),
-                            startPoint: CGPoint(x: bounds.midX, y: bounds.minY),
-                            endPoint: CGPoint(x: bounds.midX, y: bounds.maxY)
-                        )
-                    )
+                    context.fill(padShape, with: .color(appearance.surface(elevated: false)))
 
                     for zone in layout.zones {
                         let path = path(for: zone, in: bounds)
                         let isSelected = zone == selection
                         context.fill(
                             path,
-                            with: isSelected
-                                ? .linearGradient(
-                                    Gradient(colors: [
-                                        PaddrStyle.selectedZoneFillTop,
-                                        PaddrStyle.selectedZoneFillBottom
-                                    ]),
-                                    startPoint: CGPoint(x: bounds.midX, y: bounds.minY),
-                                    endPoint: CGPoint(x: bounds.midX, y: bounds.maxY)
-                                )
-                                : .color(appearance.surface(elevated: false))
+                            with: .color(isSelected ? PaddrStyle.selectedZoneFillTop : appearance.surface(elevated: false))
                         )
                         context.stroke(
                             path,
@@ -94,7 +75,7 @@ struct ZonePadMap: View {
                                 )
                             }
                             if let neutral = neutralPath(in: bounds) {
-                                context.fill(neutral, with: .color(.black.opacity(0.16)))
+                                context.fill(neutral, with: .color(PaddrStyle.textPrimary.opacity(0.10)))
                                 context.stroke(
                                     neutral,
                                     with: .color(.secondary.opacity(0.62)),
@@ -103,7 +84,7 @@ struct ZonePadMap: View {
                                 context.draw(
                                     Text(verbatim: "○")
                                         .font(.caption.bold())
-                                        .foregroundStyle(.secondary),
+                                        .foregroundStyle(PaddrStyle.textSecondary),
                                     at: center(in: bounds)
                                 )
                             }
@@ -260,7 +241,7 @@ struct ZonePadMap: View {
         let plate = Path(roundedRect: plateRect, cornerRadius: plateSize.height / 2)
         if selected {
             context.fill(plate, with: .color(PaddrStyle.selectedZoneCaptionFill))
-            context.stroke(plate, with: .color(.white.opacity(0.42)), lineWidth: 0.75)
+            context.stroke(plate, with: .color(PaddrStyle.selectedZoneCaptionForeground.opacity(0.42)), lineWidth: 0.75)
         } else {
             context.fill(plate, with: .color(appearance.surface(elevated: true)))
             context.stroke(
