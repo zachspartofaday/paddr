@@ -9,7 +9,7 @@ import PaddrCore
 @MainActor
 final class FamilyConsolePresentationTests: XCTestCase {
     func testNativeWorkspaceGeometryMatchesApprovedContract() {
-        XCTAssertEqual(PaddrStyle.Metrics.defaultWindowSize, NSSize(width: 1_080, height: 640))
+        XCTAssertEqual(PaddrStyle.Metrics.defaultWindowSize, NSSize(width: 996, height: 640))
         XCTAssertEqual(PaddrStyle.Metrics.minimumWindowSize, NSSize(width: 680, height: 600))
         XCTAssertEqual(PaddrStyle.Metrics.outerSpacing, 24)
         XCTAssertEqual(PaddrStyle.Inset.window, 24)
@@ -28,6 +28,23 @@ final class FamilyConsolePresentationTests: XCTestCase {
         XCTAssertLessThanOrEqual(PaddrStyle.Metrics.controlHeight, 38)
     }
 
+    func testPadColumnsKeepTightGutterAndLeaveSurplusAfterInspector() {
+        // Explicit values pin the user's compact opening budget, independently
+        // of the production helper's arithmetic.
+        for width in [CGFloat(446), 488, 680, 900] {
+            XCTAssertEqual(PaddrPadColumns.previewWidth(in: width), 190)
+            XCTAssertEqual(PaddrPadColumns.inspectorLeading(in: width), 206)
+            XCTAssertEqual(PaddrPadColumns.spacing(in: width), 16)
+            XCTAssertLessThanOrEqual(PaddrPadColumns.inspectorLeading(in: width) + 240, width)
+        }
+        for width in [CGFloat(438), 442] {
+            XCTAssertEqual(PaddrPadColumns.previewWidth(in: width), 190)
+            XCTAssertEqual(PaddrPadColumns.inspectorLeading(in: width) + 240, width)
+        }
+        XCTAssertEqual(PaddrStyle.Metrics.defaultWindowSize.width - 2 * PaddrStyle.Inset.chrome,
+            2 * (190 + 16 + 240) + 24)
+    }
+
     func testBespokeControlFamilyUsesApprovedBaseDimensions() {
         XCTAssertEqual(PaddrStyle.Control.height, 32)
         XCTAssertEqual(PaddrStyle.Control.radius, 7)
@@ -35,6 +52,7 @@ final class FamilyConsolePresentationTests: XCTestCase {
         XCTAssertEqual(PaddrStyle.Control.focusWidth, 2)
         XCTAssertEqual(PaddrStyle.behaviorPickerWidth, 240)
         XCTAssertEqual(PaddrStyle.Width.control, 240)
+        XCTAssertEqual(PaddrStyle.Width.rearControl, 180)
         XCTAssertEqual(PaddrStyle.Control.segmentInset, 4)
         XCTAssertEqual(PaddrStyle.Control.segmentRadius, 3)
         XCTAssertEqual(PaddrStyle.Control.bindingPlateHeight, 24)

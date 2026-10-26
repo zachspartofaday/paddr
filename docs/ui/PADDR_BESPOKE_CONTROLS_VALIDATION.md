@@ -1,6 +1,6 @@
 # Bespoke controls verification
 
-Historical initial implementation record, 2026-10-26. The current alignment/rim/depth
+Historical initial implementation record, 2026-10-26. The current flat-accent/compact-gutter/single-rear-row
 refinement and its verification are recorded at the end of this document.
 Initial baseline: merged PR #95,
 `d0c99d8d079e24c6ecf727b9a8d4247921ba0b06`. Isolated branch: `t3/99b216c7`.
@@ -687,3 +687,154 @@ map-focus skip**, both exporters enabled. Command:
 Receipt: `/tmp/paddr-mode-drag-full.log`. Canonical localization, warnings-as-errors
 arm64 release app/CLI builds, CLI checks, and release identity/production fixtures
 also pass; logs are `/tmp/paddr-mode-drag-{localization,build,cli-build,cli,identity,production}.log`.
+
+
+## Current refinement: flat accents, compact opening width and one rear row
+
+Implemented from exact `c3ec20aa977547a6b8d4b16f91ca0ca3de25ff8a` in the
+host-created `t3/535f91b9` worktree. Initial `git status` was clean and `git worktree
+list --porcelain` confirmed the assigned branch and parent `ui/bespoke-controls`
+checkout at that source. Remote PR #96 still resolves to `c3ec20a`; no push, PR
+mutation, merge, release, installation or parent checkout edit was performed.
+Published 1.1.0 at `d0c99d8` remains separate and immutable. New review is pending.
+
+The newest operator request supersedes the initial two-row rear-alignment proposal:
+**one default row, L4 / L5 / R4 / R5**, with narrower equal selectors. It does not
+supersede the flat accents, compact window or tight pad/options gutter.
+
+### Implemented contract
+
+- Selected modes and primary Save & Apply are flat opaque blue/Compass teal, with
+  fine white/pale strokes. `PaddrAppearance` centralizes accent fill, stroke and
+  foreground. Disabled primary role stays primary and flat, with a subdued opaque
+  fill; it cannot fall through to secondary glass. The selected-glass background,
+  its GeometryReader and configurable material inset/radius are removed. Native
+  track/menu/secondary glass and all opaque accessibility fallbacks remain.
+- Mode segments retain 4-point inset, 2-point gaps, 3-point corners, local hover/
+  press and separate focus. No tracking logic changed; the `c3ec20a` actual-drag,
+  hover, release/commit/cancel and exactly-once regressions remain intact.
+- Preview columns stay 190 points; gutters stay 16, yielding to 8–16 only at the
+  existing 438–446-point inline threshold. Surplus stays beyond the inspector.
+  The preferred usable width derives as **996 = 2 × (190 + 16 + 240) + 24 + 80**.
+  Main mode/menu/readout edges remain aligned and maps stay 190 × 182. Existing
+  content-driven height, screen cap/scroll, disabled manual resize and sizing
+  helpers remain. No arbitrary window-width override was added.
+- Rear menus share **180 points**. Four measured code/menu pairs and 16-point
+  gaps fit the 916-point workspace with breathing room; 192 would leave almost
+  none. Existing `PaddrWrappingHStack` wraps whole pairs, preserves logical RTL
+  order and mounted controls, and keeps the heading directly above the row.
+  `OptionalOutputBindingPicker` accepts a width defaulting to 240; only rear menus
+  opt into 180. Values, native menus, AX names, bindings and focus remain distinct.
+
+### Host and guidance receipts
+
+Actual host: arm64 macOS **27.2 / 26B118**, Xcode developer directory
+`/Applications/Xcode.app/Contents/Developer`, Swift **6.4**, SDK **27.0**. Package
+tools remain 6.3, language mode 6 and deployment 26.0. No language, isolation or
+upcoming-feature setting changed. Host thread configuration reports `codex_cpa`,
+`gpt-6.1-sol`, reasoning `high`, default service tier, full-access runtime and
+Default interaction mode. No Plan-mode run was used or claimed. Coordinate is
+inactive; this implementer remained a sole leaf.
+
+All five requested installed skill files were read and their SHA-256 values
+matched exactly: frontend-design `d9197063…10c1d3`; swiftui-pro `33c37f82…6201`;
+apple-interface-pro `dda24f5e…37be`; apple-accessibility-pro `dff21f4a…3d5d`;
+swift-focusengine-pro `55df2dcf…8e97`. Relevant SwiftUI layout/localization,
+AppKit/SwiftUI accessibility, macOS focus and interface layout/color/polish guidance
+was applied. Accepted personal integration was read through `git show` in
+`/Users/zachskjaveland/Coding/LimitlessPlatform` at exact
+`e306df32db241cc9b755702255d5bf3e6f056f03`; no live process replacement was adopted.
+
+### Final validation
+
+All receipts below are under **`/tmp/paddr-flat-535f91b9/`**. Swift commands use
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
+
+| Check | Result | Receipt |
+| --- | --- | --- |
+| `PADDR_UI_EVIDENCE_DIR=.../final swift test -Xswiftc -warnings-as-errors` | **536 tests: 535 passed, 1 existing map-focus skip, zero failures**, both exporters enabled | `tests.log` |
+| `scripts/check-localization.sh` | Pass | `localization.log` |
+| `swift build -c release -Xswiftc -warnings-as-errors --arch arm64` | Pass | `build.log` |
+| Same explicit release build with `--product PaddrCLI` | Pass | `cli-build.log` |
+| `scripts/test-cli.sh` using `swift build -c release --arch arm64 --show-bin-path` | Pass | `cli.log` |
+| `scripts/test-release-identity.sh` / `scripts/test-release-production.sh` | Pass / Pass | `identity.log`, `production.log` |
+| Clean exact-commit ad-hoc package, strict signature, revision/dirty identity, inert artifact smoke | Recorded after commit in local handoff | `package.log`, `package-verification.log`, `HANDOFF.md` |
+
+New regressions pin the explicit 996-point opening width and 190/16/240 geometry,
+not merely the production helper's own arithmetic. The mounted inspector matrix
+uses independent expected leading edges and retains both-edge/menu/readout,
+identity, RTL, constrained and accessibility-size assertions. The rear regression
+checks one default row, four equal widths, logical physical order/gaps, containment
+and wrapping at 916/900/899/600/358/260/1200 workspace widths, LTR/RTL and large/
+accessibility1/accessibility5. It retains native focus/identity and selects F1–F4
+through real menu actions while checking each independent binding after every action.
+
+The primary pixel test exercises enabled/disabled states in both appearances under
+normal, Reduce Transparency and Increased Contrast: every sampled clear interior
+must match its expected flat semantic fill. Cached mode tests now also cover normal
+appearance in addition to opaque/contrast fallbacks. Native composited mode captures
+verify uniformly flat top/bottom interiors, distinguish filled selection from idle,
+retain local hover and disabled feedback and sample selected-text contrast. Enabled
+native samples range **4.65–5.02:1 light** and **8.76–9.18:1 dark**, exceeding 4.5:1;
+semantic palette/hover/press contrast tests also pass. Native composition and cached
+pixels have distinct color pipelines; uniformity is compared within a native image,
+while exact semantic fill matching uses cached opaque pixels.
+
+Regression evidence is retained: `regressions-before.log` restores original
+`c3ec20a` presentation files temporarily in this assigned checkout and fails the
+new flat/gutter/window/rear assertions; sources were restored in a `finally` block.
+After the rear steering, `rear-row-before.log` restores only the original rear view
+and fails **200 assertions**; the new single-row regression passes in `tests.log`.
+Intermediate fixture failures (`/tmp/paddr-flat-regressions.log`) sampled outside an
+intrinsically sized button and resized a host without its window; corrected fixtures
+exercise the actual button/window geometry without weakening production behavior.
+`tests-compile-attempt.log` records a corrected helper-name typo. The superseded
+`tests-first-direction.log` records fixed-height overflow from the former two-row
+rear design and an invalid comparison between native and semantic color pipelines.
+The single-row design fits the original opening containment assertions unchanged;
+no runtime safety, focus, tracking or sizing assertions were weakened.
+
+The first full run of the latest row direction hit the previously observed unchanged
+`testProgressPressurePreservesReconnectedActiveStateAndLatestCounters` timeout
+(four assertions): `tests-reconnect-timeout.log`. Its unchanged targeted rerun passes
+in `reconnect-rerun.log`, followed by the passing full `tests.log`. **The cause remains
+unproven**; successful reruns do not erase or classify the failure.
+
+### Captures and implementer interface inspection
+
+Full cached/native evidence: `final/`. Contact sheet: `contact-sheet.png`, generated
+by the retained `contact-sheet.swift`. The comparison under `docs/ui/bespoke-preview/`
+has updated overview, both-Zones, RTL, flat selected/action, single rear row,
+inspector, pointer and focus captures. Live README screenshots and published-release
+before images are unchanged. Older secondary Open setup crops are explicitly labeled
+with their previous provenance because their implementation is unchanged.
+
+Inspected native fixtures include light/dark compact normal opening windows, both
+expanded tuning panels, both Zones, flat selection/Save & Apply, RTL, 680-point narrow
+top/lower views, accessibility5 top/lower scrolling views and opaque fallbacks.
+Ordinary fixtures have system access granted; missing access is limited to explicit
+permission fixtures. SCK captures only each inert fixture window using already-granted
+Screen Recording access, with no permission/global-setting change. Native output is
+reported 1x; separate cached 1x/2x geometry is not physical Retina proof. Narrow and
+accessibility screenshots intentionally scroll; normal native fixtures retain the
+full-document-fit assertion. The three supplied user images were inspected against
+these final captures; the rejected shine, oversized gutter and old rear arrangement
+are replaced according to the newest direction.
+
+| Domain | Owner | Inspected tiers and remaining gaps |
+| --- | --- | --- |
+| Accessibility | apple-accessibility-pro | Source, native AX/disabled tests, contrast and rendered reflow/fallbacks; manual assistive technology not verified |
+| Focus | swift-focusengine-pro | Native responder/menu/mode/switch identity and retained actual-drag tests; map key-window skip and full manual key loop remain |
+| Layout | apple-interface-pro | Both inspector edges, gutter/opening width, one rear row/wrapping, RTL, constrained/accessibility captures |
+| Writing/typography | apple-interface-pro, swiftui-pro | Existing system text/copy/catalog retained, native wrapping and independent control names checked |
+| Color/tokens | apple-interface-pro | Shared semantic flat accent rules, both appearances, enabled/disabled and contrast checks |
+| Polish/motion | apple-interface-pro | Flat accent/pale edges, retained inset/focus/pad recess, local feedback and opaque/static fallback captures |
+
+No actionable interface findings remain in these source/rendered states. This is
+implementer verification of the scoped change, not independent acceptance. Full
+manual keyboard, VoiceOver, Voice Control, Switch Control, physical hardware/output/
+disconnect, inactive pointer feel, physical Retina and macOS 26 runtime are **not
+verified**. Keep the existing six-step manual checklist above; additionally verify
+rear L4/L5/R4/R5 order, all four readable choices on one ordinary row, whole-pair
+wrapping with enlarged text, stable keyboard focus and one native menu selection
+changing only its named binding. Fresh independent review remains pending.

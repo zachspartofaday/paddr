@@ -501,6 +501,45 @@ final class BespokeControlInteractionTests: XCTestCase {
         try export(host, name: "focused-zone-map")
     }
 
+    func testPrimaryActionRemainsFlatAcrossEnabledAndAccessibilityStates() async throws {
+        for (theme, scheme) in [(NSAppearance.Name.aqua, ColorScheme.light), (.darkAqua, .dark)] {
+            for (fallback, contrast) in [(false, ColorSchemeContrast.standard), (true, .standard), (false, .increased)] {
+                for enabled in [true, false] {
+                    let host = NSHostingView(rootView:
+                        Button {} label: { Text("Save & Apply").frame(width: 156) }.paddrActionButton(.primary)
+                            .disabled(!enabled)
+                            .frame(width: 180, height: 32)
+                            .background(PaddrStyle.workspace)
+                            .environment(\.colorScheme, scheme)
+                            .environment(\._accessibilityReduceTransparency, fallback)
+                            .environment(\._colorSchemeContrast, contrast))
+                    let window = window(host, width: 180, height: 32)
+                    window.appearance = NSAppearance(named: theme)
+                    defer { window.close() }
+                    await settle(host)
+                    let bitmap = try raster(host)
+                    var expected: NSColor?
+                    window.effectiveAppearance.performAsCurrentDrawingAppearance {
+                        let fill = NSColor(enabled ? PaddrStyle.controlTint : PaddrStyle.boundary)
+                            .usingColorSpace(.sRGB)!
+                        let background = NSColor(PaddrStyle.workspace).usingColorSpace(.sRGB)!
+                        let alpha: CGFloat = enabled ? 1 : 0.55
+                        expected = NSColor(srgbRed: fill.redComponent * alpha + background.redComponent * (1 - alpha),
+                            green: fill.greenComponent * alpha + background.greenComponent * (1 - alpha),
+                            blue: fill.blueComponent * alpha + background.blueComponent * (1 - alpha), alpha: 1)
+                    }
+                    // Sample clear of text and edges: no material highlight or
+                    // missing-glass cached layer may replace the semantic flat fill.
+                    for point in [CGPoint(x: 30, y: 6), CGPoint(x: 30, y: 25), CGPoint(x: 150, y: 16)] {
+                        XCTAssertLessThan(distance(try sample(bitmap, point), try XCTUnwrap(expected)), 0.04,
+                            "Primary \(theme.rawValue)/enabled=\(enabled)/opaque=\(fallback)/\(contrast)")
+                    }
+                    try export(host, name: "flat-primary-\(theme.rawValue)-\(enabled)-\(fallback)-\(contrast)")
+                }
+            }
+        }
+    }
+
     func testOpaqueModeSelectionAndLocalHoverRetainFilledAndDisabledStates() async throws {
         let host = NSHostingView(rootView: PadModePicker(selection: .constant(.dpad),
             accessibilityIdentifier: "paddr.pad-mode.left")
@@ -513,7 +552,7 @@ final class BespokeControlInteractionTests: XCTestCase {
         let control = try XCTUnwrap(descendants(PaddrModeSegmentedControl.self, host).first)
         for theme in [NSAppearance.Name.aqua, .darkAqua] {
             host.appearance = NSAppearance(named: theme)
-            for (fallback, contrast) in [(true, ColorSchemeContrast.standard), (false, .increased)] {
+            for (fallback, contrast) in [(false, ColorSchemeContrast.standard), (true, .standard), (false, .increased)] {
                 host.rootView = PadModePicker(selection: .constant(.dpad), accessibilityIdentifier: "paddr.pad-mode.left")
                     .environment(\._accessibilityReduceTransparency, fallback)
                     .environment(\._colorSchemeContrast, contrast)
@@ -716,7 +755,7 @@ final class BespokeControlInteractionTests: XCTestCase {
             PadModePreview(mode: .scroll, deadzone: 0).frame(width: 190, height: 182)
                 .overlay { PaddrPadFocusRing() }
             HStack {
-                Button("Save & Apply") {}.paddrActionButton(.primary)
+                Button {} label: { Text("Save & Apply").frame(width: 156) }.paddrActionButton(.primary)
                 Button("Open setup…") {}.paddrActionButton(.secondary)
             }
         }

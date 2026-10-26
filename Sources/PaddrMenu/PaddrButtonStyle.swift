@@ -14,6 +14,8 @@ struct PaddrButtonStyle: ButtonStyle {
         let configuration: ButtonStyle.Configuration
         let role: PaddrButtonRole
 
+        private var appearance: PaddrAppearance { PaddrAppearance(environment: environment) }
+
         var body: some View {
             configuration.label
                 .paddrTypography(.rowLabel)
@@ -22,11 +24,10 @@ struct PaddrButtonStyle: ButtonStyle {
                 .padding(.vertical, 6)
                 .frame(minWidth: role == .icon ? PaddrStyle.Control.height : nil,
                        minHeight: PaddrStyle.Control.height)
-                .foregroundStyle(role == .primary && isEnabled
-                    ? PaddrStyle.controlForeground : PaddrStyle.textPrimary)
+                .foregroundStyle(role == .primary
+                    ? appearance.accentForeground(enabled: isEnabled) : PaddrStyle.textPrimary)
                 .background {
-                    PaddrButtonSurface(prominent: role == .primary && isEnabled, enabled: isEnabled,
-                        appearance: PaddrAppearance(environment: environment))
+                    PaddrButtonSurface(prominent: role == .primary, enabled: isEnabled, appearance: appearance)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
@@ -38,10 +39,10 @@ struct PaddrButtonStyle: ButtonStyle {
                 }
                 .overlay {
                     PaddrControlShape()
-                        .strokeBorder(isEnabled
-                            ? environment.colorSchemeContrast == .increased ? PaddrStyle.textPrimary : PaddrStyle.textSecondary
+                        .strokeBorder(role == .primary ? appearance.accentStroke(enabled: isEnabled)
+                            : isEnabled ? appearance.hasIncreasedContrast ? PaddrStyle.textPrimary : PaddrStyle.textSecondary
                             : PaddrStyle.boundary,
-                            lineWidth: PaddrStyle.Control.outlineWidth)
+                            lineWidth: role == .primary ? appearance.strokeWidth : PaddrStyle.Control.outlineWidth)
                         .allowsHitTesting(false)
                 }
                 .overlay {

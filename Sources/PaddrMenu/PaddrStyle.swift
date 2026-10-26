@@ -99,7 +99,9 @@ enum PaddrStyle {
         static let outerSpacing = Inset.window
         /// Preferred width and temporary opening height before content is measured.
         /// The configuration window then fits its measured content to the screen.
-        static let defaultWindowSize = NSSize(width: 1_080, height: 640)
+        static let defaultWindowSize = NSSize(
+            width: (2 * (zoneMapWidth + PaddrStyle.previewInspectorSpacing + Width.control))
+                + Spacing.s5 + (2 * Inset.chrome), height: 640)
         static let defaultContentWidth = defaultWindowSize.width - (2 * outerSpacing)
         /// Below this content width, two complete pad editors no longer have
         /// enough room for their native mode controls and stack vertically.
@@ -143,6 +145,9 @@ enum PaddrStyle {
         static let toggle: CGFloat = 52
         /// Modes, selectors and the complete slider/readout rows.
         static let control: CGFloat = 240
+        /// Four rear label/menu pairs fit the compact workspace without widening
+        /// its pad columns; longer values grow vertically and whole pairs wrap.
+        static let rearControl: CGFloat = 180
         /// The area-layout picker, whose longest value is "Four-way radial".
         static let controlMedium: CGFloat = control
         /// The profile picker, which sits in the full-width top band rather than a column.
@@ -198,6 +203,8 @@ enum PaddrStyle {
     // One accent for primary actions, selections, switches and native sliders.
     static let controlTint = action
     static let controlForeground = adaptiveColor(light: 0xFFFFFF, dark: 0x1C2630)
+    /// Fine pale edge for flat selected segments and primary actions.
+    static let accentStroke = adaptiveColor(light: 0xFFFFFF, dark: 0xF0F4F8)
     /// Local neutral feedback; never a competing selection color.
     static let controlHover = textPrimary.opacity(0.07)
     static let controlPressed = textPrimary.opacity(0.12)

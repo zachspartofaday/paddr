@@ -121,8 +121,8 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
 }
 
 /// Shared column geometry for the mode header and every preview/inspector pair.
-/// Surplus width belongs to the map column, leaving the trailing control column
-/// aligned to the shared fixed-width control family. The map itself stays 190 points.
+/// The map and gutter stay bounded; surplus belongs beyond the inspector, never
+/// between the sensor map and its controls. Headers share these edges.
 enum PaddrPadColumns {
     static let minimumInlineWidth = PaddrStyle.previewInspectorColumnsBreakpoint
 
@@ -132,8 +132,7 @@ enum PaddrPadColumns {
             availableWidth - PaddrStyle.Metrics.zoneMapWidth - PaddrStyle.behaviorPickerWidth)
     }
     static func previewWidth(in availableWidth: CGFloat) -> CGFloat {
-        max(PaddrStyle.Metrics.zoneMapWidth,
-            availableWidth - PaddrStyle.behaviorPickerWidth - spacing(in: availableWidth))
+        PaddrStyle.Metrics.zoneMapWidth
     }
     static func inspectorLeading(in availableWidth: CGFloat) -> CGFloat {
         previewWidth(in: availableWidth) + spacing(in: availableWidth)

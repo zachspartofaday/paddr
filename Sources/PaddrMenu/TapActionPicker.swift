@@ -16,6 +16,7 @@ struct TapActionPicker: View {
 struct OptionalOutputBindingPicker: View {
     @Binding var selection: String?
     let title: LocalizedStringResource
+    var width: CGFloat = PaddrStyle.Width.control
 
     var customSelection: String? {
         guard let selection,
@@ -41,6 +42,6 @@ struct OptionalOutputBindingPicker: View {
     }
 
     var body: some View {
-        PaddrMenuPicker(title: title, selection: $selection, options: options)
+        PaddrMenuPicker(title: title, selection: $selection, options: options, width: width)
     }
 }

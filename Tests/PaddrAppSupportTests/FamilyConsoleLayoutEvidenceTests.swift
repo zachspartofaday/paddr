@@ -237,6 +237,19 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                     .environment(\.layoutDirection, .rightToLeft),
                 scheme: scheme, appearance: appearance,
                 to: directory.appendingPathComponent("readme-both-zones-rtl-\(theme).png"))
+            for lower in [false, true] {
+                try await exportReadmeWindow(
+                    ConfigurationView(model: model), scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("readme-narrow-\(lower ? "lower" : "top")-\(theme).png"),
+                    expectsFullDocumentFit: false, evidenceSize: NSSize(width: 680, height: 760),
+                    prepare: { view in
+                        guard lower, let scroll = self.configurationScrollView(in: view),
+                              let document = scroll.documentView else { return }
+                        scroll.contentView.scroll(to: CGPoint(x: 0,
+                            y: max(0, document.bounds.height - scroll.contentSize.height)))
+                        scroll.reflectScrolledClipView(scroll.contentView)
+                    })
+            }
             model.configuration.right.mode = .mouse
             model.configuration.left.mode = .dpad
             for layout in PadZoneLayout.allCases {
@@ -302,9 +315,8 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         }
     }
 
-    /// Cached display deliberately omits native glass. Assert the filled selection
-    /// and local feedback using the compositor that actually renders the material.
-    func testCompositedModeGlassSelectionAndFeedback() async throws {
+    /// Native captures verify flat accent selection over the retained glass track.
+    func testCompositedFlatModeSelectionAndFeedback() async throws {
         guard let path = ProcessInfo.processInfo.environment["PADDR_UI_EVIDENCE_DIR"] else {
             throw XCTSkip("Set PADDR_UI_EVIDENCE_DIR to verify native glass composition")
         }
@@ -336,9 +348,9 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 await settle(host, passes: 12)
                 let mode = try XCTUnwrap(descendants(of: PaddrModeSegmentedControl.self, in: host).first)
                 let frameView = try XCTUnwrap(window.contentView?.superview)
-                func color(_ bitmap: NSBitmapImageRep, _ index: Int) throws -> NSColor {
+                func color(_ bitmap: NSBitmapImageRep, _ index: Int, lower: Bool = false) throws -> NSColor {
                     let rect = mode.segmentRect(index)
-                    let point = mode.convert(CGPoint(x: rect.midX, y: rect.minY + 2), to: frameView)
+                    let point = mode.convert(CGPoint(x: rect.midX, y: lower ? rect.maxY - 4 : rect.minY + 3), to: frameView)
                     let x = point.x * CGFloat(bitmap.pixelsWide) / frameView.bounds.width
                     let y = (frameView.isFlipped ? point.y : frameView.bounds.height - point.y)
                         * CGFloat(bitmap.pixelsHigh) / frameView.bounds.height
@@ -367,21 +379,25 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                     await settle(host, passes: 12)
                     mode.updateHover(at: state == "hover-other" ? CGPoint(x: mode.segmentRect(1).midX, y: 16)
                         : state == "hover-selected" ? CGPoint(x: mode.segmentRect(3).midX, y: 16) : CGPoint(x: -1, y: -1))
-                    let name = "mode-glass-\(direction == .leftToRight ? "ltr" : "rtl")-\(state)-\(theme).png"
+                    let name = "mode-flat-\(direction == .leftToRight ? "ltr" : "rtl")-\(state)-\(theme).png"
                     let capture = try await captureCompositedWindow(window, to: directory.appendingPathComponent(name))
                     let bitmap = try XCTUnwrap(capture)
                     let selected = try color(bitmap, 3)
                     let idle = try color(bitmap, 1)
                     XCTAssertGreaterThan(distance(selected, idle), state == "disabled" ? 0.1 : 0.3,
-                        "Native glass must retain an unmistakable filled selection: \(name)")
+                        "Flat accents must retain an unmistakable filled selection: \(name)")
                     if state != "disabled" {
                         let text = luminance(try XCTUnwrap(foreground))
                         let fill = luminance(selected)
                         let contrast = (max(text, fill) + 0.05) / (min(text, fill) + 0.05)
-                        XCTAssertGreaterThanOrEqual(contrast, 4.5, "Selected text over native glass: \(name)")
-                        print("Selected native-glass text contrast \(name): \(contrast)")
+                        XCTAssertGreaterThanOrEqual(contrast, 4.5, "Selected text over flat accent: \(name)")
+                        print("Selected flat-accent text contrast \(name): \(contrast)")
                     }
-                    if state == "normal" { normalSelected = selected; normalIdle = idle }
+                    if state == "normal" {
+                        XCTAssertLessThan(distance(selected, try color(bitmap, 3, lower: true)), 0.04,
+                            "Selected accent must be flat, without glass highlights: \(name)")
+                        normalSelected = selected; normalIdle = idle
+                    }
                     if state == "hover-other" {
                         XCTAssertLessThan(distance(selected, try XCTUnwrap(normalSelected)), 0.04)
                         XCTAssertGreaterThan(distance(idle, try XCTUnwrap(normalIdle)), 0.01)
@@ -403,6 +419,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         appearance: NSAppearance.Name,
         to url: URL,
         expectsFullDocumentFit: Bool = true,
+        evidenceSize: NSSize? = nil,
         prepare: ((NSView) -> Void)? = nil
     ) async throws {
         let size = isGuide ? PaddrStyle.Metrics.guideWindowSize : PaddrStyle.Metrics.defaultWindowSize
@@ -434,6 +451,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         } else {
             PaddrFamilyWindowChrome.installConfigurationTitle(window.title, in: window)
             PaddrFamilyWindowChrome.setFreshDefaultUsableFrame(for: window)
+            if let evidenceSize { PaddrFamilyWindowChrome.setUsableLayoutSize(evidenceSize, for: window) }
         }
         if let screen = window.screen?.visibleFrame {
             window.setFrameTopLeftPoint(NSPoint(x: screen.minX + 80, y: screen.maxY - 40))
@@ -614,7 +632,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                             let selector = try XCTUnwrap(modeSelector(side: side, in: host))
                             XCTAssertTrue(selector === original, "Reflow/mode changes must retain the mounted header control")
                             let usesColumns = width >= PaddrStyle.previewInspectorColumnsBreakpoint && !size.isAccessibilitySize
-                            let columnLeading = usesColumns ? PaddrPadColumns.inspectorLeading(in: width) : 0
+                            let columnLeading = usesColumns ? min(206, width - 240) : 0
                             let headerInline = width >= PaddrPadColumns.minimumInlineWidth && !size.isAccessibilitySize
                             let headerLeading = headerInline ? columnLeading : 0
                             let selectorFrame = frame(of: selector, in: host)
@@ -649,6 +667,87 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                     }
                 }
             }
+        }
+    }
+
+    func testRearSelectorsFormOneCompactOrderedRowAndRetainIdentityFocusAndBindings() async throws {
+        var configuration = PaddrConfiguration.default
+        configuration.left.mode = .mouse
+        configuration.right.mode = .dpad
+        let binding = Binding(get: { configuration }, set: { configuration = $0 })
+        for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+            configuration.rearButtons = .init()
+            func content(_ size: DynamicTypeSize) -> some View {
+                VStack(alignment: .leading, spacing: 16) {
+                    DualPadConfigurationView(configuration: binding, appearsEnabled: true, isEditable: true)
+                    RearButtonConfigurationView(configuration: binding.rearButtons, isEditable: true)
+                }
+                .environment(\.layoutDirection, direction)
+                .environment(\.dynamicTypeSize, size)
+            }
+            let host = NSHostingView(rootView: content(.large))
+            let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 916, height: 1800),
+                styleMask: [.titled], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.contentView = host
+            defer { window.close() }
+            await settle(host, passes: 12)
+            let names = ["Left rear button L4 action", "Left rear button L5 action",
+                "Right rear button R4 action", "Right rear button R5 action"]
+            let original = try names.map { name in
+                try XCTUnwrap(descendants(of: PaddrPopUpButton.self, in: host).first { $0.accessibilityLabel() == name })
+            }
+            XCTAssertTrue(window.makeFirstResponder(original[0]))
+            for size in [DynamicTypeSize.large, .accessibility1, .accessibility5] {
+                for width in [CGFloat(916), 900, 899, 600, 358, 260, 1200] {
+                    host.rootView = content(size)
+                    window.setContentSize(NSSize(width: width, height: 1800))
+                    host.frame.size.width = width
+                    await settle(host, passes: 12)
+                    XCTAssertTrue(window.firstResponder === original[0])
+                    for (index, name) in names.enumerated() {
+                        let menu = try XCTUnwrap(descendants(of: PaddrPopUpButton.self, in: host)
+                            .first { $0.accessibilityLabel() == name })
+                        XCTAssertTrue(menu === original[index])
+                        let rear = frame(of: menu, in: host)
+                        XCTAssertEqual(rear.width, 180, accuracy: 0.5)
+                        XCTAssertGreaterThanOrEqual(rear.minX, -0.5)
+                        XCTAssertLessThanOrEqual(rear.maxX, width + 0.5)
+                    }
+                    let rects = original.map { frame(of: $0, in: host) }
+                    for index in 1..<rects.count {
+                        let previous = rects[index - 1], current = rects[index]
+                        if abs(current.midY - previous.midY) < 1 {
+                            let gap = direction == .leftToRight ? current.minX - previous.maxX : previous.minX - current.maxX
+                            XCTAssertGreaterThan(gap, 16, "Code labels must fit between adjacent menus")
+                        } else {
+                            XCTAssertGreaterThan(abs(current.midY - previous.midY), max(current.height, previous.height))
+                        }
+                    }
+                    if width >= 900 && !size.isAccessibilitySize {
+                        for rect in rects { XCTAssertEqual(rect.midY, rects[0].midY, accuracy: 0.6,
+                            "All four rear selectors must occupy one default row") }
+                    }
+                    if width == 260 {
+                        for index in 1..<rects.count {
+                            XCTAssertGreaterThan(abs(rects[index].midY - rects[index - 1].midY), rects[index].height)
+                        }
+                    }
+                }
+            }
+            // A real native menu selection still writes exactly its own rear binding.
+            for (index, menu) in original.enumerated() {
+                let native = try XCTUnwrap(menu.menu)
+                let item = try XCTUnwrap(native.items.firstIndex { $0.title == "F\(index + 1)" })
+                native.performActionForItem(at: item)
+                let values = [configuration.rearButtons.l4, configuration.rearButtons.l5,
+                    configuration.rearButtons.r4, configuration.rearButtons.r5]
+                for position in 0..<4 {
+                    XCTAssertEqual(values[position], position <= index ? "f\(position + 1)" : nil,
+                        "Choosing one rear action must leave the other bindings alone")
+                }
+            }
+            XCTAssertEqual(configuration.rearButtons, .init(l4: "f1", l5: "f2", r4: "f3", r5: "f4"))
         }
     }
 

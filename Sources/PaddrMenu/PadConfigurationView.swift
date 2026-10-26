@@ -507,9 +507,11 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
             let rect = segmentRect(index)
             let selected = isSelected(forSegment: index)
             let enabled = isEnabled && isEnabled(forSegment: index)
-            if selected && !controlAppearance.usesControlGlass {
+            if selected {
                 PaddrControlDrawing.fill(rect, radius: PaddrStyle.Control.segmentRadius,
-                    color: enabled ? PaddrStyle.controlTint : PaddrStyle.boundary)
+                    color: controlAppearance.accentFill(enabled: enabled))
+                PaddrControlDrawing.stroke(rect, radius: PaddrStyle.Control.segmentRadius,
+                    color: controlAppearance.accentStroke(enabled: enabled), width: controlAppearance.strokeWidth)
             }
             if enabled && (hoveredSegment == index || pressedSegment == index) {
                 PaddrControlDrawing.fill(rect, radius: PaddrStyle.Control.segmentRadius,
@@ -517,14 +519,14 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
             }
             PaddrControlDrawing.text(label(forSegment: index) ?? "", rect: rect.insetBy(dx: 2, dy: 2),
                 font: font ?? .preferredFont(forTextStyle: .body),
-                color: selected ? (enabled ? PaddrStyle.controlForeground : PaddrStyle.textPrimary)
+                color: selected ? controlAppearance.accentForeground(enabled: enabled)
                     : (enabled ? PaddrStyle.textPrimary : PaddrStyle.textSecondary), alignment: .center)
         }
         PaddrControlDrawing.focus(self, rect: bounds, radius: PaddrStyle.Control.radius)
     }
 }
 
-/// One geometry for native drawing/tracking and the selected native-glass background.
+/// One geometry for the flat selection, local feedback and native pointer tracking.
 enum PaddrModeGeometry {
     static func segmentRect(_ index: Int, in bounds: CGRect, count: Int) -> CGRect {
         let inset = PaddrStyle.Control.segmentInset
@@ -543,18 +545,7 @@ struct PadModePicker: View {
         PaddrNativeModePicker(selection: $selection, accessibilityIdentifier: accessibilityIdentifier)
             .background {
                 PaddrAppearanceReader { appearance in
-                    GeometryReader { proxy in
-                        PaddrButtonSurface(prominent: false, enabled: isEnabled, appearance: appearance)
-                        let index = [PadMode.disabled, .mouse, .scroll, .dpad].firstIndex(of: selection) ?? 0
-                        let rect = PaddrModeGeometry.segmentRect(index, in: CGRect(origin: .zero, size: proxy.size), count: 4)
-                        if appearance.usesControlGlass {
-                            PaddrButtonSurface(prominent: true, enabled: isEnabled, appearance: appearance,
-                                radius: PaddrStyle.Control.segmentRadius, materialInset: 0)
-                                .opacity(isEnabled ? 1 : 0.5)
-                                .frame(width: rect.width, height: rect.height)
-                                .position(x: rect.midX, y: rect.midY)
-                        }
-                    }
+                    PaddrButtonSurface(prominent: false, enabled: isEnabled, appearance: appearance)
                 }
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)

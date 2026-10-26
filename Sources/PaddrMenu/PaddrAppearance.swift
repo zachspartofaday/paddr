@@ -39,6 +39,19 @@ struct PaddrAppearance: Equatable {
     /// Controls use native glass only when neither setting requires an opaque boundary.
     var usesControlGlass: Bool { !usesOpaqueFallback && !hasIncreasedContrast }
 
+    /// Accent surfaces are always flat, including disabled primary actions.
+    func accentFill(enabled: Bool) -> Color {
+        enabled ? PaddrStyle.controlTint : PaddrStyle.boundary
+    }
+
+    func accentStroke(enabled: Bool) -> Color {
+        enabled ? PaddrStyle.accentStroke : PaddrStyle.boundary
+    }
+
+    func accentForeground(enabled: Bool) -> Color {
+        enabled ? PaddrStyle.controlForeground : PaddrStyle.textPrimary
+    }
+
     /// Depth is decorative; accessibility fallbacks keep opaque structural edges.
     var showsSurfaceDepth: Bool { !usesOpaqueFallback && !hasIncreasedContrast }
 

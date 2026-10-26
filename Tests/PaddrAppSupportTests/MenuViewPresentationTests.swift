@@ -396,6 +396,8 @@ final class MenuViewPresentationTests: XCTestCase {
         PaddrFamilyWindowChrome.setUsableLayoutSize(NSSize(width: 1080, height: 500), for: window)
         window.setFrameTopLeftPoint(NSPoint(x: 50, y: screen.maxY))
         PaddrFamilyWindowChrome.fitConfigurationWindow(window, preferredHeight: 1100, visibleFrame: screen)
+        XCTAssertEqual(window.contentLayoutRect.width, 996, accuracy: 0.5,
+            "Managed opening must discard the former 1080-point width")
         XCTAssertEqual(window.frame.maxY, screen.maxY, accuracy: 0.5)
         XCTAssertEqual(window.frame.minY, screen.minY, accuracy: 0.5)
         XCTAssertTrue(screen.contains(window.frame))

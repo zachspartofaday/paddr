@@ -4,7 +4,61 @@ Status: Operator-approved on 2026-10-26; implemented candidate awaiting fresh in
 Date: 2026-10-26
 Implementation baseline: `d0c99d8d079e24c6ecf727b9a8d4247921ba0b06` (merged PR #95, frozen v1.1.0). Original council baseline: PR #92.
 
-## Current operator refinement — shared edges, clean pads and inset glass
+## Current operator refinement — flat accents, compact gutter and one rear row
+
+Source baseline: `c3ec20aa977547a6b8d4b16f91ca0ca3de25ff8a`, 2026-10-26.
+This direction supersedes selected/primary glass, surplus map-column width and
+the earlier rear two-row/inspector-alignment proposal. The operator's latest
+request is **one default rear row**, ordered **L4, L5, R4, R5**. Earlier sections
+below record history; this section owns the current presentation contract.
+
+Keep system type and the existing palette: light blue `#2859CF`, dark Compass
+teal `#78C7BD`, dark canvas `#20262D`, workspace `#2B333C`, pale edge `#F0F4F8`
+and foreground-on-teal `#1C2630`. Selected mode segments and Save & Apply are
+**flat opaque accents**, with a fine white/pale stroke. Keep the selected mode's
+4-point track inset, 2-point gaps, 3-point inner radius, local hover/press feedback,
+separate focus and native radio semantics. Disabled primary actions remain flat
+and subdued; their role does not become secondary when disabled. Centralize the
+accent fill/stroke/foreground rules in `PaddrAppearance`. Secondary/menu/track
+surfaces retain native glass and their opaque accessibility fallbacks.
+
+The map stays **190 × 182** and the main mode/menu/readout family stays **240**.
+`PaddrPadColumns` keeps a **190-point preview column** and **16-point gutter**;
+only the existing 438–446-point constrained interval yields the gutter to 8–16.
+Larger supplied fixtures leave surplus beyond the inspector. Both edges of modes,
+menus and numerical rows stay aligned. The preferred usable window width is
+computed from **2 × (190 + 16 + 240) + 24 + 2 × (24 + 16) = 996 points**.
+Content-controlled height, screen cap, scrolling, non-resizable windows and mounted
+identities remain unchanged. No sensor map expands to consume spare space.
+
+Rear selectors share a separate **180-point** width. Four ordinary short-code
+pairs plus 16-point inter-pair gaps fit comfortably inside the 916-point workspace;
+192-point selectors would leave almost no spare width after measured labels and gaps. Use the existing
+wrapping layout and preserve each complete label/menu pair, in logical order:
+
+```text
+Left trackpad           Right trackpad
+190 map | 240 controls   190 map | 240 controls
+        16 gutter               16 gutter
+Rear buttons
+L4 [180 menu]  L5 [180 menu]  R4 [180 menu]  R5 [180 menu]
+```
+
+Wrap whole rear pairs when width or enlarged text requires it; retain readable
+native menu values, independent bindings, distinct AX names and focus identity.
+SwiftUI mirrors the logical order once in RTL. The heading stays directly above
+the row. Do not widen the window or pad gutter to fit four 240-point menus.
+
+Critique: the flat accent gives selection/action clear emphasis without the rejected
+shine; secondary material preserves the established control hierarchy. A compact
+window and bounded gutter resolve the excess space at its source. The single rear
+row is quieter and follows the operator's newest direction. Validate all four rear
+selectors on one default row, containment and wrapping at narrow/accessibility sizes,
+RTL, identity/focus and independent writes. Capture both appearances, Zones/tuning,
+flat/disabled/focused states and native secondary material. Prior clean reviews do
+not accept this candidate; fresh independent review remains required.
+
+## Earlier operator refinement — shared edges, clean pads and inset glass
 
 Source: `6b0551fe246a5be3ec12658e5a30e341653669fd`, 2026-10-26. This
 refinement supersedes the 192-point menus, 272-point mode row, 2-point mode inset,

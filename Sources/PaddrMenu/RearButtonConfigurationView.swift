@@ -11,21 +11,12 @@ struct RearButtonConfigurationView: View {
                 .paddrTypography(.sectionLabel)
                 .foregroundStyle(PaddrStyle.textPrimary)
                 .accessibilityAddTraits(.isHeader)
-            PaddrAdaptiveSplitView(
-                columnsBreakpoint: PaddrStyle.Metrics.padEditorColumnsBreakpoint,
-                leading: {
-                    PaddrWrappingHStack(horizontalSpacing: PaddrStyle.Spacing.s4, verticalSpacing: PaddrStyle.Spacing.s2) {
-                        rearRow("L4", title: "Left rear button L4 action", selection: $configuration.l4)
-                        rearRow("L5", title: "Left rear button L5 action", selection: $configuration.l5)
-                    }
-                },
-                trailing: {
-                    PaddrWrappingHStack(horizontalSpacing: PaddrStyle.Spacing.s4, verticalSpacing: PaddrStyle.Spacing.s2) {
-                        rearRow("R4", title: "Right rear button R4 action", selection: $configuration.r4)
-                        rearRow("R5", title: "Right rear button R5 action", selection: $configuration.r5)
-                    }
-                }
-            )
+            PaddrWrappingHStack(horizontalSpacing: PaddrStyle.Spacing.s4, verticalSpacing: PaddrStyle.Spacing.s2) {
+                rearRow("L4", title: "Left rear button L4 action", selection: $configuration.l4)
+                rearRow("L5", title: "Left rear button L5 action", selection: $configuration.l5)
+                rearRow("R4", title: "Right rear button R4 action", selection: $configuration.r4)
+                rearRow("R5", title: "Right rear button R5 action", selection: $configuration.r5)
+            }
             .disabled(!isEditable)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -40,7 +31,7 @@ struct RearButtonConfigurationView: View {
         HStack(spacing: PaddrStyle.Spacing.s2) {
             Text(code)
                 .paddrTypography(.rowLabel)
-            OptionalOutputBindingPicker(selection: selection, title: title)
+            OptionalOutputBindingPicker(selection: selection, title: title, width: PaddrStyle.Width.rearControl)
                 .help("Hold this rear button to hold its assigned action. None sends no input.")
         }
     }

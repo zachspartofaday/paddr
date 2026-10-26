@@ -1,64 +1,58 @@
 # Bespoke control comparison
 
-The after images are **WindowServer-composited native window captures** of the
-existing inert in-memory fixture with system access granted. They include native
-Liquid Glass, which cached AppKit display alone omits. They are fixture evidence;
-live README screenshots and published-release before images remain unchanged.
-No personal profile, receiver or production app was opened.
+After images are **WindowServer-composited inert fixture windows**, with system
+access granted and existing Screen Recording permission. They include the retained
+secondary/menu/track glass. Selected modes and Save & Apply are now **flat** light
+blue / dark Compass teal with fine pale edges. Native captures use the host's
+reported 1x output. Cached 1x/2x rasters establish geometry, not physical Retina proof.
+No production app, personal profile or receiver was opened; no TCC/global settings
+changed. Live README screenshots and original published-release before images remain
+untouched.
 
-Before: published 1.1.0 at `d0c99d8`, preserved with its original cached-render
-provenance. After: this shared-edge/pad-surround/inset-glass candidate based on
-`6b0551fe246a5be3ec12658e5a30e341653669fd` (PR #96). Mode controls, menu variants
-and numerical-row edges now share 240 points; maps retain 190 × 182. Modes have
-4-point track inset, 2-point gaps and actual blue/teal selected native glass.
-Circular pad arcs and the exterior-cast recess remove the reported corner seam
-without thickening the rim. Profile/rear menus share the width; rear pairs wrap.
+Current candidate starts at `c3ec20aa977547a6b8d4b16f91ca0ca3de25ff8a` (PR #96).
+The newest operator direction supersedes selected glass and rear two-row alignment:
 
-macOS 27.2 / 26B118, SDK 27.0, Swift 6.4, arm64, deployment 26.0. The exporter
-captures only its own fixture window using existing Screen Recording access,
-without requesting permission or changing global settings. Native screenshots use
-the host's reported 1x output without resizing. Separate cached 1x/2x opaque-pad
-and control rasters test geometry, not physical Retina rendering.
+- 996-point preferred usable window, derived from two 190 + 16 + 240-point editors,
+  their 24-point separation and existing card/window insets.
+- 16-point pad/options gutter, yielding only to 8–16 at the constrained inline threshold.
+  Mode/menu/readout edges still align; sensor maps remain 190 × 182.
+- One default rear row in L4, L5, R4, R5 order, with equal 180-point selectors.
+  Whole code/menu pairs wrap at constrained widths; logical RTL order and identity remain.
+- Flat selected/action fills, 4-point segment inset, 2-point gaps, local feedback,
+  distinct focus and opaque accessibility fallbacks. Secondary glass remains native.
 
-| Appearance | Before | After |
+| Appearance | Published 1.1.0 before | Current candidate |
 | --- | --- | --- |
 | Light | ![Before, light](before-light.png) | ![After, light](after-light.png) |
 | Dark | ![Before, dark](before-dark.png) | ![After, dark](after-dark.png) |
 
-The user's both-Zones scenario retains four corners and zero neutral radius:
-
-| Light | Dark |
-| --- | --- |
-| ![Both Zones, light](zones-light.png) | ![Both Zones, dark](zones-dark.png) |
-| ![Mirrored Zones, light](rtl-light.png) | ![Mirrored Zones, dark](rtl-dark.png) |
-
-![Both Zones, expanded tuning, aligned edges, native pad and selected-mode crops, RTL](contact-sheet.png)
-
-Direct crops preserve native pixels. Contact-sheet crops use nearest sampling:
-
-| Detail | Light | Dark |
+| Surface | Light | Dark |
 | --- | --- | --- |
-| Shared menu/readout edges | ![Aligned controls, light](aligned-controls-light.png) | ![Aligned controls, dark](aligned-controls-dark.png) |
-| Pointer pad surround | ![Pointer surround, light](pointer-surround-light.png) | ![Pointer surround, dark](pointer-surround-dark.png) |
-| Inset selected glass | ![Selected mode, light](selected-mode-light.png) | ![Selected mode, dark](selected-mode-dark.png) |
-| Concentric pad focus | ![Focus corner, light](focus-corner-light.png) | ![Focus corner, dark](focus-corner-dark.png) |
-| Open setup rim (targeted missing-access fixture only) | ![Setup rim, light](setup-rim-light.png) | ![Setup rim, dark](setup-rim-dark.png) |
+| Both Zones | ![Zones, light](zones-light.png) | ![Zones, dark](zones-dark.png) |
+| One rear row | ![Rear, light](rear-row-light.png) | ![Rear, dark](rear-row-dark.png) |
+| Flat inset selection | ![Selection, light](selected-mode-light.png) | ![Selection, dark](selected-mode-dark.png) |
+| Flat Save & Apply | ![Primary, light](primary-light.png) | ![Primary, dark](primary-dark.png) |
+| Mirrored layout | ![RTL, light](rtl-light.png) | ![RTL, dark](rtl-dark.png) |
+| Inspector edges | ![Controls, light](aligned-controls-light.png) | ![Controls, dark](aligned-controls-dark.png) |
+| Pointer surround | ![Pointer, light](pointer-surround-light.png) | ![Pointer, dark](pointer-surround-dark.png) |
+| Separate pad focus | ![Focus, light](focus-corner-light.png) | ![Focus, dark](focus-corner-dark.png) |
 
-Full captures: `/tmp/paddr-refinement-8a0553bb/final-validated/`. Canonical test log:
-`/tmp/paddr-refinement-8a0553bb/tests-final.log` (**532 tests, 531 passed, one
-existing map-focus skip**). Native selected-glass contrast samples exceed 6.5:1.
-The same-mounted tests cover both edges and numerical columns, both sides/modes,
-RTL, constrained widths and accessibility text. Native accessibility5 top/lower
-captures are in the full directory; their screen-capped scrolling content is
-verified from composition because cached mixed-glass renders omit layers. The exact local commit and clean
-ad-hoc package identity are recorded in `/tmp/paddr-refinement-8a0553bb/HANDOFF.md`.
+![Zones, tuning, rear row, flat accents, RTL, narrow, accessibility and opaque fallbacks](contact-sheet.png)
 
-See [the validation record](../PADDR_BESPOKE_CONTROLS_VALIDATION.md) for commands,
-failed-before regressions, capture provenance and all remaining gaps. The source
-`6b0551f` had a clean external Codex review after its prior Sol tuning-switch RTL
-finding was repaired. Fresh Sol review at `e83a0c3` found one minor stale-hover issue
-during mode dragging, repaired with a failing-before/passing-after event regression;
-current-head external review remains separate. Full assistive-technology,
-live hardware, inactive pointer feel, physical Retina and macOS 26 runtime checks
-remain unverified. The key-window-dependent SwiftUI map focus test remains skipped
-with its assertions intact; the earlier reconnect-pressure timeout remains unexplained.
+Full captures and canonical receipts: `/tmp/paddr-flat-535f91b9/`. Direct crops
+preserve native pixels; enlarged detail cells in the contact sheet use nearest
+sampling. `final/readme-narrow-{top,lower}-*.composited.png` is a 680-point fixture;
+`final/readme-accessibility-{top,lower}-*.composited.png` exercises accessibility5
+reflow and screen-capped scrolling. `readme-both-zones-opaque-*` exercises Increased
+Contrast, Reduce Transparency and Reduce Motion together. Disabled primary fills
+also have cached semantic pixel checks in both appearances and all fallback states.
+
+The older `setup-rim-*.png` captures are retained from the preceding shared-edge
+candidate because this secondary control is unchanged. They are not new-candidate
+capture evidence. Before images retain their original cached-release provenance.
+See [the current validation record](../PADDR_BESPOKE_CONTROLS_VALIDATION.md) for
+commands, failures/reruns, source/settings receipts, limits and manual follow-up.
+Fresh independent review remains pending. Full manual accessibility/keyboard,
+hardware/output/disconnect, inactive pointer feel, physical Retina and macOS 26
+runtime proof remain unverified; the map-focus key-window skip and unexplained
+reconnect-pressure timeout remain explicit.
