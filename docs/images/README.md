@@ -1,44 +1,71 @@
 # Native interface evidence
 
-Rendered on 2026-10-26 from production SwiftUI/AppKit views on macOS 27.2,
-build `26B118`, with Xcode 27.0. These are native view captures from the existing
-inert `FamilyConsoleLayoutEvidenceTests` fixture, not HTML mockups or live
-controller sessions. They exclude the AppKit titlebar.
+All twelve README images were replaced on 2026-10-26 using production SwiftUI/AppKit
+views on macOS 27.2, build `26B118`, with Xcode 27.0. The views come from merged PR #92
+(`c211657d3dcff3e38e7835508993ce0cef966172`), with the footer alignment and transition-guidance
+corrections in PR #93. The README exporter
+is `FamilyConsoleLayoutEvidenceTests.testExportReadmeWindowEvidence`.
 
-- `paddr-profile-overview.png`: dark appearance, editable example draft, left
-  Scroll/right Pointer, collapsed tuning, and rear bindings F1–F4.
-- `paddr-profile-overview-light.png`: the same workspace in light appearance.
-- `paddr-auto-sized-tuning.png`: content-driven window with left Pointer tuning
-  expanded, right Zones, and all rear bindings visible.
-- `paddr-auto-sized-zones.png`: the same managed window after switching the left
-  pad to Zones, showing the shorter content height. These managed captures include
-  the content view's reserved titlebar area; AppKit titlebar controls are outside it.
-- `paddr-zones-*.png`: all five left-trackpad layouts with right Pointer, light
-  appearance. These example draft bindings are not built-in presets.
-- `paddr-onboarding.png`: guide welcome page, light appearance.
-- `paddr-permissions.png`: guide page 3 using the shared permission controls,
-  light appearance.
+These are complete native window-frame renders, including the AppKit titlebar,
+with inert in-memory example data. They are not HTML mockups or live controller
+sessions. SwiftUI controls use key-window presentation; the offscreen AppKit
+window chrome is inactive. No user profile, permission request, or mapped output
+is involved.
 
-The example model has neither permission granted, no controller/puck connected,
-and output off. It uses in-memory profiles and never emits mapped input. The
-baseline workspace captures use a fixed 1080 × 640 fixture. The actual application
-now measures its content height and fits the screen. Managed-window evidence is
-exported as `managed-expanded-dark.png` and `managed-collapsed-dark.png`; its
-profile/save and output controls remain fixed when screen limits require scrolling. An editable example profile
-named Editable is used throughout.
+Configuration captures use `ConfigurationView(managesWindowSize: true)` inside
+an `NSHostingController` and the production window chrome and sizing helpers.
+The exporter lets content measurements set the height, then checks that the scroll
+viewport matches the full document within two points. A fixed-height canvas, extra
+blank band, or screen too small for the complete document fails this check. The
+capture includes the actual titlebar instead of an empty reserved titlebar area.
 
-The full exporter additionally covers 680 × 600 and 1600 × 900 workspaces,
-complete scroll documents, dark zone/guide views, expanded pointer tuning, both
-pads off, individual missing permissions, granted access, and enlarged text.
-Regenerate it with:
+The guide uses its production 720 × 480 usable layout, plus titlebar. Its welcome
+page intentionally has more space than its access page; the app's guide does not
+use the configuration window's automatic sizing.
+
+| Captures | Window image dimensions |
+| --- | --- |
+| Profile overview, light and dark | 1080 × 577 |
+| Expanded Pointer tuning | 1080 × 799 |
+| Both pads in Zones | 1080 × 623 |
+| Access granted | 1080 × 577 |
+| Radial, corners, left/right, top/bottom zone layouts | 1080 × 623 |
+| 3 × 3 zone layout | 1080 × 577 |
+| Guide welcome and access pages | 720 × 512 |
+
+- `paddr-profile-overview.png` and `paddr-profile-overview-light.png`: editable
+  example draft, left Scroll/right Pointer, collapsed tuning, rear bindings F1–F4.
+- `paddr-auto-sized-tuning.png`: left Pointer tuning expanded, right Zones, dark.
+- `paddr-auto-sized-zones.png`: both pads in Zones, dark, shorter content height.
+- `paddr-zones-*.png`: all five left-trackpad layouts with right Pointer, light.
+- `paddr-access-ready-light.png`: both permissions granted, no controller/puck
+  connected, output off, light. This is simulated access state.
+- `paddr-onboarding.png`: guide welcome page, light.
+- `paddr-permissions.png`: guide page 3 using the shared permission controls, light.
+
+Workspace examples have both permissions granted, no controller/puck connected,
+and output off. Only `paddr-permissions.png` simulates permissions still needed. Its profile is named Editable. Bindings
+are example drafts, not built-in presets.
+
+Regenerate the README captures with:
 
 ```bash
 PADDR_UI_EVIDENCE_DIR=/absolute/path/to/evidence \
 swift test -Xswiftc -warnings-as-errors \
-  --filter FamilyConsoleLayoutEvidenceTests/testExportConfigurationRenderEvidence
+  --filter FamilyConsoleLayoutEvidenceTests/testExportReadmeWindowEvidence
 ```
 
-Inspect captures for clipping and private data before copying selected files here.
-Update README alt text and this metadata to match. These fixtures do not establish
-physical-controller compatibility, latency, or manual VoiceOver/keyboard behavior;
-see [the implementation verification record](../ui/PADDR_REDESIGN_VALIDATION.md).
+Export names start with `readme-`. Copy `overview-{dark,light}` to the two profile
+images, `expanded-dark` and `shorter-dark` to the auto-sized images,
+`access-ready-light` to its matching image, and `guide-{welcome,permissions}-light`
+to onboarding/permissions. The five `zones-*-light` images use enum raw names:
+`radial-four`, `four-corners`, `horizontal-two`, `vertical-two`, and `grid-nine`.
+
+The separate `testExportConfigurationRenderEvidence` retains fixed viewport
+stress cases for responsive-layout checks; those exports are not README images.
+Inspect replacements for clipping and private data before copying them here.
+
+Maintainer confirmation establishes the reported released macOS 27 and macOS 27.2
+release-candidate compatibility. These fixtures do not establish hardware
+compatibility, latency, or manual VoiceOver/keyboard behavior; see
+[the implementation verification record](../ui/PADDR_REDESIGN_VALIDATION.md).

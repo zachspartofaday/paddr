@@ -31,10 +31,10 @@ Controller removal must release every held key and mouse button. Lifecycle chang
 
 ## Development
 
-Paddr requires Xcode 27 beta and keeps macOS 26.0 as its deployment target. Distribution is arm64-only.
+Paddr requires Xcode 27 and keeps macOS 26.0 as its deployment target. Distribution is arm64-only.
 
 ```bash
-export DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 swift test -Xswiftc -warnings-as-errors
 scripts/check-localization.sh
 swift build -c release -Xswiftc -warnings-as-errors --arch arm64
@@ -77,4 +77,4 @@ The generator requires a square PNG at least 1024 pixels wide and writes only th
 
 `@zachspartofaday` is the code owner and sole merge authority. Community review is welcome, but only the maintainer approves and merges changes.
 
-Thanks for helping make an intentionally fast beta experiment safer and more useful.
+Thanks for helping make Paddr safer and more useful.

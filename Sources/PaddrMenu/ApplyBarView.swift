@@ -17,6 +17,7 @@ struct ApplyBarView: View {
     @State private var availableWidth: CGFloat = 0
     @State private var showsConnectionDetails = false
     @State private var showsPermissionSetup = false
+    @State private var revealedTransitionGuidance: PaddrReadinessNextAction?
 
     var outputValue: LocalizedStringResource {
         switch model.readiness.output {
@@ -88,10 +89,30 @@ struct ApplyBarView: View {
         }
     }
 
+    // Normal activation and release settle within a few controller reports.
+    // Key the delay by the specific transition so switching between them starts
+    // a fresh wait, while failures and permission instructions bypass the delay.
+    private var usesExplicitStatusMessage: Bool {
+        model.status.messageState != nil && model.status != .waitingForNeutral
+    }
+
+    private var pendingTransitionGuidance: PaddrReadinessNextAction? {
+        guard !usesExplicitStatusMessage, model.hasSystemAccess else { return nil }
+        switch model.readiness.nextAction {
+        case .releaseTrackpads, .waitForOutputRelease, .waitForProfileOperation:
+            return model.readiness.nextAction
+        default:
+            return nil
+        }
+    }
+
     // Setup is the actionable next step while permissions are missing. Preserve
     // explicit failures and system-prompt instructions, without competing advice.
     var showsStatusMessage: Bool {
-        model.status.messageState != nil
+        if let pendingTransitionGuidance {
+            return revealedTransitionGuidance == pendingTransitionGuidance
+        }
+        return usesExplicitStatusMessage
             || (model.hasSystemAccess && model.readiness.nextAction != .none
                 && model.readiness.nextAction != .enableOutput)
     }
@@ -152,8 +173,18 @@ struct ApplyBarView: View {
             availableWidth = width
         }
         .sheet(isPresented: $showsPermissionSetup) { PermissionSetupView(model: model) }
+        .task(id: pendingTransitionGuidance) {
+            revealedTransitionGuidance = nil
+            guard let guidance = pendingTransitionGuidance else { return }
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+            } catch { return }
+            guard !Task.isCancelled, pendingTransitionGuidance == guidance else { return }
+            revealedTransitionGuidance = guidance
+            AccessibilityNotification.Announcement(String(localized: guidance.title)).post()
+        }
         .onChange(of: model.status) { _, status in
-            guard status.messageState != nil else { return }
+            guard status.messageState != nil, status != .waitingForNeutral else { return }
             AccessibilityNotification.Announcement(String(localized: status.message)).post()
         }
     }
@@ -222,6 +253,8 @@ struct ApplyBarView: View {
                     Image(systemName: batteryPresentation.systemImage)
                         .accessibilityHidden(true)
                 }
+                // Match the connection button's inset in this top-aligned wrapping row.
+                .padding(.vertical, PaddrStyle.Spacing.s1)
                 .foregroundStyle(batteryState.textColor)
                 .accessibilityLabel("Battery")
                 .accessibilityValue(Text(verbatim: batteryPresentation.accessibilityValue))
@@ -232,7 +265,7 @@ struct ApplyBarView: View {
     }
 
     @ViewBuilder private var statusMessage: some View {
-        if let messageState = model.status.messageState {
+        if usesExplicitStatusMessage, let messageState = model.status.messageState {
             Label {
                 Text(model.status.message)
                     .fixedSize(horizontal: false, vertical: true)
@@ -258,10 +291,12 @@ struct ApplyBarView: View {
             )
             .paddrTypography(.caption)
             .foregroundStyle(
-                model.readiness.nextAction == .none
-                    ? PaddrStyle.activeText
+                model.readiness.nextAction == .releaseTrackpads
+                    ? PaddrStyle.warningText
                     : PaddrStyle.textSecondary
             )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(model.readiness.nextAction.title))
             .help(Text(model.readiness.nextAction.title))
             .paddrAccessibilityID("status", "next-action")
         }

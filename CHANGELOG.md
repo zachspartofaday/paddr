@@ -4,7 +4,29 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
 
 ## Unreleased
 
+### Compatibility and documentation
+
+- Record maintainer-confirmed operation with a puck-connected Steam Controller 2 on
+  released macOS 27 and macOS 27.2 release candidate, superseding the historical
+  beta-only compatibility notes below. Bluetooth and direct USB remain unvalidated.
+- Replace every README screenshot with a complete native window capture. Configuration
+  captures use content-driven sizing, including the shorter access-granted workspace
+  and expanded Pointer tuning. Workspace examples have permissions granted; the
+  access guide retains its permission-needed state. These inert fixtures are
+  separate from hardware confirmation.
+- Update local build instructions for Xcode 27 at its standard application path.
+
 ### Native mapping workspace
+
+- Align the footer battery label with the adjacent controller status by matching
+  their vertical insets.
+- Avoid flashing transition guidance and resizing the footer during normal output
+  activation or disabling. Show it after a sustained 250 ms neutral or output-release
+  wait; output readiness, release safety gates, errors, and permission guidance remain immediate.
+- When enabling output during a pending profile save, describe profile preparation
+  instead of asking for neutral input. Footer text, delayed display, and announcements
+  now share the same readiness result. Renames and saves alongside an already-enabled
+  session preserve neutral guidance because they do not block that session from arming.
 
 - Add a per-pad Pointer acceleration switch, retaining its strength when disabled.
   Existing profiles keep their effective acceleration; the CLI's numeric options

@@ -118,6 +118,133 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         }
     }
 
+    /// README captures use production window construction, not the deliberately
+    /// fixed viewports above that exercise constrained/responsive layouts.
+    func testExportReadmeWindowEvidence() async throws {
+        guard let path = ProcessInfo.processInfo.environment["PADDR_UI_EVIDENCE_DIR"] else {
+            throw XCTSkip("Set PADDR_UI_EVIDENCE_DIR to export README window evidence")
+        }
+        let directory = URL(fileURLWithPath: path, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let model = try makeEditableMenuModel(hasSystemAccess: true)
+        let initialized = await waitUntil { model.isInitialized }
+        XCTAssertTrue(initialized)
+        model.configuration.rearButtons = .init(l4: "F1", l5: "F2", r4: "F3", r5: "F4")
+        let readyModel = try makeEditableMenuModel(hasSystemAccess: true)
+        let ready = await waitUntil { readyModel.isInitialized }
+        XCTAssertTrue(ready)
+        let permissionModel = try makeEditableMenuModel(hasSystemAccess: false)
+        let permissionsInitialized = await waitUntil { permissionModel.isInitialized }
+        XCTAssertTrue(permissionsInitialized)
+
+        for (theme, scheme, appearance) in [
+            ("light", ColorScheme.light, NSAppearance.Name.aqua),
+            ("dark", ColorScheme.dark, NSAppearance.Name.darkAqua)
+        ] {
+            model.configuration.left.mode = .scroll
+            model.configuration.right.mode = .mouse
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-overview-\(theme).png")
+            )
+            try await exportReadmeWindow(
+                ConfigurationView(model: readyModel, managesWindowSize: true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-access-ready-\(theme).png")
+            )
+            model.configuration.left.mode = .dpad
+            for layout in PadZoneLayout.allCases {
+                model.configuration.left.zoneLayout = layout
+                try await exportReadmeWindow(
+                    ConfigurationView(model: model, managesWindowSize: true),
+                    scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("readme-zones-\(layout.rawValue)-\(theme).png")
+                )
+            }
+            model.configuration.left.mode = .mouse
+            model.configuration.right.mode = .dpad
+            model.configuration.right.zoneLayout = .radialFour
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true, initialTuningExpanded: true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-expanded-\(theme).png")
+            )
+            model.configuration.left.mode = .dpad
+            model.configuration.left.zoneLayout = .radialFour
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-shorter-\(theme).png")
+            )
+            try await exportReadmeWindow(
+                OnboardingGuideView(model: model, onSkip: {}, onComplete: {}),
+                isGuide: true, scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-guide-welcome-\(theme).png")
+            )
+            var pager = OnboardingPager()
+            pager.advance()
+            pager.advance()
+            try await exportReadmeWindow(
+                OnboardingGuideView(model: permissionModel, onSkip: {}, onComplete: {}, initialPager: pager),
+                isGuide: true, scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-guide-permissions-\(theme).png")
+            )
+        }
+    }
+
+    private func exportReadmeWindow<Content: View>(
+        _ content: Content,
+        isGuide: Bool = false,
+        scheme: ColorScheme,
+        appearance: NSAppearance.Name,
+        to url: URL
+    ) async throws {
+        let size = isGuide ? PaddrStyle.Metrics.guideWindowSize : PaddrStyle.Metrics.defaultWindowSize
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: isGuide ? PaddrFamilyWindowChrome.styleMask : PaddrFamilyWindowChrome.configurationStyleMask,
+            backing: .buffered, defer: false
+        )
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.title = isGuide ? "Paddr Guide" : "Paddr"
+        window.appearance = NSAppearance(named: appearance)
+        window.collectionBehavior.insert(.fullScreenNone)
+        window.standardWindowButton(.zoomButton)?.isEnabled = false
+        window.tabbingMode = .disallowed
+        let controller = NSHostingController(rootView: content
+            .environment(\.colorScheme, scheme)
+            .environment(\.controlActiveState, .key))
+        if !isGuide {
+            window.toolbarStyle = .unifiedCompact
+            controller.sizingOptions = []
+        }
+        window.contentViewController = controller
+        PaddrFamilyWindowChrome.apply(to: window)
+        if isGuide {
+            PaddrFamilyWindowChrome.setUsableLayoutSize(size, for: window)
+            PaddrFamilyWindowChrome.setMinimumUsableLayoutSize(PaddrStyle.Metrics.minimumGuideWindowSize, for: window)
+        } else {
+            PaddrFamilyWindowChrome.installConfigurationTitle(window.title, in: window)
+            PaddrFamilyWindowChrome.setFreshDefaultUsableFrame(for: window)
+        }
+        if let screen = window.screen?.visibleFrame {
+            window.setFrameTopLeftPoint(NSPoint(x: screen.minX + 80, y: screen.maxY - 40))
+        }
+        await settle(controller.view, passes: 60)
+        if !isGuide {
+            let scroll = try XCTUnwrap(configurationScrollView(in: controller.view))
+            let document = try XCTUnwrap(scroll.documentView)
+            XCTAssertEqual(scroll.contentSize.height, document.bounds.height, accuracy: 2,
+                "README capture must fit its full document without blank space or screen-limited clipping")
+        }
+        // Include the actual titlebar instead of leaving its reserved area blank.
+        let frameView = try XCTUnwrap(window.contentView?.superview)
+        frameView.layoutSubtreeIfNeeded()
+        try exportPNG(frameView, to: url)
+    }
+
     private func exportEvidence<Content: View>(
         _ content: Content,
         size: NSSize,
