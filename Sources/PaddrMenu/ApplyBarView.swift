@@ -219,7 +219,11 @@ struct ApplyBarView: View {
     }
 
     private var hardwareSummary: some View {
-        PaddrWrappingHStack(horizontalSpacing: PaddrStyle.Spacing.s4, verticalSpacing: PaddrStyle.Spacing.s2) {
+        // Controller connection can precede the first battery report. Reserve
+        // its visible status immediately, then replace the unavailable value.
+        let showsBattery = model.controllerConnected
+        let battery = batteryPresentation
+        return PaddrWrappingHStack(horizontalSpacing: PaddrStyle.Spacing.s4, verticalSpacing: PaddrStyle.Spacing.s2) {
             Button { showsConnectionDetails = true } label: {
                 HStack(spacing: PaddrStyle.Spacing.s2) {
                     Label(controllerSummary, systemImage: "gamecontroller")
@@ -246,18 +250,20 @@ struct ApplyBarView: View {
                 }
                 .padding(PaddrStyle.Spacing.s4)
             }
-            if model.batteryStatus != nil {
+            if showsBattery {
                 Label {
-                    Text("Battery \(batteryPresentation.compactValue)")
+                    Text("Battery \(battery.compactValue)")
                 } icon: {
-                    Image(systemName: batteryPresentation.systemImage)
+                    Image(systemName: battery.systemImage)
                         .accessibilityHidden(true)
                 }
+                .labelStyle(.titleAndIcon)
+                .fixedSize()
                 // Match the connection button's inset in this top-aligned wrapping row.
                 .padding(.vertical, PaddrStyle.Spacing.s1)
                 .foregroundStyle(batteryState.textColor)
                 .accessibilityLabel("Battery")
-                .accessibilityValue(Text(verbatim: batteryPresentation.accessibilityValue))
+                .accessibilityValue(Text(verbatim: battery.accessibilityValue))
                 .paddrAccessibilityID("status", "battery")
             }
         }

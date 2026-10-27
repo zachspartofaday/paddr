@@ -65,7 +65,7 @@ verification was performed for this proposal.
 | Repeated card/section enclosures and stretched short forms compete with maps | `PadConfigurationView.swift:89`, `PaddrSettingsPrimitives.swift:10`, overview screenshot | One workspace surface, spacing within groups, natural content height |
 | Default's Duplicate to Edit opens a menu | `ProfileControlsView.swift:35` | Make the primary duplication path a direct action |
 | Appearance is forced dark in multiple layers | `ConfigurationView.swift:28`, `OnboardingGuideView.swift:39`, `AppDelegate.swift:781,877` | Follow macOS appearance throughout |
-| Actual default geometry differs from the historical parity manifest | `PaddrStyle.swift:78` vs parity manifest | Reconcile documentation; validate a smaller fresh-window default |
+| Actual default geometry differs from the historical UI specification | `PaddrStyle.swift:78` vs historical specification | Reconcile documentation; validate a smaller fresh-window default |
 
 These observations motivate a redesign. Documented aesthetic choices are not
 being classified as software defects.
@@ -246,13 +246,12 @@ rewrite the shared shell simultaneously.
 | 2. Persistent shell and truthful state | `ConfigurationView`, `ConfigurationContentView`, `TopControlsView`, `ProfileControlsView`, `ApplyBarView`, `StatusCell`, relevant menu presentation | Save/output remain reachable while scrolling; clean/dirty/default/waiting/error states and dirty-enable action are accurate |
 | 3. Mapping workspace | `DualPadConfigurationView`, `PadConfigurationView`, `ButtonZoneConfigurationView`, `RearButtonConfigurationView`, shared adaptive layouts | Common controls visible; tuning disclosed with summary; L/R independent; zone selection and focus survive resizing |
 | 4. Consistent setup and copy | `PermissionTile`, `OnboardingGuideView`, profile sheets, `Resources/Localizable.xcstrings` | Shared permission content, both grant recovery paths, direct Default duplication, localized consistent wording |
-| 5. Acceptance and documentation | App-support presentation/layout/contrast tests, README/screenshots, parity manifest | Native evidence for required states/sizes; preserved behavior tests; canonical checks pass; documentation matches final geometry |
+| 5. Acceptance and documentation | App-support presentation/layout/contrast tests, README/screenshots, attribution | Native evidence for required states/sizes; preserved behavior tests; canonical checks pass; documentation matches final geometry |
 
 Keep the configuration schema, profile storage, parser, output ledger, controller
 I/O, and mapping engine unchanged. Changes to UI-only state/presentation helpers
 are expected. The independent light/dark identity intentionally replaces selected
-family-palette/surface requirements when implemented; update the historical
-parity manifest explicitly and retain all MIT attribution. Continue the mounted
+family-palette/surface requirements when implemented; update the UI documentation and retain all MIT attribution. Continue the mounted
 dual-editor and accessibility contracts. Do not remove an assertion merely to
 make the new UI pass; replace it with a check of the chosen user-visible contract.
 

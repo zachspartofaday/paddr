@@ -160,9 +160,21 @@ struct PadConfigurationView: View {
                         .padding(.top, PaddrStyle.Spacing.s2)
                         .disabled(!isEditable)
                     } label: {
-                        Text("Pointer tuning")
-                            .paddrTypography(.sectionLabel)
+                        Button {
+                            tuningExpanded.toggle()
+                        } label: {
+                            Text("Pointer tuning")
+                                .paddrTypography(.sectionLabel)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .focusable(false)
+                        // The native disclosure remains the single keyboard/AX
+                        // control; this expands its pointer target to the label.
+                        .accessibilityHidden(true)
                     }
+                    .accessibilityLabel(Text("Pointer tuning"))
                     .paddrAccessibilityID("pad", side.rawValue, "pointer-tuning")
                     if !tuningExpanded {
                         Text(verbatim: PointerTuningPresentation.summary(configuration: configuration, locale: locale))

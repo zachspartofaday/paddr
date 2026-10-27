@@ -2,17 +2,47 @@
 
 User-visible changes to Paddr are recorded here. Release entries describe confirmed behavior at the time of each release; later entries may supersede earlier limitations.
 
-## Unreleased
+## 2.0.0 — 2026-10-26
 
-### Bespoke controls and pad maps
+### Bespoke mapping workspace
 
-- Give buttons, selectors, mode segments, and tuning switches a consistent compact
-  shape. Selectors retain their shared width and system menus; tuning switches use
-  squared tracks and thumbs while Enable output and sliders remain native.
-- Match pad outlines and zone binding plates to the controls without changing
-  mapping geometry, pointer tap regions, or saved configurations.
-- Preserve keyboard selection, menu cancellation, accessible binary state, and
-  automatic window sizing. Mirror selector text and chevrons in right-to-left layouts.
+- Introduce a unified compact control family: squared tuning switches, native-menu
+  selectors, buttons, and inset filled mode selections. Keep Enable output and
+  sliders native, with clear keyboard focus and accessible control semantics.
+- Use Compass teal accents in dark mode and blue in light mode. Keep selected modes
+  and Save & Apply flat with a pale rim; secondary surfaces use native Liquid Glass
+  with reduced-transparency and increased-contrast fallbacks.
+- Match pad maps to the controls with smoother outlines, repaired tangent seams,
+  concentric focus rings, and restrained surface depth.
+- Align mode selectors, menus and percentage readouts to shared 240-point edges.
+  Tighten pad/inspector spacing and use a 996-point preferred window width, retaining
+  automatic height adjustment and constrained-screen scrolling.
+- Put rear-button selectors in one evenly spaced row. L5 and R5 align with the
+  inspector edges above; whole label/menu pairs wrap when space is limited.
+
+### Interaction fixes
+
+- Make the Pointer tuning label clickable as well as its disclosure indicator.
+- Show a battery placeholder as soon as the controller connects, then update it
+  when the first battery report arrives without opening Connection details.
+- Mirror menu text, chevrons, mode tracking and tuning-switch thumbs in right-to-left
+  layouts. Keep selection, bindings and focus stable when layout direction changes.
+- Clear stale hover feedback while dragging between mode segments or across gaps.
+- Repair an idle-stop test fixture so stopping an empty session cannot release a
+  future run, with deterministic stop-before-start coverage.
+
+### Documentation
+
+- Replace the previous product screenshots with fresh light/dark native captures
+  and an automatically fitted expanded-tuning view, with permissions granted.
+- Streamline the README and move mapping details, CLI/configuration reference and
+  build instructions into linked guides. Remove the obsolete UI parity document
+  while preserving required third-party attribution.
+
+No profile migration is required. Existing mappings and output safety behavior are
+preserved. Confirmed connection remains Steam Controller 2 through its puck on
+released macOS 27 and macOS 27.2 release candidate; Bluetooth/direct USB remain
+unvalidated.
 
 ## 1.1.0 — 2026-10-26
 

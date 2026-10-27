@@ -4,9 +4,7 @@
 
 Paddr includes adapted presentation material from a bounded set of BottleRocket UI
 declarations at source revision
-`6c65d74fac9add281918438629228333535752a4`. The authorized declaration list and
-Paddr's adaptation record are documented in
-`docs/ui/PADDR_FAMILY_UI_PARITY.md`.
+`6c65d74fac9add281918438629228333535752a4`.
 
 Copyright (c) 2026 Zach Skjaveland / Part of a Day
 
