@@ -34,7 +34,7 @@ Closing the guide and configuration window leaves Paddr in the menu bar with qui
 
 Choose **Zones** on either pad, select a layout, then click an area on the map or use **Selected area** to assign it. Radial four-way, four corners, left/right, top/bottom, and 3 × 3 layouts are available. Each region can hold a keyboard key or mouse button until the touch moves or lifts. Crossing regions releases the previous action before pressing the next. Non-grid layouts offer an adjustable neutral region; 3 × 3 uses the whole pad.
 
-![Left pad configured as Zones with the right pad in Pointer mode](images/paddr-profile-overview-light.png)
+![Left pad configured as Four corners Zones with the right pad in Scroll mode](images/paddr-profile-overview-light.png)
 
 ## Pointer tuning
 
