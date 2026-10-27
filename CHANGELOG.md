@@ -2,6 +2,11 @@
 
 User-visible changes to Paddr are recorded here. Release entries describe confirmed behavior at the time of each release; later entries may supersede earlier limitations.
 
+## Unreleased
+
+- Soften button, selector, mode and tuning-switch outlines to 50% opacity in the
+  standard appearance, retaining full-strength focus and increased-contrast edges.
+
 ## 2.0.0 — 2026-10-26
 
 ### Bespoke mapping workspace

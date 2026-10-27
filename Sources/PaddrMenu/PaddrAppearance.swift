@@ -44,8 +44,20 @@ struct PaddrAppearance: Equatable {
         enabled ? PaddrStyle.controlTint : PaddrStyle.boundary
     }
 
+    /// Quiet decorative rims in the normal appearance; retain full strength
+    /// when the system requests increased contrast.
+    private var controlOutlineOpacity: Double { hasIncreasedContrast ? 1 : 0.5 }
+
+    func controlStroke(enabled: Bool) -> Color {
+        let color = enabled
+            ? hasIncreasedContrast ? PaddrStyle.textPrimary : PaddrStyle.textSecondary
+            : PaddrStyle.boundary
+        return color.opacity(controlOutlineOpacity)
+    }
+
     func accentStroke(enabled: Bool) -> Color {
-        enabled ? PaddrStyle.accentStroke : PaddrStyle.boundary
+        (enabled ? PaddrStyle.accentStroke : PaddrStyle.boundary)
+            .opacity(controlOutlineOpacity)
     }
 
     func accentForeground(enabled: Bool) -> Color {

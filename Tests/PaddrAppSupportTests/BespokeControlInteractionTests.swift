@@ -776,10 +776,18 @@ final class BespokeControlInteractionTests: XCTestCase {
                 host.effectiveAppearance.performAsCurrentDrawingAppearance {
                     rimColor = NSColor(PaddrStyle.textSecondary).usingColorSpace(.sRGB)
                 }
-                let expectedRim = try XCTUnwrap(rimColor)
+                let previousRim = try XCTUnwrap(rimColor)
+                let surface = try sample(bitmap, CGPoint(x: 136, y: 10))
+                let firstRimPixel = try sample(bitmap, CGPoint(x: 136, y: 0.5))
                 for y in [CGFloat(0.5), 1.5] {
-                    XCTAssertLessThan(distance(try sample(bitmap, CGPoint(x: 136, y: y)), expectedRim), 0.06,
-                        "The structural rim must cover both complete pixels/points without a fractional ghost seam")
+                    let rim = try sample(bitmap, CGPoint(x: 136, y: y))
+                    // Compare rendered strength, allowing color-managed blending
+                    // to differ from arithmetic interpolation of sRGB components.
+                    let strength = distance(rim, surface) / distance(previousRim, surface)
+                    XCTAssertGreaterThan(strength, 0.35)
+                    XCTAssertLessThan(strength, 0.65)
+                    XCTAssertLessThan(distance(rim, firstRimPixel), 0.01,
+                        "The softer rim must still cover both complete pixels/points without a fractional ghost seam")
                 }
                 let selected = try sample(bitmap, CGPoint(x: 225, y: 6))
                 let idle = try sample(bitmap, CGPoint(x: 102, y: 6))
