@@ -185,7 +185,7 @@ final class PaddrPopUpButton: NSPopUpButton {
                 color: isHighlighted ? PaddrStyle.controlPressed : PaddrStyle.controlHover)
         }
         PaddrControlDrawing.stroke(bounds, radius: PaddrStyle.Control.radius,
-            color: isEnabled ? increasedContrast ? PaddrStyle.textPrimary : PaddrStyle.textSecondary : PaddrStyle.boundary,
+            color: controlAppearance.controlStroke(enabled: isEnabled),
             width: PaddrStyle.Control.outlineWidth)
         if let iconName {
             drawSymbol(iconName, in: CGRect(x: bounds.midX - 7, y: bounds.midY - 7, width: 14, height: 14))
@@ -314,7 +314,7 @@ final class PaddrTuningSwitchButton: NSButton {
                 color: state == .on ? PaddrStyle.controlTint : PaddrStyle.workspace)
         }
         PaddrControlDrawing.stroke(trackRect, radius: PaddrStyle.Control.radius,
-            color: isEnabled ? increasedContrast ? PaddrStyle.textPrimary : PaddrStyle.textSecondary : PaddrStyle.boundary,
+            color: controlAppearance.controlStroke(enabled: isEnabled),
             width: PaddrStyle.Control.outlineWidth)
         if (isHovered || isHighlighted) && isEnabled {
             PaddrControlDrawing.fill(trackRect, radius: PaddrStyle.Control.radius, color: isHighlighted ? PaddrStyle.controlPressed : PaddrStyle.controlHover)
@@ -322,7 +322,7 @@ final class PaddrTuningSwitchButton: NSButton {
         PaddrControlDrawing.fill(thumbRect, radius: PaddrStyle.Control.TuningSwitch.thumbRadius,
             color: state == .on ? PaddrStyle.selectedZoneCaptionForeground : PaddrStyle.textSecondary)
         if !isEnabled {
-            PaddrControlDrawing.stroke(thumbRect, radius: PaddrStyle.Control.TuningSwitch.thumbRadius, color: PaddrStyle.boundary)
+            PaddrControlDrawing.stroke(thumbRect, radius: PaddrStyle.Control.TuningSwitch.thumbRadius, color: controlAppearance.controlStroke(enabled: false))
         }
     }
 }

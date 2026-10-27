@@ -40,8 +40,7 @@ struct PaddrButtonStyle: ButtonStyle {
                 .overlay {
                     PaddrControlShape()
                         .strokeBorder(role == .primary ? appearance.accentStroke(enabled: isEnabled)
-                            : isEnabled ? appearance.hasIncreasedContrast ? PaddrStyle.textPrimary : PaddrStyle.textSecondary
-                            : PaddrStyle.boundary,
+                            : appearance.controlStroke(enabled: isEnabled),
                             lineWidth: role == .primary ? appearance.strokeWidth : PaddrStyle.Control.outlineWidth)
                         .allowsHitTesting(false)
                 }

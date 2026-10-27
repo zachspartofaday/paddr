@@ -513,8 +513,7 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
             PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius, color: PaddrStyle.workspace)
         }
         PaddrControlDrawing.stroke(bounds, radius: PaddrStyle.Control.radius,
-            color: isEnabled ? controlAppearance.hasIncreasedContrast ? PaddrStyle.textPrimary : PaddrStyle.textSecondary
-                : PaddrStyle.boundary, width: PaddrStyle.Control.outlineWidth)
+            color: controlAppearance.controlStroke(enabled: isEnabled), width: PaddrStyle.Control.outlineWidth)
         for index in 0..<segmentCount {
             let rect = segmentRect(index)
             let selected = isSelected(forSegment: index)
