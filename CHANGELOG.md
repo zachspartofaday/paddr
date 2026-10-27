@@ -2,10 +2,12 @@
 
 User-visible changes to Paddr are recorded here. Release entries describe confirmed behavior at the time of each release; later entries may supersede earlier limitations.
 
-## Unreleased
+## 2.0.1 — 2026-10-27
 
 - Soften button, selector, mode and tuning-switch outlines to 50% opacity in the
   standard appearance, retaining full-strength focus and increased-contrast edges.
+- Refresh the product screenshots from the permission-approved build in light and
+  dark appearance, including the automatically fitted expanded-tuning window.
 
 ## 2.0.0 — 2026-10-26
 
