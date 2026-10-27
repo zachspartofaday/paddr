@@ -352,6 +352,30 @@ final class MenuModelTests: XCTestCase {
         await waitUntil(model: model) { !model.hasPendingLifecycleWork }
     }
 
+    func testProgressPressureIdleStopsCannotReleaseAFutureRun() async {
+        let session = ProgressPressureSession()
+        for expectedReleases in 0..<2 {
+            await session.stop()
+            await session.stop()
+            let idleReleases = await session.runtimeReleaseCount
+            XCTAssertEqual(idleReleases, expectedReleases, "An idle stop must not leave a release permit")
+
+            let stream = await session.start(configuration: .default, observeOnly: false, outputGate: nil)
+            let probe = SessionEventProbe<TrackpadSessionEvent>()
+            let observer = probe.observe(stream)
+            await probe.wait { events, _ in
+                events.contains { if case let .progress(summary) = $0 { return summary.reportCount == 80 }; return false }
+            }
+            let runningReleases = await session.runtimeReleaseCount
+            XCTAssertEqual(runningReleases, expectedReleases)
+            XCTAssertFalse(probe.isFinished, "The new run must stay active until its own stop")
+            await session.stop()
+            await observer.value
+            let stoppedReleases = await session.runtimeReleaseCount
+            XCTAssertEqual(stoppedReleases, expectedReleases + 1)
+        }
+    }
+
     func testControllerLossKeepsReceiverStreamAndWaitsForFreshEvidence() async {
         let state = readyState(receiver: "Fake receiver")
         let session = ManualEventSession()
@@ -4314,6 +4338,9 @@ final class MenuModelTests: XCTestCase {
 private actor ProgressPressureSession: TrackpadSessionControlling {
     private let runtime: MenuProgressPressureRuntime
     private let session: TrackpadSession
+    private var releasePending = false
+
+    var runtimeReleaseCount: Int { runtime.releaseCount }
 
     init() {
         let runtime = MenuProgressPressureRuntime()
@@ -4326,14 +4353,21 @@ private actor ProgressPressureSession: TrackpadSessionControlling {
         observeOnly: Bool,
         outputGate: OutputGate?
     ) async -> AsyncStream<TrackpadSessionEvent> {
+        let nextProduction = runtime.productionCount + 1
+        releasePending = true
         let stream = await session.start(configuration: configuration, observeOnly: observeOnly)
-        await runtime.waitUntilProduced()
+        await runtime.waitUntilProduced(nextProduction)
         return stream
     }
 
     @discardableResult
     func stop() async -> TrackpadSessionStopOutcome {
-        runtime.release()
+        // Claim this run's single release before suspension. Empty-session and
+        // repeated stops must not leave a semaphore permit for the next run.
+        if releasePending {
+            releasePending = false
+            runtime.release()
+        }
         return await session.stop()
     }
 }
@@ -4341,6 +4375,10 @@ private actor ProgressPressureSession: TrackpadSessionControlling {
 private final class MenuProgressPressureRuntime: Sendable {
     private let produced = SessionEventProbe<Void>()
     private let releaseGate = BoundedTestGate()
+    private let releases = Mutex(0)
+
+    var releaseCount: Int { releases.withLock { $0 } }
+    var productionCount: Int { produced.events.count }
 
     func run(
         configuration: PaddrConfiguration,
@@ -4369,11 +4407,12 @@ private final class MenuProgressPressureRuntime: Sendable {
         )
     }
 
-    func waitUntilProduced() async {
-        await produced.wait { events, _ in !events.isEmpty }
+    func waitUntilProduced(_ count: Int) async {
+        await produced.wait { events, _ in events.count >= count }
     }
 
     func release() {
+        releases.withLock { $0 += 1 }
         releaseGate.signal()
     }
 }

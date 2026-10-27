@@ -9,6 +9,10 @@ The native SwiftUI/AppKit application now implements this direction. The HTML
 concept remains a historical planning artifact; native captures and validation
 are described in [the implementation verification record](PADDR_REDESIGN_VALIDATION.md).
 
+The later operator-approved [bespoke controls plan](PADDR_BESPOKE_CONTROLS_PLAN.md)
+supersedes this record's native-widget-only styling and 30-point pad-radius guidance.
+It preserves the palette, paired editors, workflow, footer and automatic sizing.
+
 ## Product brief
 
 Paddr helps a Steam Controller 2 owner turn two trackpads and four rear buttons

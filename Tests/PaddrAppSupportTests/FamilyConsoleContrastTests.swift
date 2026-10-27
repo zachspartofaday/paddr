@@ -16,6 +16,28 @@ final class FamilyConsoleContrastTests: XCTestCase {
         }
     }
 
+    func testAccentRolesAndForegroundAreOneAdaptivePair() throws {
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let appearance = try XCTUnwrap(NSAppearance(named: name))
+            let accent = try resolved(PaddrStyle.action, appearance: appearance)
+            let expected = name == .darkAqua
+                ? SRGBColor(red: 120 / 255, green: 199 / 255, blue: 189 / 255, alpha: 1)
+                : SRGBColor(red: 40 / 255, green: 89 / 255, blue: 207 / 255, alpha: 1)
+            assertEqual(accent, expected)
+            for role in [PaddrStyle.controlTint, PaddrStyle.selectionBoundary, PaddrStyle.selectedZoneCaptionFill] {
+                assertEqual(try resolved(role, appearance: appearance), accent)
+            }
+            assertEqual(try resolved(PaddrStyle.controlForeground, appearance: appearance),
+                try resolved(PaddrStyle.selectedZoneCaptionForeground, appearance: appearance))
+            // Hover and press preserve readable selected text as well as the fill.
+            for overlay in [PaddrStyle.controlHover, PaddrStyle.controlPressed] {
+                let fill = try resolved(overlay, appearance: appearance).composited(over: accent)
+                let foreground = try resolved(PaddrStyle.controlForeground, appearance: appearance)
+                XCTAssertGreaterThanOrEqual(foreground.contrastRatio(with: fill), 4.5)
+            }
+        }
+    }
+
     func testWorkspaceTextMeetsContrastInBothAppearances() throws {
         for name in [NSAppearance.Name.aqua, .darkAqua] {
             let appearance = try XCTUnwrap(NSAppearance(named: name))

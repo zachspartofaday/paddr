@@ -17,6 +17,7 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
     let showsDivider: Bool
     let equalizesColumnHeights: Bool
     let columnSpacing: CGFloat
+    let alignsPadInspector: Bool
     @ViewBuilder let leading: () -> Leading
     @ViewBuilder let trailing: () -> Trailing
 
@@ -26,12 +27,14 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
         breakpoint: CGFloat,
         leadingWidth: CGFloat,
         showsDivider: Bool = true,
+        alignsPadInspector: Bool = false,
         @ViewBuilder leading: @escaping () -> Leading,
         @ViewBuilder trailing: @escaping () -> Trailing
     ) {
         self.breakpoint = breakpoint
         self.leadingWidth = leadingWidth
         self.showsDivider = showsDivider
+        self.alignsPadInspector = alignsPadInspector
         equalizesColumnHeights = false
         columnSpacing = PaddrStyle.previewInspectorSpacing
         self.leading = leading
@@ -49,6 +52,7 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
         self.breakpoint = breakpoint
         leadingWidth = nil
         showsDivider = false
+        alignsPadInspector = false
         equalizesColumnHeights = true
         columnSpacing = PaddrStyle.cardSpacing
         self.leading = leading
@@ -64,8 +68,9 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
         self.breakpoint = breakpoint
         leadingWidth = nil
         showsDivider = false
+        alignsPadInspector = false
         equalizesColumnHeights = false
-        columnSpacing = PaddrStyle.Spacing.s5
+        columnSpacing = PaddrPadColumns.workspaceSpacing
         self.leading = leading
         self.trailing = trailing
     }
@@ -73,15 +78,18 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
     var body: some View {
         let usesColumns = availableWidth >= breakpoint && !dynamicTypeSize.isAccessibilitySize
         let usesEqualHeightColumns = usesColumns && equalizesColumnHeights
+        let resolvedSpacing = alignsPadInspector ? PaddrPadColumns.spacing(in: availableWidth) : columnSpacing
+        let resolvedLeadingWidth = alignsPadInspector
+            ? PaddrPadColumns.previewWidth(in: availableWidth) : leadingWidth
         let layout = usesEqualHeightColumns
             ? AnyLayout(PaddrEqualHeightColumnsLayout(spacing: columnSpacing))
             : usesColumns
-                ? AnyLayout(HStackLayout(alignment: .top, spacing: columnSpacing))
+                ? AnyLayout(HStackLayout(alignment: .top, spacing: resolvedSpacing))
                 : AnyLayout(VStackLayout(alignment: .leading, spacing: PaddrStyle.Spacing.s4))
 
         layout {
             leading()
-                .frame(width: usesColumns ? leadingWidth : nil, alignment: .topLeading)
+                .frame(width: usesColumns ? resolvedLeadingWidth : nil, alignment: .topLeading)
                 .frame(
                     minWidth: usesColumns && leadingWidth != nil ? nil : 0,
                     maxWidth: usesColumns && leadingWidth != nil ? nil : .infinity,
@@ -96,6 +104,7 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
                 Divider()
             }
             trailing()
+                .frame(width: alignsPadInspector ? PaddrStyle.Width.control : nil, alignment: .topLeading)
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .topLeading)
                 .frame(
                     maxHeight: usesEqualHeightColumns ? .infinity : nil,
@@ -108,5 +117,35 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
             guard width > 0 else { return }
             availableWidth = width
         }
+    }
+}
+
+/// Shared column geometry for the mode header and every preview/inspector pair.
+/// The map and gutter stay bounded; surplus belongs beyond the inspector, never
+/// between the sensor map and its controls. Headers share these edges.
+enum PaddrPadColumns {
+    static let minimumInlineWidth = PaddrStyle.previewInspectorColumnsBreakpoint
+    static let workspaceSpacing = PaddrStyle.Spacing.s5
+
+    /// Logical trailing edges of the two inline inspectors in the workspace.
+    /// Uses the same equal column allocation, breakpoint, bounded map and gutter
+    /// as the mounted pad editors. Surplus stays after each 240-point inspector.
+    static func workspaceInspectorTrailingEdges(in width: CGFloat) -> (left: CGFloat, right: CGFloat)? {
+        guard width >= PaddrStyle.Metrics.padEditorColumnsBreakpoint else { return nil }
+        let columnWidth = (width - workspaceSpacing) / 2
+        let trailing = inspectorLeading(in: columnWidth) + PaddrStyle.Width.control
+        return (trailing, columnWidth + workspaceSpacing + trailing)
+    }
+
+    static func spacing(in availableWidth: CGFloat) -> CGFloat {
+        guard availableWidth >= minimumInlineWidth else { return PaddrStyle.previewInspectorSpacing }
+        return min(PaddrStyle.previewInspectorSpacing,
+            availableWidth - PaddrStyle.Metrics.zoneMapWidth - PaddrStyle.behaviorPickerWidth)
+    }
+    static func previewWidth(in availableWidth: CGFloat) -> CGFloat {
+        PaddrStyle.Metrics.zoneMapWidth
+    }
+    static func inspectorLeading(in availableWidth: CGFloat) -> CGFloat {
+        previewWidth(in: availableWidth) + spacing(in: availableWidth)
     }
 }

@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import ScreenCaptureKit
 import SwiftUI
 import XCTest
 
@@ -16,7 +17,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         }
         let directory = URL(fileURLWithPath: path, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let model = try makeEditableMenuModel(hasSystemAccess: false)
+        let model = try makeEditableMenuModel(hasSystemAccess: true)
         let initialized = await waitUntil { model.isInitialized }
         XCTAssertTrue(initialized)
         model.configuration.rearButtons = .init(l4: "F1", l5: "F2", r4: "F3", r5: "F4")
@@ -24,6 +25,11 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             ("light", ColorScheme.light, NSAppearance.Name.aqua),
             ("dark", ColorScheme.dark, NSAppearance.Name.darkAqua)
         ] {
+            for radius in [0.0, 0.6, 1.0] {
+                try await exportEvidence(PadModePreview(mode: .mouse, deadzone: radius),
+                    size: NSSize(width: 190, height: 182), scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("pointer-radius-\(Int(radius * 100))-\(theme).png"))
+            }
             model.configuration.left.mode = .scroll
             model.configuration.right.mode = .mouse
             for (name, size) in [
@@ -48,6 +54,27 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 await settle(document, passes: 12)
                 try exportPNG(document, to: directory.appendingPathComponent("\(name)-\(theme)-document.png"))
             }
+            model.configuration.left.mode = .mouse
+            model.configuration.right.mode = .mouse
+            for width in [CGFloat(680), 940, 1080] {
+                try await exportEvidence(
+                    ConfigurationView(model: model, initialTuningExpanded: true),
+                    size: NSSize(width: width, height: 900), scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("both-tuning-\(Int(width))-\(theme).png"))
+            }
+            try await exportEvidence(
+                PadConfigurationView(side: .left, configuration: .constant(model.configuration.left),
+                    isEditable: false, initialTuningExpanded: true),
+                size: NSSize(width: 500, height: 650), scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("disabled-tuning-\(theme).png"))
+            try await exportEvidence(
+                PadConfigurationView(side: .left, configuration: .constant(model.configuration.left), initialTuningExpanded: true)
+                    .environment(\._colorSchemeContrast, .increased)
+                    .environment(\._accessibilityReduceTransparency, true)
+                    .environment(\._accessibilityReduceMotion, true),
+                size: NSSize(width: 500, height: 650), scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("increased-contrast-tuning-\(theme).png"))
+            model.configuration.left.mode = .scroll
             model.configuration.right.mode = .disabled
             try await exportEvidence(
                 ConfigurationView(model: model), size: NSSize(width: 940, height: 620),
@@ -101,6 +128,25 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 size: PaddrStyle.Metrics.guideWindowSize, scheme: scheme, appearance: appearance,
                 to: directory.appendingPathComponent("guide-welcome-\(theme).png")
             )
+            model.configuration.left.mode = .mouse
+            model.configuration.right.mode = .mouse
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true, initialTuningExpanded: true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-both-tuning-\(theme).png"))
+            let longModel = try makeEditableMenuModel(hasSystemAccess: true,
+                profileName: "A deliberately long profile name that remains fully readable in the selector")
+            let longReady = await waitUntil { longModel.isInitialized }
+            XCTAssertTrue(longReady)
+            longModel.configuration.left.mode = .dpad
+            longModel.configuration.left.zoneLayout = .gridNine
+            for zone in PadZoneLayout.gridNine.zones {
+                longModel.configuration.left[bindingFor: zone] = "code:65535"
+            }
+            longModel.configuration.right.tapKey = "code:65535"
+            try await exportReadmeWindow(
+                ConfigurationView(model: longModel, managesWindowSize: true), scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-long-labels-\(theme).png"))
             var pager = OnboardingPager()
             pager.advance()
             pager.advance()
@@ -153,6 +199,81 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 scheme: scheme, appearance: appearance,
                 to: directory.appendingPathComponent("readme-access-ready-\(theme).png")
             )
+            try await exportReadmeWindow(
+                ConfigurationView(model: permissionModel, managesWindowSize: true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-permission-setup-\(theme).png"))
+            model.configuration.left.mode = .dpad
+            model.configuration.right.mode = .dpad
+            model.configuration.left.zoneLayout = .fourCorners
+            model.configuration.right.zoneLayout = .fourCorners
+            model.configuration.left.dpadDeadzone = 0
+            model.configuration.right.dpadDeadzone = 0
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-both-zones-\(theme).png"))
+            for (state, index) in [("hover-other", 1), ("hover-selected", 3)] {
+                try await exportReadmeWindow(
+                    ConfigurationView(model: model, managesWindowSize: true),
+                    scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("readme-both-zones-\(state)-\(theme).png"),
+                    prepare: { view in
+                        for mode in self.descendants(of: PaddrModeSegmentedControl.self, in: view) {
+                            let rect = mode.segmentRect(index)
+                            mode.updateHover(at: CGPoint(x: rect.midX, y: rect.midY))
+                        }
+                    })
+            }
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true)
+                    .environment(\._accessibilityReduceTransparency, true)
+                    .environment(\._colorSchemeContrast, .increased)
+                    .environment(\._accessibilityReduceMotion, true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-both-zones-opaque-\(theme).png"))
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true)
+                    .environment(\.layoutDirection, .rightToLeft),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-both-zones-rtl-\(theme).png"))
+            for width in [CGFloat(984), 1280] {
+                try await exportReadmeWindow(
+                    ConfigurationView(model: model), scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("readme-rear-\(Int(width))-\(theme).png"),
+                    expectsFullDocumentFit: false, evidenceSize: NSSize(width: width, height: 760),
+                    prepare: { view in
+                        // Fixed-width evidence must not be reset to the preferred
+                        // opening width by the production auto-sizing bridge.
+                        XCTAssertEqual(view.bounds.width, width, accuracy: 0.5)
+                        let scroll = self.configurationScrollView(in: view)
+                        XCTAssertNotNil(scroll)
+                        if let scroll, let document = scroll.documentView {
+                            XCTAssertLessThanOrEqual(document.bounds.height, scroll.contentSize.height + 1,
+                                "The fixed-width evidence must contain the complete rear row")
+                        }
+                    })
+            }
+            let longRear = "code:12345678901234567890123456789012345678901234567890"
+            model.configuration.rearButtons = .init(l4: longRear, l5: longRear, r4: longRear, r5: longRear)
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true), scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-rear-long-\(theme).png"))
+            model.configuration.rearButtons = .init(l4: "F1", l5: "F2", r4: "F3", r5: "F4")
+            for lower in [false, true] {
+                try await exportReadmeWindow(
+                    ConfigurationView(model: model), scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("readme-narrow-\(lower ? "lower" : "top")-\(theme).png"),
+                    expectsFullDocumentFit: false, evidenceSize: NSSize(width: 680, height: 760),
+                    prepare: { view in
+                        guard lower, let scroll = self.configurationScrollView(in: view),
+                              let document = scroll.documentView else { return }
+                        scroll.contentView.scroll(to: CGPoint(x: 0,
+                            y: max(0, document.bounds.height - scroll.contentSize.height)))
+                        scroll.reflectScrolledClipView(scroll.contentView)
+                    })
+            }
+            model.configuration.right.mode = .mouse
             model.configuration.left.mode = .dpad
             for layout in PadZoneLayout.allCases {
                 model.configuration.left.zoneLayout = layout
@@ -177,6 +298,30 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 scheme: scheme, appearance: appearance,
                 to: directory.appendingPathComponent("readme-shorter-\(theme).png")
             )
+            model.configuration.left.mode = .mouse
+            model.configuration.right.mode = .mouse
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true, initialTuningExpanded: true),
+                scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-both-tuning-\(theme).png"))
+            // Accessibility documents may legitimately exceed the screen cap.
+            // Capture both ends through WindowServer, since cached mixed native
+            // glass can omit entire layers and cannot establish text readability.
+            for lower in [false, true] {
+                try await exportReadmeWindow(
+                    ConfigurationView(model: model, managesWindowSize: true, initialTuningExpanded: true)
+                        .environment(\.dynamicTypeSize, .accessibility5),
+                    scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("readme-accessibility-\(lower ? "lower" : "top")-\(theme).png"),
+                    expectsFullDocumentFit: false,
+                    prepare: { view in
+                        guard lower, let scroll = self.configurationScrollView(in: view),
+                              let document = scroll.documentView else { return }
+                        scroll.contentView.scroll(to: CGPoint(x: 0,
+                            y: max(0, document.bounds.height - scroll.contentSize.height)))
+                        scroll.reflectScrolledClipView(scroll.contentView)
+                    })
+            }
             try await exportReadmeWindow(
                 OnboardingGuideView(model: model, onSkip: {}, onComplete: {}),
                 isGuide: true, scheme: scheme, appearance: appearance,
@@ -193,12 +338,112 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         }
     }
 
+    /// Native captures verify flat accent selection over the retained glass track.
+    func testCompositedFlatModeSelectionAndFeedback() async throws {
+        guard let path = ProcessInfo.processInfo.environment["PADDR_UI_EVIDENCE_DIR"] else {
+            throw XCTSkip("Set PADDR_UI_EVIDENCE_DIR to verify native glass composition")
+        }
+        guard CGPreflightScreenCaptureAccess() else {
+            throw XCTSkip("Screen Recording is not already granted; no permission requested")
+        }
+        let directory = URL(fileURLWithPath: path)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for (theme, scheme, appearance) in [("light", ColorScheme.light, NSAppearance.Name.aqua),
+                                            ("dark", ColorScheme.dark, .darkAqua)] {
+            for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+                func content(_ disabled: Bool, _ reduceMotion: Bool) -> some View {
+                    PadModePicker(selection: .constant(.dpad), accessibilityIdentifier: "paddr.pad-mode.left")
+                        .disabled(disabled)
+                        .padding(16)
+                        .background(PaddrStyle.workspace)
+                        .environment(\.colorScheme, scheme)
+                        .environment(\.layoutDirection, direction)
+                        .environment(\._accessibilityReduceMotion, reduceMotion)
+                }
+                let host = NSHostingView(rootView: content(false, false))
+                let window = NSWindow(contentRect: CGRect(x: 80, y: 80, width: 272, height: 64),
+                    styleMask: [.titled], backing: .buffered, defer: false)
+                window.isReleasedWhenClosed = false
+                window.animationBehavior = .none
+                window.appearance = NSAppearance(named: appearance)
+                window.contentView = host
+                defer { window.close() }
+                await settle(host, passes: 12)
+                let mode = try XCTUnwrap(descendants(of: PaddrModeSegmentedControl.self, in: host).first)
+                let frameView = try XCTUnwrap(window.contentView?.superview)
+                func color(_ bitmap: NSBitmapImageRep, _ index: Int, lower: Bool = false) throws -> NSColor {
+                    let rect = mode.segmentRect(index)
+                    let point = mode.convert(CGPoint(x: rect.midX, y: lower ? rect.maxY - 4 : rect.minY + 3), to: frameView)
+                    let x = point.x * CGFloat(bitmap.pixelsWide) / frameView.bounds.width
+                    let y = (frameView.isFlipped ? point.y : frameView.bounds.height - point.y)
+                        * CGFloat(bitmap.pixelsHigh) / frameView.bounds.height
+                    return try XCTUnwrap(bitmap.colorAt(x: Int(x), y: Int(y))?.usingColorSpace(.sRGB))
+                }
+                func distance(_ a: NSColor, _ b: NSColor) -> CGFloat {
+                    abs(a.redComponent - b.redComponent) + abs(a.greenComponent - b.greenComponent)
+                        + abs(a.blueComponent - b.blueComponent)
+                }
+                func luminance(_ color: NSColor) -> CGFloat {
+                    func linear(_ v: CGFloat) -> CGFloat { v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+                    return 0.2126 * linear(color.redComponent) + 0.7152 * linear(color.greenComponent)
+                        + 0.0722 * linear(color.blueComponent)
+                }
+                var foreground: NSColor?
+                window.effectiveAppearance.performAsCurrentDrawingAppearance {
+                    foreground = NSColor(PaddrStyle.controlForeground).usingColorSpace(.sRGB)
+                }
+                var normalSelected: NSColor?
+                var normalIdle: NSColor?
+                for state in ["normal", "hover-other", "hover-selected", "disabled", "reduce-motion"] {
+                    host.rootView = content(state == "disabled", state == "reduce-motion")
+                    await settle(host, passes: 12)
+                    XCTAssertTrue(descendants(of: PaddrModeSegmentedControl.self, in: host).first === mode)
+                    window.orderFront(nil)
+                    await settle(host, passes: 12)
+                    mode.updateHover(at: state == "hover-other" ? CGPoint(x: mode.segmentRect(1).midX, y: 16)
+                        : state == "hover-selected" ? CGPoint(x: mode.segmentRect(3).midX, y: 16) : CGPoint(x: -1, y: -1))
+                    let name = "mode-flat-\(direction == .leftToRight ? "ltr" : "rtl")-\(state)-\(theme).png"
+                    let capture = try await captureCompositedWindow(window, to: directory.appendingPathComponent(name))
+                    let bitmap = try XCTUnwrap(capture)
+                    let selected = try color(bitmap, 3)
+                    let idle = try color(bitmap, 1)
+                    XCTAssertGreaterThan(distance(selected, idle), state == "disabled" ? 0.1 : 0.3,
+                        "Flat accents must retain an unmistakable filled selection: \(name)")
+                    if state != "disabled" {
+                        let text = luminance(try XCTUnwrap(foreground))
+                        let fill = luminance(selected)
+                        let contrast = (max(text, fill) + 0.05) / (min(text, fill) + 0.05)
+                        XCTAssertGreaterThanOrEqual(contrast, 4.5, "Selected text over flat accent: \(name)")
+                        print("Selected flat-accent text contrast \(name): \(contrast)")
+                    }
+                    if state == "normal" {
+                        XCTAssertLessThan(distance(selected, try color(bitmap, 3, lower: true)), 0.04,
+                            "Selected accent must be flat, without glass highlights: \(name)")
+                        normalSelected = selected; normalIdle = idle
+                    }
+                    if state == "hover-other" {
+                        XCTAssertLessThan(distance(selected, try XCTUnwrap(normalSelected)), 0.04)
+                        XCTAssertGreaterThan(distance(idle, try XCTUnwrap(normalIdle)), 0.01)
+                    }
+                    if state == "hover-selected" {
+                        XCTAssertGreaterThan(distance(selected, try XCTUnwrap(normalSelected)), 0.01)
+                        XCTAssertLessThan(distance(idle, try XCTUnwrap(normalIdle)), 0.04)
+                    }
+                    XCTAssertEqual(mode.selectedSegment, 3)
+                }
+            }
+        }
+    }
+
     private func exportReadmeWindow<Content: View>(
         _ content: Content,
         isGuide: Bool = false,
         scheme: ColorScheme,
         appearance: NSAppearance.Name,
-        to url: URL
+        to url: URL,
+        expectsFullDocumentFit: Bool = true,
+        evidenceSize: NSSize? = nil,
+        prepare: ((NSView) -> Void)? = nil
     ) async throws {
         let size = isGuide ? PaddrStyle.Metrics.guideWindowSize : PaddrStyle.Metrics.defaultWindowSize
         let window = NSWindow(
@@ -207,6 +452,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             backing: .buffered, defer: false
         )
         window.isReleasedWhenClosed = false
+        window.animationBehavior = .none
         defer { window.close() }
         window.title = isGuide ? "Paddr Guide" : "Paddr"
         window.appearance = NSAppearance(named: appearance)
@@ -228,12 +474,13 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         } else {
             PaddrFamilyWindowChrome.installConfigurationTitle(window.title, in: window)
             PaddrFamilyWindowChrome.setFreshDefaultUsableFrame(for: window)
+            if let evidenceSize { PaddrFamilyWindowChrome.setUsableLayoutSize(evidenceSize, for: window) }
         }
         if let screen = window.screen?.visibleFrame {
             window.setFrameTopLeftPoint(NSPoint(x: screen.minX + 80, y: screen.maxY - 40))
         }
         await settle(controller.view, passes: 60)
-        if !isGuide {
+        if !isGuide && expectsFullDocumentFit {
             let scroll = try XCTUnwrap(configurationScrollView(in: controller.view))
             let document = try XCTUnwrap(scroll.documentView)
             XCTAssertEqual(scroll.contentSize.height, document.bounds.height, accuracy: 2,
@@ -242,7 +489,39 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         // Include the actual titlebar instead of leaving its reserved area blank.
         let frameView = try XCTUnwrap(window.contentView?.superview)
         frameView.layoutSubtreeIfNeeded()
+        prepare?(controller.view)
         try exportPNG(frameView, to: url)
+        // Cached display exports don't include WindowServer's native glass pass.
+        // Capture only this inert fixture window when access is already granted.
+        // Never request or change Screen Recording/TCC permissions for evidence.
+        _ = try await captureCompositedWindow(window, to: url) { prepare?(controller.view) }
+    }
+
+    private func captureCompositedWindow(_ window: NSWindow, to url: URL,
+        prepare: (() -> Void)? = nil) async throws -> NSBitmapImageRep? {
+        if CGPreflightScreenCaptureAccess() {
+            window.orderFront(nil)
+            await settle(try XCTUnwrap(window.contentView), passes: 12)
+            prepare?()
+            window.contentView?.displayIfNeeded()
+            let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: false)
+            let fixture = try XCTUnwrap(content.windows.first { $0.windowID == CGWindowID(window.windowNumber) })
+            let filter = SCContentFilter(desktopIndependentWindow: fixture)
+            let configuration = SCScreenshotConfiguration()
+            configuration.showsCursor = false
+            configuration.ignoreShadows = true
+            configuration.dynamicRange = .sdr
+            let output = try await SCScreenshotManager.captureScreenshot(contentFilter: filter, configuration: configuration)
+            let image = try XCTUnwrap(output.sdrImage)
+            print("Composited fixture \(url.lastPathComponent): \(image.width)x\(image.height), window \(window.frame.size), filter scale \(filter.pointPixelScale)")
+            let bitmap = NSBitmapImageRep(cgImage: image)
+            let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+            try png.write(to: url.deletingPathExtension().appendingPathExtension("composited.png"))
+            return bitmap
+        } else {
+            print("Composited capture unavailable: Screen Recording is not already granted; no permission requested")
+        }
+        return nil
     }
 
     private func exportEvidence<Content: View>(
@@ -322,8 +601,9 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         state.configuration.right.pointerSmoothingStrength = 1
         state.configuration.right.tapStabilizationThresholdPoints = 10
         let host = dualPadHostingView(state: state)
-        // The pad workspace inside the operator's 940-point window, after its insets.
-        host.frame.size.width = 940 - (2 * PaddrStyle.Inset.chrome)
+        // Exercise the narrowest width that can hold two complete 190 + 240
+        // editor pairs. Below this new budget, the same editors stack.
+        host.frame.size.width = PaddrStyle.Metrics.padEditorColumnsBreakpoint
         await settle(host, passes: 12)
         let pointerHeight = host.fittingSize.height
         let leftMode = try XCTUnwrap(modeSelector(side: .left, in: host))
@@ -341,6 +621,229 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         XCTAssertLessThanOrEqual(abs(host.fittingSize.height - pointerHeight), 2 * PaddrStyle.Spacing.s5,
             "A collapsed tuning summary must not create an oversized blank band on the other pad")
         XCTAssertEqual(state.configuration.left.scrollSensitivity, 1.7)
+        host.frame.size.width = 940 - (2 * PaddrStyle.Inset.chrome)
+        await settle(host, passes: 12)
+        XCTAssertTrue(leftMode === modeSelector(side: .left, in: host))
+        XCTAssertTrue(rightMode === modeSelector(side: .right, in: host))
+        XCTAssertGreaterThan(abs(frame(of: leftMode, in: host).midY - frame(of: rightMode, in: host).midY),
+            PaddrStyle.Metrics.zoneMapHeight, "The complete editors reflow instead of squeezing/clipping 240-point controls")
+        for control in descendants(of: NSControl.self, in: host) {
+            let rect = frame(of: control, in: host)
+            XCTAssertGreaterThanOrEqual(rect.minX, -0.5)
+            XCTAssertLessThanOrEqual(rect.maxX, host.bounds.width + 0.5)
+        }
+    }
+
+    func testPadInspectorEdgesTrackModeColumnAcrossModesWidthsDirectionsAndAccessibility() async throws {
+        for side in [PadSide.left, .right] {
+            for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+                func content(_ mode: PadMode, _ size: DynamicTypeSize) -> some View {
+                    PadConfigurationView(side: side, configuration: .constant(PadConfiguration(mode: mode)), initialTuningExpanded: true)
+                        .environment(\.layoutDirection, direction)
+                        .environment(\.dynamicTypeSize, size)
+                }
+                let host = NSHostingView(rootView: content(.mouse, .large))
+                host.frame = CGRect(x: 0, y: 0, width: 488, height: 1600)
+                await settle(host, passes: 12)
+                let original = try XCTUnwrap(modeSelector(side: side, in: host))
+                for size in [DynamicTypeSize.large, .accessibility1, .accessibility5] {
+                    for width in [CGFloat(488), 446, 442.5, 438, 437.5, 418, 413, 680] {
+                        host.frame.size.width = width
+                        for mode in PadMode.allCases {
+                            host.rootView = content(mode, size)
+                            await settle(host, passes: 12)
+                            let selector = try XCTUnwrap(modeSelector(side: side, in: host))
+                            XCTAssertTrue(selector === original, "Reflow/mode changes must retain the mounted header control")
+                            let usesColumns = width >= PaddrStyle.previewInspectorColumnsBreakpoint && !size.isAccessibilitySize
+                            let columnLeading = usesColumns ? min(206, width - 240) : 0
+                            let headerInline = width >= PaddrPadColumns.minimumInlineWidth && !size.isAccessibilitySize
+                            let headerLeading = headerInline ? columnLeading : 0
+                            let selectorFrame = frame(of: selector, in: host)
+                            let actualHeaderLeading = direction == .leftToRight ? selectorFrame.minX : width - selectorFrame.maxX
+                            XCTAssertEqual(actualHeaderLeading, headerLeading, accuracy: 0.6, "\(side)/\(mode)/\(width)/\(direction)/\(size)")
+                            XCTAssertEqual(selectorFrame.width, 240, accuracy: 0.5)
+                            for menu in descendants(of: PaddrPopUpButton.self, in: host) {
+                                let rect = frame(of: menu, in: host)
+                                let leading = direction == .leftToRight ? rect.minX : width - rect.maxX
+                                XCTAssertEqual(leading, columnLeading, accuracy: 0.6, "Menu \(mode)/\(width)/\(direction)/\(size)")
+                                XCTAssertEqual(rect.width, 240, accuracy: 0.5)
+                                if headerInline {
+                                    XCTAssertEqual(leading, actualHeaderLeading, accuracy: 0.6)
+                                    XCTAssertEqual(rect.maxX, selectorFrame.maxX, accuracy: 0.6)
+                                    XCTAssertEqual(rect.minX, selectorFrame.minX, accuracy: 0.6)
+                                }
+                            }
+                            for slider in descendants(of: NSSlider.self, in: host) {
+                                let aligned = slider.convert(slider.alignmentRect(forFrame: slider.bounds), to: host)
+                                let readoutTrailing = direction == .leftToRight
+                                    ? aligned.maxX + PaddrStyle.Spacing.s2 + PaddrStyle.Width.readout
+                                    : width - aligned.minX + PaddrStyle.Spacing.s2 + PaddrStyle.Width.readout
+                                XCTAssertEqual(readoutTrailing, columnLeading + 240, accuracy: 0.6,
+                                    "Readout \(slider.accessibilityLabel() ?? "")/\(side)/\(mode)/\(width)/\(direction)/\(size)")
+                            }
+                            for slider in descendants(of: NSSlider.self, in: host) where slider.accessibilityLabel() == "Sensitivity" {
+                                let aligned = slider.convert(slider.alignmentRect(forFrame: slider.bounds), to: host)
+                                let leading = direction == .leftToRight ? aligned.minX : width - aligned.maxX
+                                XCTAssertEqual(leading, columnLeading, accuracy: 0.6, "Slider \(mode)/\(width)/\(direction)/\(size)")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    func testRearSelectorsFormOneCompactOrderedRowAndRetainIdentityFocusAndBindings() async throws {
+        var configuration = PaddrConfiguration.default
+        configuration.left.mode = .mouse
+        configuration.right.mode = .dpad
+        let binding = Binding(get: { configuration }, set: { configuration = $0 })
+        for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+            configuration.rearButtons = .init()
+            func content(_ size: DynamicTypeSize) -> some View {
+                VStack(alignment: .leading, spacing: 16) {
+                    DualPadConfigurationView(configuration: binding, appearsEnabled: true, isEditable: true)
+                    RearButtonConfigurationView(configuration: binding.rearButtons, isEditable: true)
+                }
+                .environment(\.layoutDirection, direction)
+                .environment(\.dynamicTypeSize, size)
+                .environment(\.accessibilityEnabled, true)
+            }
+            let host = NSHostingView(rootView: content(.large))
+            let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 916, height: 1800),
+                styleMask: [.titled], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.contentView = host
+            defer { window.close() }
+            await settle(host, passes: 12)
+            let names = ["Left rear button L4 action", "Left rear button L5 action",
+                "Right rear button R4 action", "Right rear button R5 action"]
+            let original = try names.map { name in
+                try XCTUnwrap(descendants(of: PaddrPopUpButton.self, in: host).first { $0.accessibilityLabel() == name })
+            }
+            XCTAssertTrue(window.makeFirstResponder(original[0]))
+            for size in [DynamicTypeSize.large, .accessibility1, .accessibility5] {
+                for width in [CGFloat(916), 900, 904, 940, 899, 600, 438, 437, 358, 260, 1200, 1600] {
+                    host.rootView = content(size)
+                    window.setContentSize(NSSize(width: width, height: 1800))
+                    host.frame.size.width = width
+                    await settle(host, passes: 12)
+                    XCTAssertTrue(window.firstResponder === original[0])
+                    for (index, name) in names.enumerated() {
+                        let menu = try XCTUnwrap(descendants(of: PaddrPopUpButton.self, in: host)
+                            .first { $0.accessibilityLabel() == name })
+                        XCTAssertTrue(menu === original[index])
+                        let rear = frame(of: menu, in: host)
+                        XCTAssertEqual(rear.width, 180, accuracy: 0.5)
+                        XCTAssertGreaterThanOrEqual(rear.minX, -0.5)
+                        XCTAssertLessThanOrEqual(rear.maxX, width + 0.5)
+                    }
+                    let rects = original.map { frame(of: $0, in: host) }
+                    for index in 1..<rects.count {
+                        let previous = rects[index - 1], current = rects[index]
+                        if abs(current.midY - previous.midY) < 1 {
+                            let gap = direction == .leftToRight ? current.minX - previous.maxX : previous.minX - current.maxX
+                            XCTAssertGreaterThan(gap, 16, "Code labels must fit between adjacent menus")
+                        } else {
+                            XCTAssertGreaterThan(abs(current.midY - previous.midY), max(current.height, previous.height))
+                        }
+                    }
+                    if (900...940).contains(width) && !size.isAccessibilitySize {
+                        for rect in rects { XCTAssertEqual(rect.midY, rects[0].midY, accuracy: 0.6,
+                            "All four rear selectors must occupy one default row") }
+                        let leftMode = try XCTUnwrap(modeSelector(side: .left, in: host))
+                        let rightMode = try XCTUnwrap(modeSelector(side: .right, in: host))
+                        func trailing(_ rect: CGRect) -> CGFloat {
+                            direction == .leftToRight ? rect.maxX : width - rect.minX
+                        }
+                        XCTAssertEqual(trailing(rects[1]), trailing(frame(of: leftMode, in: host)), accuracy: 0.6,
+                            "L5 must share the actual left inspector trailing edge at \(width)/\(direction)")
+                        XCTAssertEqual(trailing(rects[3]), trailing(frame(of: rightMode, in: host)), accuracy: 0.6,
+                            "R5 must share the actual right inspector trailing edge at \(width)/\(direction)")
+                        for menu in descendants(of: PaddrPopUpButton.self, in: host) where frame(of: menu, in: host).width > 200 {
+                            let mainTrailing = trailing(frame(of: menu, in: host))
+                            let rearIndex = mainTrailing < width / 2 ? 1 : 3
+                            XCTAssertEqual(trailing(rects[rearIndex]), mainTrailing, accuracy: 0.6,
+                                "Rear anchors must also match the mounted main menus")
+                        }
+                        for slider in descendants(of: NSSlider.self, in: host) {
+                            let track = slider.convert(slider.alignmentRect(forFrame: slider.bounds), to: host)
+                            let readoutTrailing = trailing(track) + PaddrStyle.Spacing.s2 + PaddrStyle.Width.readout
+                            let rearIndex = readoutTrailing < width / 2 ? 1 : 3
+                            XCTAssertEqual(trailing(rects[rearIndex]), readoutTrailing, accuracy: 0.6,
+                                "Rear anchors must also match the readout edge")
+                        }
+                        let gaps = (1..<rects.count).map { trailing(rects[$0]) - trailing(rects[$0 - 1]) - rects[$0].width }
+                        for gap in gaps.dropFirst() {
+                            XCTAssertEqual(gap, gaps[0], accuracy: 0.6,
+                                "All adjacent menu gaps, including the middle gap, must match")
+                        }
+                    }
+                    if width >= 1200 || size.isAccessibilitySize || width < 900 {
+                        XCTAssertGreaterThan(abs(rects[2].midY - rects[0].midY), rects[0].height,
+                            "When the anchored row cannot fit, keep whole pairs in a readable wrapping layout")
+                    }
+                    if width == 260 {
+                        for index in 1..<rects.count {
+                            XCTAssertGreaterThan(abs(rects[index].midY - rects[index - 1].midY), rects[index].height)
+                        }
+                    }
+                }
+            }
+            // A real native menu selection still writes exactly its own rear binding.
+            for (index, menu) in original.enumerated() {
+                let native = try XCTUnwrap(menu.menu)
+                let item = try XCTUnwrap(native.items.firstIndex { $0.title == "F\(index + 1)" })
+                native.performActionForItem(at: item)
+                let values = [configuration.rearButtons.l4, configuration.rearButtons.l5,
+                    configuration.rearButtons.r4, configuration.rearButtons.r5]
+                for position in 0..<4 {
+                    XCTAssertEqual(values[position], position <= index ? "f\(position + 1)" : nil,
+                        "Choosing one rear action must leave the other bindings alone")
+                }
+            }
+            XCTAssertEqual(configuration.rearButtons, .init(l4: "f1", l5: "f2", r4: "f3", r5: "f4"))
+            // Long raw values must grow vertically within the same 180-point menus.
+            let long = "code:12345678901234567890123456789012345678901234567890"
+            configuration.rearButtons = .init(l4: long, l5: long, r4: long, r5: long)
+            for size in [DynamicTypeSize.large, .accessibility5] {
+                for width in [CGFloat(916), 1200, 438, 260] {
+                    host.rootView = content(size)
+                    window.setContentSize(NSSize(width: width, height: 1800))
+                    host.frame.size.width = width
+                    await settle(host, passes: 12)
+                    XCTAssertTrue(window.firstResponder === original[0])
+                    let elements = accessibilityElements(in: host)
+                    for (index, code) in ["L4", "L5", "R4", "R5"].enumerated() {
+                        let menu = try XCTUnwrap(descendants(of: PaddrPopUpButton.self, in: host)
+                            .first { $0.accessibilityLabel() == names[index] })
+                        XCTAssertTrue(menu === original[index])
+                        XCTAssertEqual(menu.titleOfSelectedItem, long)
+                        XCTAssertEqual(menu.bounds.width, 180, accuracy: 0.5)
+                        XCTAssertEqual(menu.bounds.height, menu.height(for: 180), accuracy: 0.5)
+                        XCTAssertGreaterThan(menu.bounds.height, 32)
+                        let label = try XCTUnwrap(elements.first {
+                            guard $0.accessibilityRole?() == .staticText,
+                                  let object = $0 as? NSObject else { return false }
+                            // SwiftUI static text exposes its contents as AXValue.
+                            // Dynamic dispatch avoids AppKit's differently typed value protocols.
+                            let selector = NSSelectorFromString("accessibilityValue")
+                            let value = object.responds(to: selector)
+                                ? object.perform(selector)?.takeUnretainedValue() as? String : nil
+                            return value == code || $0.accessibilityLabel?() == code
+                        }, "The attached code must remain readable to accessibility")
+                        let labelFrame = try XCTUnwrap(label.accessibilityFrame?())
+                        let menuFrame = menu.accessibilityFrame()
+                        XCTAssertEqual(labelFrame.midY, menuFrame.midY, accuracy: 1)
+                        let gap = direction == .leftToRight
+                            ? menuFrame.minX - labelFrame.maxX : labelFrame.minX - menuFrame.maxX
+                        XCTAssertEqual(gap, PaddrStyle.Spacing.s2, accuracy: 1)
+                        XCTAssertGreaterThan(labelFrame.width, 0)
+                        XCTAssertTrue(window.frame.contains(labelFrame))
+                    }
+                }
+            }
+        }
     }
 
     func testCompactSliderPreservesUsableTrackWidth() async throws {
@@ -1032,10 +1535,11 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
     }
 
     private func makeEditableMenuModel(
-        hasSystemAccess: Bool, inputMonitoringGranted: Bool? = nil, accessibilityGranted: Bool? = nil
+        hasSystemAccess: Bool, inputMonitoringGranted: Bool? = nil, accessibilityGranted: Bool? = nil,
+        profileName: String = "Editable"
     ) throws -> PaddrMenuModel {
         var document = ConfigurationProfileDocument.default
-        let profile = try document.createProfile(named: "Editable")
+        let profile = try document.createProfile(named: profileName)
         try document.activateProfile(id: profile.id)
         let loadedDocument = document
         return PaddrMenuModel(

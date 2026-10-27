@@ -14,11 +14,7 @@ struct ZonePadMap: View {
             GeometryReader { proxy in
                 Canvas { context, size in
                     let bounds = CGRect(origin: .zero, size: size)
-                    let padShape = Path(
-                        roundedRect: bounds,
-                        cornerRadius: PaddrStyle.Radius.pad
-                    )
-                    context.fill(padShape, with: .color(appearance.surface(elevated: false)))
+                    context.fill(Path(bounds), with: .color(appearance.surface(elevated: false)))
 
                     for zone in layout.zones {
                         let path = path(for: zone, in: bounds)
@@ -41,26 +37,13 @@ struct ZonePadMap: View {
                         )
                     }
                 }
-                .clipShape(.rect(cornerRadius: PaddrStyle.Radius.pad))
+                .modifier(PaddrPadSurface(appearance: appearance))
                 .overlay {
                     ZStack {
-                        RoundedRectangle(cornerRadius: PaddrStyle.Radius.pad)
-                            .strokeBorder(
-                                appearance.surfaceStroke,
-                                lineWidth: appearance.strokeWidth
-                            )
-                            .padding(1)
-                        RoundedRectangle(cornerRadius: PaddrStyle.Radius.pad)
-                            .strokeBorder(
-                                PaddrStyle.textPrimary.opacity(
-                                    appearance.hasIncreasedContrast ? 0.56 : 0.30
-                                ),
-                                lineWidth: appearance.strokeWidth
-                            )
                         Canvas { context, size in
                             let bounds = CGRect(origin: .zero, size: size)
                             if layout.zones.contains(selection) {
-                                let lineWidth: CGFloat = appearance.hasIncreasedContrast ? 2.25 : 1.75
+                                let lineWidth: CGFloat = 2
                                 let zoneRegion = path(for: selection, in: bounds)
                                 let outlineRegion = ZoneMapGeometry.selectedOutlineRegion(
                                     for: zoneRegion.cgPath,
@@ -92,8 +75,8 @@ struct ZonePadMap: View {
                     }
                     .allowsHitTesting(false)
                 }
-                .contentShape(.interaction, .rect(cornerRadius: PaddrStyle.Radius.pad))
-                .contentShape(.focusEffect, .rect(cornerRadius: PaddrStyle.Radius.pad))
+                .contentShape(.interaction, PaddrPadShape())
+                .contentShape(.focusEffect, PaddrPadShape())
                 .gesture(
                     SpatialTapGesture().onEnded { value in
                         if let zone = hitZone(at: value.location, size: proxy.size) {
@@ -105,6 +88,12 @@ struct ZonePadMap: View {
         }
         .focusable()
         .focused($isFocused)
+        .focusEffectDisabled()
+        .overlay {
+            if isFocused {
+                PaddrPadFocusRing()
+            }
+        }
         .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
             let direction: ZoneNavigationDirection
             switch press.key {
@@ -231,17 +220,23 @@ struct ZonePadMap: View {
         context: inout GraphicsContext
     ) {
         let point = labelPoint(for: zone, in: bounds)
-        let plateSize = CGSize(width: layout == .gridNine ? 38 : 78, height: 22)
+        let plateWidth: CGFloat = layout == .gridNine ? 38 : 78
+        let label = OutputBindingText.text(for: configuration[bindingFor: zone])
+            .font(.caption.bold())
+            .foregroundStyle(selected ? PaddrStyle.selectedZoneCaptionForeground : PaddrStyle.textSecondary)
+        let resolved = context.resolve(label)
+        let labelSize = resolved.measure(in: CGSize(width: plateWidth - 4, height: .greatestFiniteMagnitude))
+        let plateSize = CGSize(width: plateWidth, height: max(PaddrStyle.Control.bindingPlateHeight, ceil(labelSize.height) + 4))
         let plateRect = CGRect(
             x: point.x - plateSize.width / 2,
             y: point.y - plateSize.height / 2,
             width: plateSize.width,
             height: plateSize.height
         )
-        let plate = Path(roundedRect: plateRect, cornerRadius: plateSize.height / 2)
+        let plate = Path(roundedRect: plateRect, cornerRadius: PaddrStyle.Control.bindingPlateRadius)
         if selected {
             context.fill(plate, with: .color(PaddrStyle.selectedZoneCaptionFill))
-            context.stroke(plate, with: .color(PaddrStyle.selectedZoneCaptionForeground.opacity(0.42)), lineWidth: 0.75)
+            // The filled key plate already carries selection; avoid a fractional bright rim.
         } else {
             context.fill(plate, with: .color(appearance.surface(elevated: true)))
             context.stroke(
@@ -250,16 +245,8 @@ struct ZonePadMap: View {
                 lineWidth: appearance.strokeWidth
             )
         }
-        context.draw(
-            OutputBindingText.text(for: configuration[bindingFor: zone])
-                .font(.caption.bold())
-                .foregroundStyle(
-                    selected
-                        ? PaddrStyle.selectedZoneCaptionForeground
-                        : PaddrStyle.textSecondary
-                ),
-            at: point
-        )
+        context.draw(resolved, in: CGRect(x: point.x - labelSize.width / 2,
+            y: point.y - labelSize.height / 2, width: labelSize.width, height: labelSize.height))
     }
 
     private func center(in bounds: CGRect) -> CGPoint { CGPoint(x: bounds.midX, y: bounds.midY) }

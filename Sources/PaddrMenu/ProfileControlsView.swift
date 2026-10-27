@@ -18,14 +18,10 @@ struct ProfileControlsView: View {
                 .paddrTypography(.sectionLabel)
                 .fixedSize(horizontal: true, vertical: false)
 
-            Picker("Profile", selection: profileSelection) {
-                ForEach(pickerPresentation.options) { option in
-                    Text(verbatim: option.label).tag(option.id)
-                }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .paddrMappingSelector()
+            PaddrMenuPicker(title: "Profile", selection: profileSelection,
+                options: pickerPresentation.options.map { .init(value: $0.id, title: $0.label) },
+                accessibilityIdentifier: PaddrAccessibility.identifier("profile", "selector"),
+                accessibilityValue: pickerPresentation.accessibilityValue)
             .accessibilityLabel("Profile")
             .accessibilityValue(Text(verbatim: pickerPresentation.accessibilityValue))
             .help(Text(verbatim: pickerPresentation.accessibilityValue))
@@ -39,53 +35,9 @@ struct ProfileControlsView: View {
                     .paddrAccessibilityID("profile", "duplicate-to-edit")
             }
 
-            Menu {
-                if isDefaultProfile {
-                    Button(
-                        "Duplicate Default to Edit",
-                        systemImage: "plus.square.on.square",
-                        action: duplicateActiveProfile
-                    )
-                    .disabled(model.hasUnsavedChanges)
-
-                    Button("New Profile", systemImage: "plus", action: promptForCreate)
-                        .disabled(model.hasUnsavedChanges)
-                } else {
-                    Button("New Profile", systemImage: "plus", action: promptForCreate)
-                        .disabled(model.hasUnsavedChanges)
-
-                    Button(
-                        "Duplicate Profile",
-                        systemImage: "plus.square.on.square",
-                        action: duplicateActiveProfile
-                    )
-                    .disabled(model.hasUnsavedChanges)
-                }
-
-                Divider()
-
-                Button("Rename Profile", systemImage: "pencil", action: promptForRename)
-                    .disabled(!model.canEditActiveProfile)
-
-                Button(
-                    "Restore Defaults",
-                    systemImage: "arrow.counterclockwise",
-                    action: requestRestoreDefaults
-                )
-                .disabled(!model.canEditActiveProfile)
-
-                Button("Delete Profile", systemImage: "trash", role: .destructive) {
-                    pendingProfileAction = .delete(
-                        id: model.activeProfileID,
-                        name: model.activeProfile.name
-                    )
-                }
-                .disabled(!model.canEditActiveProfile || model.hasUnsavedChanges)
-            } label: {
-                Label("Profile actions", systemImage: "ellipsis.circle")
-                    .labelStyle(.iconOnly)
-            }
-            .paddrMenuSelector()
+            PaddrActionMenu(title: "Profile actions", systemImage: "ellipsis.circle", actions: profileActions,
+                accessibilityIdentifier: PaddrAccessibility.identifier("profile", "actions"),
+                accessibilityValue: String(localized: profileActionsAccessibilityValue))
             .accessibilityLabel(profileActionsAccessibilityLabel)
             .accessibilityValue(profileActionsAccessibilityValue)
             .help(profileActionsHelp)
@@ -160,6 +112,25 @@ struct ProfileControlsView: View {
         } message: {
             Text("Deleting the active profile activates Default first. This cannot be undone.")
         }
+    }
+
+    private var profileActions: [PaddrMenuAction] {
+        let duplicate = PaddrMenuAction(
+            title: isDefaultProfile ? "Duplicate Default to Edit" : "Duplicate Profile",
+            systemImage: "plus.square.on.square", isEnabled: !model.hasUnsavedChanges,
+            action: duplicateActiveProfile)
+        let create = PaddrMenuAction(title: "New Profile", systemImage: "plus",
+            isEnabled: !model.hasUnsavedChanges, action: promptForCreate)
+        return (isDefaultProfile ? [duplicate, create] : [create, duplicate]) + [
+            .separator,
+            .init(title: "Rename Profile", systemImage: "pencil", isEnabled: model.canEditActiveProfile,
+                action: promptForRename),
+            .init(title: "Restore Defaults", systemImage: "arrow.counterclockwise", isEnabled: model.canEditActiveProfile,
+                action: requestRestoreDefaults),
+            .init(title: "Delete Profile", systemImage: "trash", isEnabled: model.canEditActiveProfile && !model.hasUnsavedChanges, isDestructive: true) {
+                pendingProfileAction = .delete(id: model.activeProfileID, name: model.activeProfile.name)
+            }
+        ]
     }
 
     private var isDefaultProfile: Bool { model.activeProfileID == .default }

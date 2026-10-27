@@ -19,11 +19,7 @@ struct PadModePreview: View {
     private func pad(appearance: PaddrAppearance) -> some View {
         Canvas { context, size in
             let bounds = CGRect(origin: .zero, size: size)
-            let padShape = Path(
-                roundedRect: bounds,
-                cornerRadius: PaddrStyle.Radius.pad
-            )
-            context.fill(padShape, with: .color(appearance.surface(elevated: false)))
+            context.fill(Path(bounds), with: .color(appearance.surface(elevated: false)))
 
             switch mode {
             case .mouse:
@@ -34,21 +30,7 @@ struct PadModePreview: View {
                 break
             }
         }
-        .clipShape(.rect(cornerRadius: PaddrStyle.Radius.pad))
-        .overlay {
-            ZStack {
-                RoundedRectangle(cornerRadius: PaddrStyle.Radius.pad)
-                    .strokeBorder(appearance.surfaceStroke, lineWidth: appearance.strokeWidth)
-                    .padding(1)
-                RoundedRectangle(cornerRadius: PaddrStyle.Radius.pad)
-                    .strokeBorder(
-                        PaddrStyle.textPrimary.opacity(
-                            appearance.hasIncreasedContrast ? 0.56 : 0.30
-                        ),
-                        lineWidth: appearance.strokeWidth
-                    )
-            }
-        }
+        .modifier(PaddrPadSurface(appearance: appearance))
         .opacity(mode == .disabled ? 0.45 : 1)
         .accessibilityHidden(true)
     }

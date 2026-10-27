@@ -59,8 +59,8 @@ enum PointerTuningPresentation {
 }
 
 struct PadConfigurationView: View {
-    @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.locale) private var locale
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var tuningExpanded: Bool
 
@@ -106,7 +106,8 @@ struct PadConfigurationView: View {
         VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
             PaddrAdaptiveHeaderLayout(
                 spacing: PaddrStyle.Spacing.s2,
-                layoutDirection: layoutDirection
+                alignsPadInspector: true,
+                forceStacked: dynamicTypeSize.isAccessibilitySize
             ) {
                 Text(title)
                     .paddrTypography(.cardTitle)
@@ -246,17 +247,10 @@ struct PadConfigurationView: View {
                 systemImage: "cursorarrow.motionlines",
                 labelWidth: nil
             ) {
-                Toggle(
-                    "Track pointer inside tap radius",
-                    isOn: tracksPointerInsideTapRadius
-                )
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .accessibilityLabel("Track pointer inside tap radius")
-                .accessibilityValue(
-                    configuration.centerTapTrackingMode == .decoupled
-                        ? LocalizedStringResource("On")
-                        : LocalizedStringResource("Off")
+                PaddrTuningSwitch(
+                    title: "Track pointer inside tap radius",
+                    isOn: tracksPointerInsideTapRadius,
+                    accessibilityIdentifier: PaddrAccessibility.identifier("pad", side.rawValue, "pointer-tracking")
                 )
                 .help("When on, pointer movement continues inside and across the center tap radius. When off, the radius also acts as a pointer dead zone.")
                 .paddrAccessibilityID("pad", side.rawValue, "pointer-tracking")
@@ -293,6 +287,7 @@ struct PadConfigurationView: View {
             breakpoint: PaddrStyle.previewInspectorColumnsBreakpoint,
             leadingWidth: PaddrStyle.Metrics.zoneMapWidth,
             showsDivider: false,
+            alignsPadInspector: true,
             leading: { previewSection },
             trailing: { settingsSection(settings) }
         )
@@ -336,7 +331,8 @@ struct PadConfigurationView: View {
     }
 }
 
-private struct PadModePicker: NSViewRepresentable {
+struct PaddrNativeModePicker: NSViewRepresentable {
+    @ScaledMetric(relativeTo: .body) private var textScale: CGFloat = 1
     @Binding var selection: PadMode
     let accessibilityIdentifier: String
 
@@ -357,12 +353,12 @@ private struct PadModePicker: NSViewRepresentable {
         }
 
         @objc func selectionChanged(_ sender: NSSegmentedControl) {
-            guard Self.validSegment(sender.selectedSegment) else { return }
-            selection.wrappedValue = PadModePicker.modes[sender.selectedSegment]
+            guard sender.isEnabled, Self.validSegment(sender.selectedSegment) else { return }
+            selection.wrappedValue = PaddrNativeModePicker.modes[sender.selectedSegment]
         }
 
         private static func validSegment(_ segment: Int) -> Bool {
-            PadModePicker.modes.indices.contains(segment)
+            PaddrNativeModePicker.modes.indices.contains(segment)
         }
     }
 
@@ -370,32 +366,189 @@ private struct PadModePicker: NSViewRepresentable {
         Coordinator(selection: $selection)
     }
 
-    func makeNSView(context: Context) -> NSSegmentedControl {
-        let control = NSSegmentedControl(
+    func makeNSView(context: Context) -> PaddrModeSegmentedControl {
+        let control = PaddrModeSegmentedControl(
             labels: Self.labels,
             trackingMode: .selectOne,
             target: context.coordinator,
             action: #selector(Coordinator.selectionChanged(_:))
         )
         control.segmentDistribution = .fillEqually
-        control.setAccessibilityLabel(String(localized: LocalizedStringResource("Behavior")))
+        control.focusRingType = .none
+        control.font = .preferredFont(forTextStyle: .body)
+        control.setAccessibilityLabel(String(localized: accessibilityIdentifier.hasSuffix("left")
+            ? LocalizedStringResource("Left trackpad behavior") : LocalizedStringResource("Right trackpad behavior")))
+        control.cell?.setAccessibilityLabel(control.accessibilityLabel())
+        control.cell?.setAccessibilityIdentifier(accessibilityIdentifier)
         control.setAccessibilityIdentifier(accessibilityIdentifier)
         control.identifier = NSUserInterfaceItemIdentifier(accessibilityIdentifier)
+        control.controlAppearance = PaddrAppearance(environment: context.environment)
         update(control, coordinator: context.coordinator, isEnabled: context.environment.isEnabled)
         return control
     }
 
-    func updateNSView(_ control: NSSegmentedControl, context: Context) {
+    func updateNSView(_ control: PaddrModeSegmentedControl, context: Context) {
+        control.controlAppearance = PaddrAppearance(environment: context.environment)
+        control.userInterfaceLayoutDirection = context.environment.layoutDirection == .rightToLeft ? .rightToLeft : .leftToRight
         update(control, coordinator: context.coordinator, isEnabled: context.environment.isEnabled)
     }
 
     private func update(_ control: NSSegmentedControl, coordinator: Coordinator, isEnabled: Bool) {
         control.isEnabled = isEnabled
+        let bodyFont = NSFont.preferredFont(forTextStyle: .body)
+        control.font = NSFont(descriptor: bodyFont.fontDescriptor, size: bodyFont.pointSize * textScale) ?? bodyFont
+        control.invalidateIntrinsicContentSize()
+        control.needsDisplay = true
         coordinator.selection = $selection
         control.selectedSegment = Self.modes.firstIndex(where: { $0.rawValue == selection.rawValue }) ?? 0
         let segmentWidth = PaddrStyle.behaviorPickerWidth / CGFloat(Self.modes.count)
         for segment in Self.modes.indices {
             control.setWidth(segmentWidth, forSegment: segment)
         }
+    }
+}
+
+/// Native select-one segments retain their radio-group AX children and tracking.
+/// The bespoke drawing uses the same equal segment positions for pointer and keys.
+final class PaddrModeSegmentedControl: NSSegmentedControl {
+    private(set) var hoveredSegment: Int?
+    private(set) var pressedSegment: Int?
+    var controlAppearance = PaddrAppearance() { didSet { needsDisplay = true } }
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        paddrUpdateHoverTracking()
+        // Reconcile stationary pointers after reflow; gaps and outer edges aren't segments.
+        if let window { updateHover(at: convert(window.mouseLocationOutsideOfEventStream, from: nil)) }
+    }
+    func segment(at point: CGPoint) -> Int? {
+        guard isEnabled else { return nil }
+        return (0..<segmentCount).first {
+            isEnabled(forSegment: $0) && PaddrControlDrawing.shape(segmentRect($0),
+                radius: PaddrStyle.Control.segmentRadius).contains(point)
+        }
+    }
+    func updateHover(at point: CGPoint) { hoveredSegment = segment(at: point); needsDisplay = true }
+    override func mouseEntered(with event: NSEvent) { updateHover(at: convert(event.locationInWindow, from: nil)) }
+    override func mouseMoved(with event: NSEvent) { updateHover(at: convert(event.locationInWindow, from: nil)) }
+    override func mouseExited(with event: NSEvent) { hoveredSegment = nil; needsDisplay = true }
+    override func mouseDown(with event: NSEvent) {
+        guard let window, let initial = segment(at: convert(event.locationInWindow, from: nil)) else { return }
+        window.makeFirstResponder(self)
+        pressedSegment = initial
+        hoveredSegment = initial
+        needsDisplay = true
+        defer { pressedSegment = nil; needsDisplay = true }
+        // NSSegmentedCell tracks full equal-width slots, including the visible
+        // track inset and gaps. Track the actual drawn segments instead; retain
+        // the native cell's select-one state, action and radio accessibility.
+        while let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp],
+            until: .distantFuture, inMode: .eventTracking, dequeue: true) {
+            pressedSegment = segment(at: convert(next.locationInWindow, from: nil))
+            hoveredSegment = pressedSegment
+            needsDisplay = true
+            if next.type == .leftMouseUp {
+                if let index = pressedSegment {
+                    selectedSegment = index
+                    _ = sendAction(action, to: target)
+                }
+                return
+            }
+        }
+    }
+    override var alignmentRectInsets: NSEdgeInsets { NSEdgeInsetsZero }
+    override func keyDown(with event: NSEvent) {
+        guard isEnabled else { return }
+        guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else {
+            super.keyDown(with: event)
+            return
+        }
+        let offset: Int
+        switch event.keyCode {
+        case 123: offset = userInterfaceLayoutDirection == .rightToLeft ? 1 : -1
+        case 124: offset = userInterfaceLayoutDirection == .rightToLeft ? -1 : 1
+        case 126: offset = -1
+        case 125: offset = 1
+        case 49: return // The select-one group's current item is already selected.
+        default: super.keyDown(with: event); return
+        }
+        let next = min(max(selectedSegment + offset, 0), segmentCount - 1)
+        guard next != selectedSegment, isEnabled(forSegment: next) else { return }
+        selectedSegment = next
+        needsDisplay = true
+        _ = sendAction(action, to: target)
+    }
+    override var isFlipped: Bool { true }
+    override var intrinsicContentSize: NSSize {
+        let bounds = CGRect(x: 0, y: 0, width: PaddrStyle.behaviorPickerWidth, height: PaddrStyle.Control.height)
+        let textWidth = PaddrModeGeometry.segmentRect(0, in: bounds, count: segmentCount).width - 4
+        let textHeight = (0..<segmentCount).map {
+            PaddrControlDrawing.height(label(forSegment: $0) ?? "", width: textWidth,
+                font: font ?? .preferredFont(forTextStyle: .body))
+        }.max() ?? 16
+        return NSSize(width: PaddrStyle.behaviorPickerWidth, height: max(PaddrStyle.Control.height, textHeight + 12))
+    }
+    func segmentRect(_ index: Int) -> CGRect {
+        let physicalIndex = userInterfaceLayoutDirection == .rightToLeft ? segmentCount - 1 - index : index
+        return PaddrModeGeometry.segmentRect(physicalIndex, in: bounds, count: segmentCount)
+    }
+    override func becomeFirstResponder() -> Bool { needsDisplay = true; return super.becomeFirstResponder() }
+    override func resignFirstResponder() -> Bool { needsDisplay = true; return super.resignFirstResponder() }
+    override func draw(_ dirtyRect: NSRect) {
+        drawChrome()
+    }
+    private func drawChrome() {
+        if !controlAppearance.usesControlGlass {
+            PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius, color: PaddrStyle.workspace)
+        }
+        PaddrControlDrawing.stroke(bounds, radius: PaddrStyle.Control.radius,
+            color: isEnabled ? controlAppearance.hasIncreasedContrast ? PaddrStyle.textPrimary : PaddrStyle.textSecondary
+                : PaddrStyle.boundary, width: PaddrStyle.Control.outlineWidth)
+        for index in 0..<segmentCount {
+            let rect = segmentRect(index)
+            let selected = isSelected(forSegment: index)
+            let enabled = isEnabled && isEnabled(forSegment: index)
+            if selected {
+                PaddrControlDrawing.fill(rect, radius: PaddrStyle.Control.segmentRadius,
+                    color: controlAppearance.accentFill(enabled: enabled))
+                PaddrControlDrawing.stroke(rect, radius: PaddrStyle.Control.segmentRadius,
+                    color: controlAppearance.accentStroke(enabled: enabled), width: controlAppearance.strokeWidth)
+            }
+            if enabled && (hoveredSegment == index || pressedSegment == index) {
+                PaddrControlDrawing.fill(rect, radius: PaddrStyle.Control.segmentRadius,
+                    color: pressedSegment == index ? PaddrStyle.controlPressed : PaddrStyle.controlHover)
+            }
+            PaddrControlDrawing.text(label(forSegment: index) ?? "", rect: rect.insetBy(dx: 2, dy: 2),
+                font: font ?? .preferredFont(forTextStyle: .body),
+                color: selected ? controlAppearance.accentForeground(enabled: enabled)
+                    : (enabled ? PaddrStyle.textPrimary : PaddrStyle.textSecondary), alignment: .center)
+        }
+        PaddrControlDrawing.focus(self, rect: bounds, radius: PaddrStyle.Control.radius)
+    }
+}
+
+/// One geometry for the flat selection, local feedback and native pointer tracking.
+enum PaddrModeGeometry {
+    static func segmentRect(_ index: Int, in bounds: CGRect, count: Int) -> CGRect {
+        let inset = PaddrStyle.Control.segmentInset
+        let gap = PaddrStyle.Control.segmentGap
+        let width = (bounds.width - 2 * inset - CGFloat(max(0, count - 1)) * gap) / CGFloat(max(1, count))
+        return CGRect(x: bounds.minX + inset + CGFloat(index) * (width + gap), y: bounds.minY + inset,
+            width: width, height: bounds.height - 2 * inset)
+    }
+}
+
+struct PadModePicker: View {
+    @Environment(\.isEnabled) private var isEnabled
+    @Binding var selection: PadMode
+    let accessibilityIdentifier: String
+    var body: some View {
+        PaddrNativeModePicker(selection: $selection, accessibilityIdentifier: accessibilityIdentifier)
+            .background {
+                PaddrAppearanceReader { appearance in
+                    PaddrButtonSurface(prominent: false, enabled: isEnabled, appearance: appearance)
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
     }
 }

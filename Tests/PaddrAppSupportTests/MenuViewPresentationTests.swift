@@ -396,6 +396,8 @@ final class MenuViewPresentationTests: XCTestCase {
         PaddrFamilyWindowChrome.setUsableLayoutSize(NSSize(width: 1080, height: 500), for: window)
         window.setFrameTopLeftPoint(NSPoint(x: 50, y: screen.maxY))
         PaddrFamilyWindowChrome.fitConfigurationWindow(window, preferredHeight: 1100, visibleFrame: screen)
+        XCTAssertEqual(window.contentLayoutRect.width, 996, accuracy: 0.5,
+            "Managed opening must discard the former 1080-point width")
         XCTAssertEqual(window.frame.maxY, screen.maxY, accuracy: 0.5)
         XCTAssertEqual(window.frame.minY, screen.minY, accuracy: 0.5)
         XCTAssertTrue(screen.contains(window.frame))
@@ -560,6 +562,7 @@ final class MenuViewPresentationTests: XCTestCase {
                         let increased = contrast == .increased
                         XCTAssertEqual(appearance.usesOpaqueFallback, reduceTransparency)
                         XCTAssertEqual(appearance.hasIncreasedContrast, increased)
+                        XCTAssertEqual(appearance.showsSurfaceDepth, !reduceTransparency && !increased)
                         XCTAssertEqual(appearance.usesShapeDifferentiation, differentiateWithoutColor)
                         XCTAssertEqual(appearance.reducesMotion, reduceMotion)
                         XCTAssertEqual(appearance.strokeWidth, increased ? 1.5 : 1)
@@ -898,7 +901,7 @@ final class MenuViewPresentationTests: XCTestCase {
             renderedText.contains("Pointer"),
             "The Behavior selector already communicates the selected mode"
         )
-        XCTAssertEqual(selector.accessibilityLabel(), "Behavior")
+        XCTAssertEqual(selector.accessibilityLabel(), "Right trackpad behavior")
     }
 
     func testPointerSettingsFollowConfiguredWorkflowOrder() async throws {
@@ -918,8 +921,7 @@ final class MenuViewPresentationTests: XCTestCase {
 
     func testAdaptivePadHeaderMovesTheSameSelectorBelowTitleOnlyWhenNeeded() throws {
         let layout = PaddrAdaptiveHeaderLayout(
-            spacing: PaddrStyle.Spacing.s2,
-            layoutDirection: .leftToRight
+            spacing: PaddrStyle.Spacing.s2
         ) {
             SettingsControlEdgeProbe(identifier: "header-title")
                 .frame(width: 120, height: 28)
@@ -958,8 +960,7 @@ final class MenuViewPresentationTests: XCTestCase {
             "The inline header should protect the declared title-to-control gap"
         )
 
-        let constrainedWidth = PaddrStyle.minimumPadColumnWidth
-            - (2 * PaddrStyle.Inset.card)
+        let constrainedWidth = 120 + PaddrStyle.Spacing.s2 + PaddrStyle.behaviorPickerWidth - 1
         hostingView.frame.size.width = constrainedWidth
         hostingView.layoutSubtreeIfNeeded()
 
@@ -989,8 +990,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertLessThanOrEqual(stackedSelectorFrame.maxX, hostingView.bounds.maxX + 0.5)
 
         let rightToLeftLayout = PaddrAdaptiveHeaderLayout(
-            spacing: PaddrStyle.Spacing.s2,
-            layoutDirection: .rightToLeft
+            spacing: PaddrStyle.Spacing.s2
         ) {
             SettingsControlEdgeProbe(identifier: "rtl-header-title")
                 .frame(width: 120, height: 28)
@@ -998,6 +998,7 @@ final class MenuViewPresentationTests: XCTestCase {
                 .frame(width: PaddrStyle.behaviorPickerWidth, height: 24)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .environment(\.layoutDirection, .rightToLeft)
         let rightToLeftHost = NSHostingView(rootView: rightToLeftLayout)
         rightToLeftHost.frame = NSRect(
             origin: .zero,
@@ -1059,11 +1060,11 @@ final class MenuViewPresentationTests: XCTestCase {
         )
         await settle(defaultHostingView)
 
-        let defaultSwitches = descendants(of: NSSwitch.self, in: defaultHostingView)
+        let defaultSwitches = descendants(of: PaddrTuningSwitchButton.self, in: defaultHostingView)
         XCTAssertEqual(defaultSwitches.count, 4)
         let defaultToggle = try XCTUnwrap(defaultSwitches.last)
         XCTAssertEqual(defaultToggle.state, .on)
-        XCTAssertEqual(defaultToggle.accessibilityRoleDescription(), "switch")
+        XCTAssertEqual(defaultToggle.accessibilityRole(), .checkBox)
         XCTAssertEqual(accessibilityIntegerValue(of: defaultToggle), 1)
         XCTAssertTrue(defaultToggle.isEnabled)
         let defaultControls = descendants(of: NSControl.self, in: defaultHostingView)
@@ -1096,12 +1097,12 @@ final class MenuViewPresentationTests: XCTestCase {
         )
         await settle(legacyHostingView)
 
-        let legacySwitches = descendants(of: NSSwitch.self, in: legacyHostingView)
+        let legacySwitches = descendants(of: PaddrTuningSwitchButton.self, in: legacyHostingView)
         XCTAssertEqual(legacySwitches.count, 4)
         let legacyToggle = try XCTUnwrap(legacySwitches.last)
         XCTAssertEqual(legacy.centerTapTrackingMode, .coupled)
         XCTAssertEqual(legacyToggle.state, .off)
-        XCTAssertEqual(legacyToggle.accessibilityRoleDescription(), "switch")
+        XCTAssertEqual(legacyToggle.accessibilityRole(), .checkBox)
         XCTAssertEqual(accessibilityIntegerValue(of: legacyToggle), 0)
         XCTAssertTrue(legacyToggle.isEnabled)
         legacyToggle.performClick(nil)
@@ -1122,7 +1123,7 @@ final class MenuViewPresentationTests: XCTestCase {
             initialTuningExpanded: true))
         host.frame = NSRect(x: 0, y: 0, width: 500, height: 800)
         await settle(host)
-        let toggle = try XCTUnwrap(descendants(of: NSSwitch.self, in: host).first)
+        let toggle = try XCTUnwrap(descendants(of: PaddrTuningSwitchButton.self, in: host).first)
         XCTAssertEqual(toggle.state, .on)
         toggle.performClick(nil)
         await settle(host)
@@ -1157,7 +1158,7 @@ final class MenuViewPresentationTests: XCTestCase {
         )
         await settle(hostingView)
 
-        let switches = descendants(of: NSSwitch.self, in: hostingView)
+        let switches = descendants(of: PaddrTuningSwitchButton.self, in: hostingView)
         XCTAssertEqual(switches.count, 4)
         let smoothing = try XCTUnwrap(switches.dropFirst().first)
         let stabilization = try XCTUnwrap(switches.dropFirst(2).first)
@@ -1181,7 +1182,7 @@ final class MenuViewPresentationTests: XCTestCase {
         ))
         collapsed.frame = NSRect(x: 0, y: 0, width: 640, height: 1000)
         await settle(collapsed)
-        XCTAssertTrue(descendants(of: NSSwitch.self, in: collapsed).isEmpty,
+        XCTAssertTrue(descendants(of: PaddrTuningSwitchButton.self, in: collapsed).isEmpty,
             "Advanced switches should not compete with sensitivity and touch tap in the initial view")
 
         let expanded = NSHostingView(rootView: PadConfigurationView(
@@ -1189,7 +1190,7 @@ final class MenuViewPresentationTests: XCTestCase {
         ))
         expanded.frame = NSRect(x: 0, y: 0, width: 640, height: 1000)
         await settle(expanded)
-        let switches = descendants(of: NSSwitch.self, in: expanded)
+        let switches = descendants(of: PaddrTuningSwitchButton.self, in: expanded)
         XCTAssertEqual(switches.count, 4, "Read-only tuning must remain available for inspection")
         XCTAssertTrue(switches.allSatisfy { !$0.isEnabled })
         XCTAssertEqual(configuration, PadConfiguration(mode: .mouse))

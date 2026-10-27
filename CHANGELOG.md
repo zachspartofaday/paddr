@@ -2,6 +2,18 @@
 
 User-visible changes to Paddr are recorded here. Release entries describe confirmed behavior at the time of each release; later entries may supersede earlier limitations.
 
+## Unreleased
+
+### Bespoke controls and pad maps
+
+- Give buttons, selectors, mode segments, and tuning switches a consistent compact
+  shape. Selectors retain their shared width and system menus; tuning switches use
+  squared tracks and thumbs while Enable output and sliders remain native.
+- Match pad outlines and zone binding plates to the controls without changing
+  mapping geometry, pointer tap regions, or saved configurations.
+- Preserve keyboard selection, menu cancellation, accessible binary state, and
+  automatic window sizing. Mirror selector text and chevrons in right-to-left layouts.
+
 ## 1.1.0 — 2026-10-26
 
 ### Redesigned mapping workspace

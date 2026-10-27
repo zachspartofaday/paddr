@@ -15,7 +15,8 @@ struct TapActionPicker: View {
 /// Native optional output menu shared by touch taps and rear buttons.
 struct OptionalOutputBindingPicker: View {
     @Binding var selection: String?
-    let title: LocalizedStringKey
+    let title: LocalizedStringResource
+    var width: CGFloat = PaddrStyle.Width.control
 
     var customSelection: String? {
         guard let selection,
@@ -25,22 +26,22 @@ struct OptionalOutputBindingPicker: View {
         return selection
     }
 
-    var body: some View {
-        Picker(title, selection: $selection) {
-            Text("None").tag(String?.none)
-            if let customSelection {
-                OutputBindingText(binding: customSelection).tag(Optional(customSelection))
-            }
-            Divider()
-            Label("Left click", systemImage: "computermouse.fill").tag(Optional(TapBindingCatalog.leftMouseButton))
-            Label("Right click", systemImage: "computermouse").tag(Optional(TapBindingCatalog.rightMouseButton))
-            Divider()
-            ForEach(KeyCatalog.commonNames, id: \.self) { key in
-                OutputBindingText(binding: key).tag(Optional(key))
-            }
+    private var options: [PaddrMenuOption<String?>] {
+        var result: [PaddrMenuOption<String?>] = [.init(value: .some(nil), title: String(localized: "None"))]
+        if let customSelection {
+            result.append(.init(value: .some(customSelection), title: OutputBindingText.string(for: customSelection)))
         }
-        .labelsHidden()
-        .pickerStyle(.menu)
-        .paddrMappingSelector()
+        result += [
+            .separator,
+            .init(value: .some(TapBindingCatalog.leftMouseButton), title: String(localized: "Left click"), systemImage: "computermouse.fill"),
+            .init(value: .some(TapBindingCatalog.rightMouseButton), title: String(localized: "Right click"), systemImage: "computermouse"),
+            .separator
+        ]
+        result += KeyCatalog.commonNames.map { .init(value: .some($0), title: OutputBindingText.string(for: $0)) }
+        return result
+    }
+
+    var body: some View {
+        PaddrMenuPicker(title: title, selection: $selection, options: options, width: width)
     }
 }
