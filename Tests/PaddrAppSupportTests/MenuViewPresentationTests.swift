@@ -1332,6 +1332,95 @@ final class MenuViewPresentationTests: XCTestCase {
         assertApplyBarFitsMinimumWindow(model: model)
     }
 
+    func testPointerTuningLabelClickExpandsAndCollapsesWithoutEditing() async throws {
+        var configuration = PaddrConfiguration.default.right
+        var writes = 0
+        let host = NSHostingView(rootView: PadConfigurationView(
+            side: .right,
+            configuration: Binding(get: { configuration }, set: { configuration = $0; writes += 1 }),
+            isEditable: false
+        ).environment(\.accessibilityEnabled, true).padding(20))
+        let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 480, height: 750),
+            styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.contentView = host
+        window.makeKeyAndOrderFront(nil)
+        await settle(host)
+        for expanded in [true, false] {
+            let disclosure = try XCTUnwrap(accessibilityElement(in: host,
+                identifier: "paddr.pad.right.pointer-tuning"))
+            let frame = try XCTUnwrap(disclosure.accessibilityFrame?())
+            // Click the text well beyond the disclosure indicator, not its arrow.
+            let location = window.convertPoint(fromScreen: CGPoint(x: frame.minX + 70, y: frame.maxY - 8))
+            let down = try XCTUnwrap(NSEvent.mouseEvent(with: .leftMouseDown, location: location,
+                modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1))
+            let up = try XCTUnwrap(NSEvent.mouseEvent(with: .leftMouseUp, location: location,
+                modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime + 0.1,
+                windowNumber: window.windowNumber, context: nil, eventNumber: 2, clickCount: 1, pressure: 0))
+            window.sendEvent(down)
+            window.sendEvent(up)
+            await settle(host)
+            XCTAssertEqual(!descendants(of: PaddrTuningSwitchButton.self, in: host).isEmpty, expanded)
+            XCTAssertEqual(writes, 0, "Read-only tuning remains inspectable without changing mappings")
+        }
+    }
+
+    func testFooterPublishesBatteryWithoutOpeningConnectionDetails() async throws {
+        let store = BlockingProfileStore()
+        let session = PresentationSession()
+        let model = PaddrMenuModel(dependencies: dependencies(
+            store: store, session: session, receiver: "Fake receiver"
+        ))
+        defer { store.releaseSave() }
+        let started = await waitUntil { await session.startCount == 1 }
+        XCTAssertTrue(started)
+        await session.send(.controllerConnected)
+        let connected = await waitUntil { model.controllerConnected }
+        XCTAssertTrue(connected)
+        let host = NSHostingView(rootView: ApplyBarView(model: model)
+            .environment(\.accessibilityEnabled, true))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 996, height: 250),
+            styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.contentView = host
+        await settle(host)
+        let pendingBattery = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.status.battery"))
+        let pendingValue = (pendingBattery as? NSObject)?.perform(NSSelectorFromString("accessibilityValue"))?.takeUnretainedValue() as? String
+        XCTAssertEqual(pendingValue, BatteryStatusPresentation(status: nil).accessibilityValue)
+
+        for percentage: UInt8 in [100, 75] {
+            await session.send(.batteryUpdated(.init(chargeState: .chargingDone, percentage: percentage)))
+            let updated = await waitUntil { model.batteryStatus?.percentage == percentage }
+            XCTAssertTrue(updated)
+            await settle(host)
+            let battery = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.status.battery"))
+            let value = (battery as? NSObject)?.perform(NSSelectorFromString("accessibilityValue"))?.takeUnretainedValue() as? String
+            XCTAssertEqual(value, BatteryStatusPresentation(status: model.batteryStatus).accessibilityValue)
+        }
+        await session.send(.controllerLost(.init(reportCount: 0, actionCount: 0)))
+        let lost = await waitUntil { !model.controllerConnected }
+        XCTAssertTrue(lost)
+        await settle(host)
+        XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.status.battery"))
+        _ = await session.stop()
+    }
+
+    private func accessibilityElement(in view: NSView, identifier: String) -> AnyObject? {
+        var visited = Set<ObjectIdentifier>()
+        func find(_ object: AnyObject) -> AnyObject? {
+            guard visited.insert(ObjectIdentifier(object)).inserted else { return nil }
+            if object.accessibilityIdentifier?() == identifier { return object }
+            for child in object.accessibilityChildren?() as? [Any] ?? [] {
+                if let result = find(child as AnyObject) { return result }
+            }
+            return nil
+        }
+        return find(view)
+    }
+
     func testOutputSummaryFitsMinimumWindowWidthWithLongestBatteryValue() async throws {
         let store = BlockingProfileStore()
         let session = PresentationSession()

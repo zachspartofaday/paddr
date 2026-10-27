@@ -3,184 +3,51 @@
 </p>
 <h1 align="center">Paddr</h1>
 
-Paddr adds pointer movement, scrolling, touch-tap actions, button zones, and rear-button mappings to a puck-connected Steam Controller 2 on macOS—without requiring Steam Input.
+Pointer, scroll, and keyboard mappings for the **Steam Controller 2 on macOS**, without Steam Input. Configure both trackpads and all four rear buttons while Apple's native controller service handles the buttons, sticks, and triggers.
 
-Apple's native controller service handles the controller's buttons, sticks, and triggers. Paddr reads the puck reports and turns trackpad gestures and assigned rear buttons into normal mouse and keyboard input.
+[Download Paddr](https://github.com/zachspartofaday/Paddr/releases/latest) · [Mapping guide](docs/USING.md) · [Release notes](CHANGELOG.md)
 
-> [!NOTE]
-> The maintainer has confirmed Paddr works with a puck-connected Steam Controller 2 on **released macOS 27** and **macOS 27.2 release candidate**. Bluetooth and direct USB remain unvalidated. Please report reproducible problems in [Issues](https://github.com/zachspartofaday/Paddr/issues).
+![Paddr's dark mapping workspace with two trackpad editors and rear-button selectors](docs/images/paddr-profile-overview.png)
 
-See [CHANGELOG.md](CHANGELOG.md) for release history and current compatibility notes.
+## Install
 
-![Paddr native dark workspace with left Scroll and right Pointer trackpads, collapsed Pointer tuning, rear bindings, persistent Save & Apply, and an Enable output switch](docs/images/paddr-profile-overview.png)
+Paddr requires an **Apple silicon Mac running macOS 27 or later** and a **Steam Controller 2 connected through its puck**. The maintainer has confirmed released macOS 27 and macOS 27.2 release candidate. Bluetooth and direct USB remain unvalidated.
 
-The configuration window follows macOS light and dark appearance and keeps both trackpads independently editable. Profile selection and **Save & Apply** stay visible above the scrolling workspace; **Enable output** and output readiness stay below it. Common settings remain visible, while **Pointer tuning** reveals advanced controls and summarizes the enabled tuning when collapsed. Paddr manages the window size: it uses a 1080-point width when the screen allows, grows when Pointer tuning opens, and shrinks when it closes. Manual resizing is disabled. The window stays within the available screen area; scrolling remains available when the content is too tall to fit.
+1. Download `Paddr.zip` from [Releases](https://github.com/zachspartofaday/Paddr/releases/latest), unzip it, and move `Paddr.app` to Applications.
+2. Launch Paddr and grant **Input Monitoring** to read the controller and **Accessibility** to send mapped input. The guide and **Open setup** link to the relevant macOS settings.
+3. Choose **Duplicate to Edit** for the built-in Default profile, configure your mappings, and choose **Save & Apply**.
+4. Turn on **Enable output**, then release the pads and assigned rear buttons so output can activate.
 
-The screenshots show the running app at its managed window sizes, with a puck-connected controller, granted permissions, and output off. The bindings are staged unsaved examples, not built-in presets. Only the setup screenshot shows access still needed; it was captured before permission approval. [View the light appearance](docs/images/paddr-profile-overview-light.png).
+Saving does not enable output. Closing the window leaves Paddr in the menu bar; reopen the guide from Help at any time.
 
-Opening **Pointer tuning** expands the window to keep the acceleration, smoothing, and tap-stability controls visible. Switching to shorter content shrinks it again.
+## Make the pads yours
 
-![Paddr managed window with left Pointer tuning expanded, right Zones, and the Enable output footer visible](docs/images/paddr-auto-sized-tuning.png)
+- **Pointer:** independent sensitivity, acceleration, smoothing, and tap stabilization.
+- **Scroll:** adjustable sensitivity on either pad.
+- **Zones:** five layouts, from two large regions to a nine-button grid, with a keyboard or mouse action for each area.
+- **Touch taps and rear buttons:** assign clicks or keys, including L4, L5, R4, and R5.
+- **Profiles:** save complete setups and switch from the window or menu bar.
 
-[View the shorter window with both pads in Zones](docs/images/paddr-auto-sized-zones.png). Screenshot provenance and regeneration instructions are in [the image evidence notes](docs/images/README.md).
+Both pads stay editable together. The window fits its contents automatically, including expanded tuning, and scrolls on smaller screens. Light mode uses blue accents; dark mode uses the Compass icon's teal.
 
-## What Paddr adds
+![Paddr's light mapping workspace](docs/images/paddr-profile-overview-light.png)
 
-Apple's HID service continues to provide native buttons, sticks, triggers, and controller identity. Paddr passively reads the puck reports and adds:
+See the [mapping guide](docs/USING.md) for profiles, Zones, advanced tuning, and output behavior. [Screenshot notes](docs/images/README.md) record how the captures were made.
 
-- **Button Zones:** independently available on either or both pads, with radial four-way, four-corner, left/right, top/bottom, and 3×3 layouts and a separate keyboard key or mouse button for every region;
-- pointer mode with independent sensitivity, switchable acceleration, optional adaptive smoothing, and
-  tap-stabilization tuning for each pad, plus independently adjustable scroll sensitivity;
-- optional **Rear buttons** mappings for L4, L5, R4, and R5, held as keyboard keys or mouse buttons until release;
-- touch-taps mapped to a keyboard key, left click, or right click;
-- a pointer-mode center tap radius that confines taps to the pad center while pointer tracking uses the full pad by default, with a per-pad switch for restoring the former coupled tracking dead zone; and
-- named profiles for saving and quickly switching complete pad and rear-button setups.
+## Play without a Steam launch path
 
-The interactive squircle map mirrors runtime hit-testing. Select a region on the map or with the **Selected area** pop-up, then assign its action. Radial, corner, and two-way layouts support an adjustable neutral region; the 3×3 layout dedicates the full pad to nine actions.
+Paddr works with directly launched games such as **World of Warcraft**. Steam, Steam Input, and Steam Overlay are not required. It emits ordinary mouse, scroll, and keyboard events and does not inject into games, change controller firmware, or remap Apple's native gamepad inputs.
 
-Paddr does not send controller feature reports or alter lizard mode, firmware, IMU, haptics, rumble, or Apple's native gamepad mappings. The footer groups permission setup with output and shows battery data when available. Click the controller status to open **Connection details** for access, puck, and battery status. **Enable output** controls mapped mouse, scroll, and keyboard emission. An enabled switch can still be **Waiting** for access, connection, or neutral controls. **Puck** reflects passive receiver discovery alone, while **Controller** reflects fresh reports from the controller. Device observation continues with output off.
+Games may alternate controller and keyboard/mouse prompts. Compatibility depends on Apple's native controller service and the puck; broader hardware and game testing remains welcome. Per-app profiles and additional/custom zone layouts are planned.
 
-Edits remain a draft until saved. **Save & Apply** saves the draft without turning output on. Turning **Enable output** on also saves a pending draft before activation; a visible hint explains this when edits are pending and output is off.
+## Documentation and development
 
-Disabling output or losing the controller releases held mapped keys and mouse buttons before Paddr becomes idle. Release obligations remain tracked until the matching up events succeed, and reconnect waits for both trackpads and any assigned rear buttons to be released before safely resuming.
-
-Rear buttons start at **None** in new profiles and profiles created before rear-button support. Assign each one in the Rear buttons group below the pads, then choose **Save & Apply**. Hold a rear button to hold its assigned action; release it to release the action. Hover over a picker for help. Draft edits do not change active output. Restore Defaults requests confirmation before replacing unsaved edits and resets rear bindings to None in the draft; save before using the changes. Unassigned rear buttons emit nothing and do not delay output activation. F1–F4 are available choices, with no automatic game-specific preset.
-
-Raw `--config` files accept an optional `rearButtons` object, for example:
-
-```json
-"rearButtons": { "l4": "f1", "l5": "mouse-left", "r4": null, "r5": "code:118" }
-```
-
-Missing or null bindings mean None. Other values use the existing key catalog (including F1–F4 and `code:N`) or `mouse-left` / `mouse-right`; empty strings and `"none"` are invalid. CLI profile selection and import/export preserve these bindings. Profile documents retain schema version 1: older binaries ignore the added fields and can discard them when saving, so export a backup before downgrading.
-
-Pointer acceleration has an independent switch per pad. Turning it off retains the strength and uses linear motion; enabling a zero-strength setup starts at 25%. Profiles store `mouseAccelerationEnabled` separately from `mouseAcceleration`. When the flag is absent, nonzero acceleration stays enabled and zero stays off. The existing CLI acceleration options set the strength and enable it for nonzero values. Older builds ignore the new flag and use the stored amount.
-
-Scroll retains signed fractional movement per pad until a whole scroll point accumulates; lifting or replacing the output session clears that remainder. Reports already one second old are rejected before they can emit or re-arm output. Fresh neutral input is required after such a loss. These behaviors have deterministic fixture coverage; physical rear-button behavior and latency still require controller verification.
-
-## Use the trackpads without Steam Input
-
-Some macOS games are difficult or impossible to add to Steam and launch with Steam Input enabled; **World of Warcraft** is one example. Steam's current macOS method for Steam Controller 2 support depends on that Steam Input launch path.
-
-Paddr does not require Steam to be installed or running. Apple's native controller service continues to provide normal controller inputs while Paddr reads the puck's trackpad reports and emits standard `CGEvent` pointer, scroll, and keyboard actions. Paddr does not inject into the game or rely on Steam Overlay, so directly launched games such as **World of Warcraft** can use the pads through those mapped pointer, scroll, and keyboard inputs.
-
-## Install and use
-
-Requirements:
-
-- macOS 27 or later with Apple's `SteamControllerHIDServicePlugin.plugin`; confirmed environments are released macOS 27 and macOS 27.2 release candidate;
-- Steam Controller 2 connected through the puck;
-- Input Monitoring permission to receive puck reports; and
-- Accessibility permission to emit mapped mouse and keyboard events.
-
-Puck mode is the only confirmed connection. Bluetooth and direct USB remain unvalidated.
-
-1. Download `Paddr.zip` from [Releases](https://github.com/zachspartofaday/Paddr/releases).
-2. Move `Paddr.app` to Applications and launch it. On first launch, the four-step guide covers the app, profiles, Input Monitoring and Accessibility, and everyday use; reopen it later from Help or the status menu.
-
-![Paddr Guide welcome page, step 1 of 4, explaining trackpad mouse, scrolling, and keyboard mappings without Steam Input](docs/images/paddr-onboarding.png)
-
-3. Use **Open setup** when access is needed, or the guide's access page, to grant Input
-   Monitoring and Accessibility. Each permission has Request and Open Settings actions.
-   Input Monitoring lets Paddr see puck reports; Accessibility lets it emit your mapped
-   mouse and keyboard actions. You can edit profiles before granting access.
-
-![Paddr Allow access setup sheet before permission approval, with separate Input Monitoring and Accessibility Request and Open Settings buttons](docs/images/paddr-permissions.png)
-
-[View Connection details with access granted](docs/images/paddr-access-ready-light.png). The live controller is connected with 100% battery and output remains off; granting access does not enable output automatically.
-
-4. Choose **Duplicate to Edit** for the built-in **Default** profile, rename the copy if desired, configure both trackpads, and choose **Save & Apply**. Default always remains left Scroll/right Pointer and cannot be renamed, edited, or deleted. Its tuning remains available to inspect.
-
-Profiles own the complete left/right configuration and keep a stable internal ID when renamed. Use the configuration-window picker to create, duplicate, rename, select, or delete profiles; profile names cannot themselves be UUIDs, keeping name-or-ID selection unambiguous. Switching with unsaved edits asks before discarding them. Quitting with an unsaved draft offers **Save & Quit**, **Cancel**, or **Quit Without Saving**; a failed save cancels the quit and leaves the draft available. Deleting the active user profile confirms and activates Default first.
-
-Closing the guide and configuration window leaves Paddr in the menu bar with quick actions for output and saved-profile switching. Paddr appears in the Dock and Command-Tab only while either window is open. Menu switching is unavailable while the configuration window has an unsaved draft; open the window to save or explicitly discard it. The configuration window can be moved and minimized, but Paddr controls its size and does not support full screen.
-
-## Button Zones
-
-Choose **Zones** independently for either trackpad:
-
-- **Radial 4-way:** conventional D-pad directions;
-- **Four corners:** four diagonal quadrants;
-- **Left / right** or **Top / bottom:** two large regions; or
-- **3 × 3:** nine independent bindings.
-
-The five layouts below use left Zones and right Pointer, with the Rear buttons group beneath both trackpads. Click an image to view it at full size.
-
-| Radial 4-way | Four corners |
-| --- | --- |
-| [![Paddr configuration window showing an editable example profile draft, left trackpad Zones in Four-way radial mode with four directional regions, and right trackpad Pointer](docs/images/paddr-zones-radial-four-way.png)](docs/images/paddr-zones-radial-four-way.png) | [![Paddr configuration window showing an editable example profile draft, left trackpad Zones in Four corners mode with four corner regions, and right trackpad Pointer](docs/images/paddr-zones-four-corners.png)](docs/images/paddr-zones-four-corners.png) |
-| Left / right | Top / bottom |
-| [![Paddr configuration window showing an editable example profile draft, left trackpad Zones in Left/right mode with two vertical regions, and right trackpad Pointer](docs/images/paddr-zones-left-right.png)](docs/images/paddr-zones-left-right.png) | [![Paddr configuration window showing an editable example profile draft, left trackpad Zones in Top/bottom mode with two horizontal regions, and right trackpad Pointer](docs/images/paddr-zones-top-bottom.png)](docs/images/paddr-zones-top-bottom.png) |
-| 3 × 3 | |
-| [![Paddr configuration window showing an editable example profile draft, left trackpad Zones in 3 by 3 grid mode with nine regions, and right trackpad Pointer](docs/images/paddr-zones-three-by-three.png)](docs/images/paddr-zones-three-by-three.png) | |
-
-Each region can hold a keyboard key, left mouse button, or right mouse button until the touch moves or lifts. Crossing regions releases the previous action before pressing the next one. Non-grid layouts expose a **Neutral zone** control; 3×3 uses the complete pad.
-
-## Build locally
-
-Xcode 27 with the macOS 27 SDK is required:
-
-```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-BUILD_SCRATCH_PATH="$PWD/.build/xcode27" \
-scripts/build-app.sh
-open dist/Paddr.app
-```
-
-Paddr builds for arm64. The binary deployment target remains macOS 26.0; confirmed controller support requires macOS 27 or later.
-
-## CLI
-
-The CLI shares the app's canonical profile document and is intended primarily for development and diagnostics:
-
-```bash
-scripts/paddr.sh --list-profiles
-scripts/paddr.sh --select-profile "Arcade"
-scripts/paddr.sh --select-profile 01234567-89ab-cdef-0123-456789abcdef
-scripts/paddr.sh --dry-run
-scripts/paddr.sh --observe-only --verbose --duration 10
-```
-
-Profiles are stored at `~/.config/Paddr/config.json`. On first profile-aware load, an existing raw left/right configuration is atomically migrated: unchanged defaults activate **Default**, while customized values become the active **Previous configuration** profile. Existing raw and canonical configurations retain the former coupled center-radius tracking behavior until changed; fresh profile stores and newly created configurations use full-pad pointer tracking. A failed migration leaves the original file intact and reports its path.
-
-GUI and CLI profile edits use a shared storage lock and reject saves based on an older file version. If another process changes the profiles, Paddr keeps your unsaved draft and reports a conflict. Copy your edits before reopening the app to load the current profiles. Explicit exports to a different path deliberately replace that destination; they still reject a changed source.
-
-`--list-profiles` prints each name and stable ID; `--select-profile` persists an exact name or ID selection. Use `--profile-store PATH` for a different canonical document. An explicit `--config PATH` remains a read-only compatibility input for an existing legacy raw configuration (or canonical document); invalid paths fail instead of loading defaults. Mapping flags—including per-pad center-tap tracking, pointer smoothing/strength, and tap stabilization/tolerance—change only the effective CLI draft unless `--write-config PATH` persists it. With canonical input, that write preserves the complete profile document and updates its active profile; with legacy raw input, it creates a new canonical document from the effective configuration. Profile list/select operations are mutually exclusive with runtime and mapping options. Run `scripts/paddr.sh --help` for the complete flag list and numeric ranges.
-
-Example:
-
-```bash
-# Left pad as a nine-zone keyboard grid
-scripts/paddr.sh --left-mode dpad --left-layout grid-nine \
-  --left-grid-top-left q --left-grid-center space --left-grid-bottom-right c
-```
-
-If a key or mouse-button release fails during CLI shutdown, the process stays alive and retries until the held input is released. It prints recovery guidance instead of abandoning cleanup; restoring Accessibility access may be necessary.
-
-## Limitations and roadmap
-
-- Output is CGEvent mouse, scroll, and keyboard input—not native gamepad axes.
-- Paddr does not suppress or remap Apple's native controller buttons.
-- Games may switch prompts when controller and mouse input alternate.
-- Compatibility depends on Apple's native controller service and the puck connection.
-- Broad hardware and game testing is still needed.
-- Per-game and per-app profiles are planned for a future release.
-
-## Planned features
-
-- Additional Zone Layouts
-- Custom Zone Layouts
-
-## Known issues
-
-- Games with dynamic glyphs / control-icon indicators may switch back and forth between controller button icons and keyboard binds.
-
-## Contributing
-
-Issues and focused pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). `@zachspartofaday` is the code owner and sole merge authority.
+- [Mapping guide](docs/USING.md)
+- [CLI and configuration reference](docs/CLI.md)
+- [Build from source](docs/BUILDING.md)
+- [Contributing and validation](CONTRIBUTING.md)
+- [Report a problem](https://github.com/zachspartofaday/Paddr/issues)
 
 ## License
 
-Paddr is available under the [MIT License](LICENSE). The bounded BottleRocket family-UI
-adaptation is documented in the [parity manifest](docs/ui/PADDR_FAMILY_UI_PARITY.md),
-with its required MIT attribution in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[MIT](LICENSE), with required third-party attribution in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
