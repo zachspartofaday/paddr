@@ -237,6 +237,29 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                     .environment(\.layoutDirection, .rightToLeft),
                 scheme: scheme, appearance: appearance,
                 to: directory.appendingPathComponent("readme-both-zones-rtl-\(theme).png"))
+            for width in [CGFloat(984), 1280] {
+                try await exportReadmeWindow(
+                    ConfigurationView(model: model), scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("readme-rear-\(Int(width))-\(theme).png"),
+                    expectsFullDocumentFit: false, evidenceSize: NSSize(width: width, height: 760),
+                    prepare: { view in
+                        // Fixed-width evidence must not be reset to the preferred
+                        // opening width by the production auto-sizing bridge.
+                        XCTAssertEqual(view.bounds.width, width, accuracy: 0.5)
+                        let scroll = self.configurationScrollView(in: view)
+                        XCTAssertNotNil(scroll)
+                        if let scroll, let document = scroll.documentView {
+                            XCTAssertLessThanOrEqual(document.bounds.height, scroll.contentSize.height + 1,
+                                "The fixed-width evidence must contain the complete rear row")
+                        }
+                    })
+            }
+            let longRear = "code:12345678901234567890123456789012345678901234567890"
+            model.configuration.rearButtons = .init(l4: longRear, l5: longRear, r4: longRear, r5: longRear)
+            try await exportReadmeWindow(
+                ConfigurationView(model: model, managesWindowSize: true), scheme: scheme, appearance: appearance,
+                to: directory.appendingPathComponent("readme-rear-long-\(theme).png"))
+            model.configuration.rearButtons = .init(l4: "F1", l5: "F2", r4: "F3", r5: "F4")
             for lower in [false, true] {
                 try await exportReadmeWindow(
                     ConfigurationView(model: model), scheme: scheme, appearance: appearance,
@@ -684,6 +707,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 }
                 .environment(\.layoutDirection, direction)
                 .environment(\.dynamicTypeSize, size)
+                .environment(\.accessibilityEnabled, true)
             }
             let host = NSHostingView(rootView: content(.large))
             let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 916, height: 1800),
@@ -699,7 +723,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             }
             XCTAssertTrue(window.makeFirstResponder(original[0]))
             for size in [DynamicTypeSize.large, .accessibility1, .accessibility5] {
-                for width in [CGFloat(916), 900, 899, 600, 358, 260, 1200] {
+                for width in [CGFloat(916), 900, 904, 940, 899, 600, 438, 437, 358, 260, 1200, 1600] {
                     host.rootView = content(size)
                     window.setContentSize(NSSize(width: width, height: 1800))
                     host.frame.size.width = width
@@ -724,9 +748,40 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                             XCTAssertGreaterThan(abs(current.midY - previous.midY), max(current.height, previous.height))
                         }
                     }
-                    if width >= 900 && !size.isAccessibilitySize {
+                    if (900...940).contains(width) && !size.isAccessibilitySize {
                         for rect in rects { XCTAssertEqual(rect.midY, rects[0].midY, accuracy: 0.6,
                             "All four rear selectors must occupy one default row") }
+                        let leftMode = try XCTUnwrap(modeSelector(side: .left, in: host))
+                        let rightMode = try XCTUnwrap(modeSelector(side: .right, in: host))
+                        func trailing(_ rect: CGRect) -> CGFloat {
+                            direction == .leftToRight ? rect.maxX : width - rect.minX
+                        }
+                        XCTAssertEqual(trailing(rects[1]), trailing(frame(of: leftMode, in: host)), accuracy: 0.6,
+                            "L5 must share the actual left inspector trailing edge at \(width)/\(direction)")
+                        XCTAssertEqual(trailing(rects[3]), trailing(frame(of: rightMode, in: host)), accuracy: 0.6,
+                            "R5 must share the actual right inspector trailing edge at \(width)/\(direction)")
+                        for menu in descendants(of: PaddrPopUpButton.self, in: host) where frame(of: menu, in: host).width > 200 {
+                            let mainTrailing = trailing(frame(of: menu, in: host))
+                            let rearIndex = mainTrailing < width / 2 ? 1 : 3
+                            XCTAssertEqual(trailing(rects[rearIndex]), mainTrailing, accuracy: 0.6,
+                                "Rear anchors must also match the mounted main menus")
+                        }
+                        for slider in descendants(of: NSSlider.self, in: host) {
+                            let track = slider.convert(slider.alignmentRect(forFrame: slider.bounds), to: host)
+                            let readoutTrailing = trailing(track) + PaddrStyle.Spacing.s2 + PaddrStyle.Width.readout
+                            let rearIndex = readoutTrailing < width / 2 ? 1 : 3
+                            XCTAssertEqual(trailing(rects[rearIndex]), readoutTrailing, accuracy: 0.6,
+                                "Rear anchors must also match the readout edge")
+                        }
+                        let gaps = (1..<rects.count).map { trailing(rects[$0]) - trailing(rects[$0 - 1]) - rects[$0].width }
+                        for gap in gaps.dropFirst() {
+                            XCTAssertEqual(gap, gaps[0], accuracy: 0.6,
+                                "All adjacent menu gaps, including the middle gap, must match")
+                        }
+                    }
+                    if width >= 1200 || size.isAccessibilitySize || width < 900 {
+                        XCTAssertGreaterThan(abs(rects[2].midY - rects[0].midY), rects[0].height,
+                            "When the anchored row cannot fit, keep whole pairs in a readable wrapping layout")
                     }
                     if width == 260 {
                         for index in 1..<rects.count {
@@ -748,6 +803,46 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 }
             }
             XCTAssertEqual(configuration.rearButtons, .init(l4: "f1", l5: "f2", r4: "f3", r5: "f4"))
+            // Long raw values must grow vertically within the same 180-point menus.
+            let long = "code:12345678901234567890123456789012345678901234567890"
+            configuration.rearButtons = .init(l4: long, l5: long, r4: long, r5: long)
+            for size in [DynamicTypeSize.large, .accessibility5] {
+                for width in [CGFloat(916), 1200, 438, 260] {
+                    host.rootView = content(size)
+                    window.setContentSize(NSSize(width: width, height: 1800))
+                    host.frame.size.width = width
+                    await settle(host, passes: 12)
+                    XCTAssertTrue(window.firstResponder === original[0])
+                    let elements = accessibilityElements(in: host)
+                    for (index, code) in ["L4", "L5", "R4", "R5"].enumerated() {
+                        let menu = try XCTUnwrap(descendants(of: PaddrPopUpButton.self, in: host)
+                            .first { $0.accessibilityLabel() == names[index] })
+                        XCTAssertTrue(menu === original[index])
+                        XCTAssertEqual(menu.titleOfSelectedItem, long)
+                        XCTAssertEqual(menu.bounds.width, 180, accuracy: 0.5)
+                        XCTAssertEqual(menu.bounds.height, menu.height(for: 180), accuracy: 0.5)
+                        XCTAssertGreaterThan(menu.bounds.height, 32)
+                        let label = try XCTUnwrap(elements.first {
+                            guard $0.accessibilityRole?() == .staticText,
+                                  let object = $0 as? NSObject else { return false }
+                            // SwiftUI static text exposes its contents as AXValue.
+                            // Dynamic dispatch avoids AppKit's differently typed value protocols.
+                            let selector = NSSelectorFromString("accessibilityValue")
+                            let value = object.responds(to: selector)
+                                ? object.perform(selector)?.takeUnretainedValue() as? String : nil
+                            return value == code || $0.accessibilityLabel?() == code
+                        }, "The attached code must remain readable to accessibility")
+                        let labelFrame = try XCTUnwrap(label.accessibilityFrame?())
+                        let menuFrame = menu.accessibilityFrame()
+                        XCTAssertEqual(labelFrame.midY, menuFrame.midY, accuracy: 1)
+                        let gap = direction == .leftToRight
+                            ? menuFrame.minX - labelFrame.maxX : labelFrame.minX - menuFrame.maxX
+                        XCTAssertEqual(gap, PaddrStyle.Spacing.s2, accuracy: 1)
+                        XCTAssertGreaterThan(labelFrame.width, 0)
+                        XCTAssertTrue(window.frame.contains(labelFrame))
+                    }
+                }
+            }
         }
     }
 

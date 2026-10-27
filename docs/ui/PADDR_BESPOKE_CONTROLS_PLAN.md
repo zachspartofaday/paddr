@@ -393,3 +393,18 @@ The implementation baseline and test/render results, exact commands, artifact pa
 manual follow-up and known limits are in
 [PADDR_BESPOKE_CONTROLS_VALIDATION.md](PADDR_BESPOKE_CONTROLS_VALIDATION.md).
 This author-owned verification is not independent acceptance.
+
+## Rear-row alignment refinement
+
+The current direction keeps one default L4/L5/R4/R5 row with equal 180-point menus.
+L5 shares the left pad inspector/menu/readout trailing edge; R5 shares the right edge.
+One constant stride, derived from those shared pad-column edges, distributes all four
+menus equally, including the middle interval. Labels remain attached to their menus.
+The main 240-point controls, 190 × 182 maps, 16-point gutter and 996-point preferred
+window stay unchanged.
+
+The pad inspectors remain bounded inside wider columns. When their actual geometry
+cannot accommodate four pairs with the two anchors and one stride, the same mounted
+pairs wrap into at most two per row, then one as necessary. Stacked pad editors and
+accessibility text use that fallback too. Placement uses logical coordinates for RTL;
+there are no parallel copies of native menus or binding changes.

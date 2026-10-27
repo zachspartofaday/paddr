@@ -70,7 +70,7 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
         showsDivider = false
         alignsPadInspector = false
         equalizesColumnHeights = false
-        columnSpacing = PaddrStyle.Spacing.s5
+        columnSpacing = PaddrPadColumns.workspaceSpacing
         self.leading = leading
         self.trailing = trailing
     }
@@ -125,6 +125,17 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
 /// between the sensor map and its controls. Headers share these edges.
 enum PaddrPadColumns {
     static let minimumInlineWidth = PaddrStyle.previewInspectorColumnsBreakpoint
+    static let workspaceSpacing = PaddrStyle.Spacing.s5
+
+    /// Logical trailing edges of the two inline inspectors in the workspace.
+    /// Uses the same equal column allocation, breakpoint, bounded map and gutter
+    /// as the mounted pad editors. Surplus stays after each 240-point inspector.
+    static func workspaceInspectorTrailingEdges(in width: CGFloat) -> (left: CGFloat, right: CGFloat)? {
+        guard width >= PaddrStyle.Metrics.padEditorColumnsBreakpoint else { return nil }
+        let columnWidth = (width - workspaceSpacing) / 2
+        let trailing = inspectorLeading(in: columnWidth) + PaddrStyle.Width.control
+        return (trailing, columnWidth + workspaceSpacing + trailing)
+    }
 
     static func spacing(in availableWidth: CGFloat) -> CGFloat {
         guard availableWidth >= minimumInlineWidth else { return PaddrStyle.previewInspectorSpacing }

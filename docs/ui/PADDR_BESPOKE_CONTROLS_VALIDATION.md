@@ -872,3 +872,97 @@ skip**, with both exporters, passes in `/tmp/paddr-flat-final-tests.log`. Comman
 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer PADDR_UI_EVIDENCE_DIR=/tmp/paddr-flat-final-evidence swift test -Xswiftc -warnings-as-errors`.
 Canonical localization, arm64 release app/CLI builds, CLI checks, and identity/production
 fixtures pass: `/tmp/paddr-flat-final-{localization,build,cli-build,cli,identity,production}.log`.
+
+## Rear-row anchor refinement (from fba3255)
+
+Scope: coupled rear layout, mounted regression, existing exporters and preview docs.
+The required clean host-created checkout was verified at
+`fba3255d071e5278572faea76cd8cdbb9232eb67`, branch `t3/d2fa8221`.
+Evidence root: `/tmp/paddr-rear-d2fa8221/`. The installed five selected SKILL.md
+SHA-256 values match the assignment exactly (`source-environment.log`). The accepted
+Codex integration, dispatch and setup references were read with `git show` at
+`e306df32db241cc9b755702255d5bf3e6f056f03` in `Coding/LimitlessPlatform`; no current
+Platform substitution or preserved-checkout edit was made. Coordinate is inactive.
+Host thread/run metadata and the current provider session's `turn_context` verify
+GPT-6.1 Sol, high effort, Default mode, full access/approval never, and this worktree
+(`settings.json`). Plan mode was not entered; no productive Plan run is claimed.
+Toolchain remains Swift 6.4, SDK 27, deployment 26, host macOS 27.2 (26B118), arm64.
+
+### Geometry and regression
+
+`PaddrPadColumns` now exposes the two workspace inspector trailing edges using the
+same column spacing/breakpoint and bounded map/gutter geometry as the pad editors.
+The rear layout derives one stride from those edges and measures each whole
+code/menu pair. At the default 916-point workspace, 180-point menu ends are
+211/446/681/916; L5/R5 exactly share the actual inspector/menu/readout edges and
+all three gaps are 55 points. Those coordinates are derived, not stored constants.
+RTL uses logical trailing edges. If the anchored arrangement cannot fit, the same
+native controls wrap at most two pairs per row (one when needed). This includes
+stacked/accessibility layouts and sufficiently wide hosts, where bounded inspectors
+make an anchored four-menu row impossible without moving L4 outside the workspace.
+The main controls, maps, gutter, preferred window, style and all runtime/bindings
+remain unchanged.
+
+The mounted regression measures actual native mode/menu frames and slider/readout
+edges, all adjacent rear-menu gaps, order, containment, retained menu identity and
+first responder across 900/904/916/940-point dual layouts, 899 and narrower stacked
+boundaries, 1200/1600 wider fallbacks, both directions, accessibility1/5, and long
+raw values. Long menus remain 180 points wide, grow to their measured text height,
+and retain attached readable AX code labels. Independent native-menu selection
+assertions remain. Replacing only the rear view with its fba3255 version fails
+**230 assertions** (`regression-final-before.log`); the fixed regression passes.
+
+The first full attempt exposed an ideal-size mismatch in the new layout: an
+unspecified proposal reported fallback height while the default mounted row used
+one line. The layout now reports its preferred workspace geometry for that ideal
+proposal. Original opening containment assertions remain unchanged. The new
+fixed-width exporter fixtures separately assert their actual width and complete
+row containment; production auto-sizing would reset their requested widths.
+`tests-first-attempt.log`, `tests-pre-capture-width.log`, `compile-attempt.log` and
+`ax-fixture-attempt.log` retain the intermediate receipts; no failed run is erased.
+
+### Validation and native captures
+
+Canonical full warnings-as-errors suite, including both exporters:
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer PADDR_UI_EVIDENCE_DIR=/tmp/paddr-rear-d2fa8221/final swift test -Xswiftc -warnings-as-errors`.
+Result: **537 tests, 536 passed, one existing map-focus key-window skip** (`tests.log`).
+Canonical localization, arm64 release app and CLI builds, CLI checks using the actual
+`swift build -c release --arch arm64 --show-bin-path`, release identity and production
+fixtures pass (`localization.log`, `build.log`, `cli-build.log`, `cli.log`,
+`identity.log`, `production.log`). Build/test commands select
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` locally.
+
+`final/` contains cached and WindowServer-composited inert fixtures. Inspected both
+appearances for the native default opening and rear alignment, constrained dual,
+wider fallback, RTL, narrow lower, accessibility lower, long raw values and retained
+opaque fallbacks. `contact-sheet.png` and `contact-sheet.swift` retain the comparison
+and recipe. Current `docs/ui/bespoke-preview/` after/crop/contact-sheet images are
+refreshed; live README images, frozen 1.1.0 and published-release before images are
+unchanged. Ordinary fixtures have access granted; captures use existing Screen
+Recording access only. No real profiles, hardware, production app, TCC or global
+appearance settings were touched.
+
+| Domain | Owner | Scoped coverage |
+| --- | --- | --- |
+| Accessibility | apple-accessibility-pro | Native names/bindings, attached AX text, long values, accessibility reflow; manual assistive technology not verified |
+| Focus | swift-focusengine-pro | Actual native menu identity and first responder through resizing; existing drag/RTL regressions retained; full manual key loop not verified |
+| Layout | apple-interface-pro | Measured anchors/all gaps and fallback boundaries; native light/dark/default/constrained/wide/RTL/narrow captures |
+| Writing/typography | apple-interface-pro, swiftui-pro | Existing catalog/copy/system text retained; long 180-point values grow and remain readable |
+| Color/tokens | apple-interface-pro | Existing flat accents, pale strokes, inset, secondary glass and opaque fallbacks retained and inspected |
+| Polish/motion | apple-interface-pro | Whole-pair movement with one mounted subtree; existing feedback and preference guards retained |
+
+No actionable interface findings remain in these source/rendered states. This is
+implementer verification, not independent acceptance; fresh exact-candidate review
+remains pending. Known manual keyboard/VoiceOver/Voice Control/Switch Control,
+hardware/output/disconnect, inactive pointer feel, physical Retina and macOS 26
+runtime gaps remain. Manually verify Tab/Shift-Tab order and visible focus through
+reflow, menu Escape/focus return, each named rear action and spoken name/value, and
+all long values/labels in both appearances. The earlier reconnect-timeout receipt
+and pressure-fixture diagnosis above remain historical evidence; this passing run
+does not establish the original ordering or claim all flakiness is resolved.
+
+The final handoff retains the committed candidate SHA, clean-tree receipt and
+exact-head ad-hoc app provenance. Packaging uses `scripts/build-app.sh` with unique
+`OUTPUT_DIR` and `BUILD_SCRATCH_PATH` under the evidence root, followed only by
+signature/source-metadata verification and inert `--artifact-smoke-test`. No install,
+production launch, push, PR mutation, merge or release is part of this assignment.

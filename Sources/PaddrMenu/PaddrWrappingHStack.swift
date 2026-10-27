@@ -6,6 +6,7 @@ import SwiftUI
 struct PaddrWrappingHStack: Layout {
     let horizontalSpacing: CGFloat
     let verticalSpacing: CGFloat
+    var maximumItemsPerRow: Int? = nil
 
     func sizeThatFits(
         proposal: ProposedViewSize,
@@ -56,17 +57,20 @@ struct PaddrWrappingHStack: Layout {
         var cursorY: CGFloat = 0
         var rowHeight: CGFloat = 0
         var usedWidth: CGFloat = 0
+        var rowCount = 0
 
         for size in sizes {
             let originX = cursorX == 0 ? 0 : cursorX + horizontalSpacing
-            if cursorX > 0, originX + size.width > availableWidth {
+            if cursorX > 0, originX + size.width > availableWidth || rowCount == maximumItemsPerRow {
                 cursorY += rowHeight + verticalSpacing
                 cursorX = 0
                 rowHeight = 0
+                rowCount = 0
             }
 
             let placedX = cursorX == 0 ? 0 : cursorX + horizontalSpacing
             origins.append(CGPoint(x: placedX, y: cursorY))
+            rowCount += 1
             cursorX = placedX + size.width
             rowHeight = max(rowHeight, size.height)
             usedWidth = max(usedWidth, cursorX)
