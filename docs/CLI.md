@@ -43,4 +43,3 @@ Missing or null bindings mean None. Other values use the existing key catalog (i
 Pointer acceleration has an independent switch per pad. Turning it off retains the strength and uses linear motion; enabling a zero-strength setup starts at 25%. Profiles store `mouseAccelerationEnabled` separately from `mouseAcceleration`. When the flag is absent, nonzero acceleration stays enabled and zero stays off. The existing CLI acceleration options set the strength and enable it for nonzero values. Older builds ignore the new flag and use the stored amount.
 
 Scroll retains signed fractional movement per pad until a whole scroll point accumulates; lifting or replacing the output session clears that remainder. Reports already one second old are rejected before they can emit or re-arm output. Fresh neutral input is required after such a loss. These behaviors have deterministic fixture coverage; physical rear-button behavior and latency still require controller verification.
-
