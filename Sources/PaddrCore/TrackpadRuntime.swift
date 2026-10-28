@@ -261,6 +261,7 @@ public enum TrackpadRuntime {
         configuration: PaddrConfiguration,
         observeOnly: Bool,
         outputGate: OutputGate? = nil,
+        gyroCalibrationMode: GyroCalibrationMode = .onRequest,
         stopToken: TrackpadStopToken,
         duration: Duration? = nil,
         dependencies: TrackpadRuntimeDependencies = .live,
@@ -499,7 +500,7 @@ public enum TrackpadRuntime {
                     }
 
                     if controllerEpoch == nil {
-                        controllerEpoch = try ControllerEpoch(configuration: validated)
+                        controllerEpoch = try ControllerEpoch(configuration: validated, gyroCalibrationMode: gyroCalibrationMode)
                     }
                     guard var epoch = controllerEpoch else { return }
 
@@ -577,12 +578,12 @@ private struct ControllerEpoch {
     var arbiter = OutputArbiter()
     var isArmed = false
 
-    init(configuration: PaddrConfiguration) throws {
+    init(configuration: PaddrConfiguration, gyroCalibrationMode: GyroCalibrationMode) throws {
         leftMapper = PadMapper(side: .left, configuration: configuration.left)
         rightMapper = PadMapper(side: .right, configuration: configuration.right)
         rearMapper = try RearButtonMapper(configuration: configuration.rearButtons)
         gripMapper = try GripTouchMapper(configuration: configuration.gripTouch)
-        gyroMapper = GyroMapper(configuration: configuration.gyro)
+        gyroMapper = GyroMapper(configuration: configuration.gyro, calibrationMode: gyroCalibrationMode)
     }
 }
 

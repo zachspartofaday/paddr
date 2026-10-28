@@ -139,6 +139,7 @@ final class SensorTests: XCTestCase {
             configuration.invertVertical = inverted
             configuration.verticalScale = 2
             var mapper = GyroMapper(configuration: configuration)
+            mapper.beginCalibration(at: 0, motionAvailable: true)
             for index in 0...125 {
                 XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)
             }
@@ -157,6 +158,7 @@ final class SensorTests: XCTestCase {
 
     func testGyroHeldActivationNeedsReleaseAndCalibrationRejectsMotionAndMissingGravity() {
         var mapper = GyroMapper(configuration: .init(enabled: true, smoothing: 0))
+        mapper.beginCalibration(at: 0, motionAvailable: true)
         for index in 0...130 {
             let held = state(index: index, grips: .init(rightTouched: true))
             XCTAssertTrue(mapper.process(held, at: UInt64(index) * 4_000_000).isEmpty)
@@ -167,12 +169,14 @@ final class SensorTests: XCTestCase {
         XCTAssertTrue(mapper.process(state(index: 133, grips: .init(rightTouched: true)), at: 532_000_000).isEmpty)
         XCTAssertFalse(mapper.process(state(index: 134, rate: SIMD3(0, 1, 0), grips: .init(rightTouched: true)), at: 536_000_000).isEmpty)
         mapper.reset()
+        mapper.beginCalibration(at: 0, motionAvailable: true)
         for index in 0...200 {
             let moving = state(index: index, rate: index == 100 ? SIMD3(0, 1, 0) : .zero)
             XCTAssertTrue(mapper.process(moving, at: UInt64(index) * 4_000_000).isEmpty)
         }
         XCTAssertEqual(mapper.status, .calibrating)
         mapper.reset()
+        mapper.beginCalibration(at: 0, motionAvailable: true)
         for index in 0...150 {
             var invalid = state(index: index)
             invalid.motion?.acceleration = .zero
@@ -184,6 +188,7 @@ final class SensorTests: XCTestCase {
     func testAlwaysActivationNoiseBiasSmoothingAndStaleResetNeverJump() throws {
         let bias = SIMD3<Double>(0.002, 0.003, -0.001)
         var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, smoothing: 0.5))
+        mapper.beginCalibration(at: 0, motionAvailable: true)
         for index in 0...130 { _ = mapper.process(state(index: index, rate: bias), at: UInt64(index) * 4_000_000) }
         XCTAssertEqual(mapper.status, .active)
         XCTAssertTrue(mapper.process(state(index: 131, rate: bias), at: 524_000_000).isEmpty)
@@ -198,7 +203,7 @@ final class SensorTests: XCTestCase {
         var fresh = state(index: 160, rate: SIMD3(0, 10, 0))
         fresh.motion?.timestampNanoseconds = 640_000_000
         XCTAssertTrue(mapper.process(fresh, at: 640_000_000).isEmpty)
-        XCTAssertEqual(mapper.status, .calibrating)
+        XCTAssertEqual(mapper.status, .calibrationNeeded)
     }
 
     func testObservationExpiresFrozenMotionButRetainsFreshGripContact() {
@@ -232,6 +237,7 @@ final class SensorTests: XCTestCase {
                 var mapper = GyroMapper(configuration: .init(
                     enabled: true, activation: .always, sensitivity: 10, holdingAngleDegrees: sampleCase.angle,
                     invertHorizontal: inverted, invertVertical: inverted, smoothing: 0, noiseThreshold: 0))
+                mapper.beginCalibration(at: 0, motionAvailable: true)
                 for index in 0...126 {
                     XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)
                 }
@@ -273,6 +279,7 @@ final class SensorTests: XCTestCase {
 
     func testExplicitRecalibrationImmediatelyClearsMotionAndRequiresNewStationaryBiasAndTouchRelease() {
         var mapper = GyroMapper(configuration: .init(enabled: true, smoothing: 0))
+        mapper.beginCalibration(at: 0, motionAvailable: true)
         let oldBias = SIMD3<Double>(0.001, 0.002, 0.003)
         for index in 0...130 {
             _ = mapper.process(state(index: index, rate: oldBias), at: UInt64(index) * 4_000_000)
@@ -310,6 +317,7 @@ final class SensorTests: XCTestCase {
 
     func testRepeatedRecalibrationRestartsStationaryIntervalAndAlwaysActivationNeedsNoTouch() {
         var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, smoothing: 0))
+        mapper.beginCalibration(at: 0, motionAvailable: true)
         for index in 0...130 { _ = mapper.process(state(index: index), at: UInt64(index) * 4_000_000) }
         XCTAssertEqual(mapper.status, .active)
         mapper.beginCalibration(at: 524_000_000, motionAvailable: true)
@@ -359,6 +367,55 @@ final class SensorTests: XCTestCase {
             XCTAssertEqual(mapper.status, .active)
             XCTAssertFalse(mapper.process(state(index: 277, rate: SIMD3(0, 1, 0)), at: 1_108_000_000).isEmpty)
         }
+    }
+
+    func testManualCalibrationWaitsForRequestAndExpiredBiasNeedsAnotherRequest() {
+        var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, smoothing: 0))
+        for index in 0...250 {
+            XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)
+        }
+        XCTAssertEqual(mapper.status, .calibrationNeeded,
+            "Stationary input after enabling must not calibrate without the user's request")
+        mapper.beginCalibration(at: 1_004_000_000, motionAvailable: true)
+        for index in 251...377 {
+            XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)
+        }
+        XCTAssertEqual(mapper.status, .active)
+        XCTAssertFalse(mapper.process(state(index: 378, rate: SIMD3(0, 1, 0)), at: 1_512_000_000).isEmpty)
+        mapper.expire(at: 1_612_000_000)
+        for index in 404...540 {
+            XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)
+        }
+        XCTAssertEqual(mapper.status, .calibrationNeeded,
+            "Recovering motion cannot silently replace an invalidated calibration")
+        mapper.beginCalibration(at: 2_164_000_000, motionAvailable: true)
+        for index in 541...667 { _ = mapper.process(state(index: index), at: UInt64(index) * 4_000_000) }
+        XCTAssertEqual(mapper.status, .active)
+        mapper.reset()
+        for index in 668...800 { _ = mapper.process(state(index: index), at: UInt64(index) * 4_000_000) }
+        XCTAssertEqual(mapper.status, .calibrationNeeded, "A new output epoch also needs an explicit request")
+    }
+
+    func testManualCalibrationClockDiscontinuityInvalidatesCompletedBias() {
+        var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always))
+        mapper.beginCalibration(at: 0, motionAvailable: true)
+        for index in 0...130 { _ = mapper.process(state(index: index), at: UInt64(index) * 4_000_000) }
+        XCTAssertEqual(mapper.status, .active)
+        var resetClock = state(index: 131)
+        resetClock.motion?.sensorTimestamp = .ticks32Microseconds(0)
+        XCTAssertTrue(mapper.process(resetClock, at: 524_000_000).isEmpty)
+        XCTAssertEqual(mapper.status, .calibrationNeeded)
+        for index in 132...270 { _ = mapper.process(state(index: index), at: UInt64(index) * 4_000_000) }
+        XCTAssertEqual(mapper.status, .calibrationNeeded)
+    }
+
+    func testHeadlessStationaryCalibrationIsAnExplicitRuntimePolicy() {
+        var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always), calibrationMode: .whenStationary)
+        for index in 0...130 { _ = mapper.process(state(index: index), at: UInt64(index) * 4_000_000) }
+        XCTAssertEqual(mapper.status, .active)
+        mapper.expire(at: 620_000_000)
+        for index in 160...290 { _ = mapper.process(state(index: index), at: UInt64(index) * 4_000_000) }
+        XCTAssertEqual(mapper.status, .active)
     }
 
     private func sample(tick: TritonMotionTimestamp, at uptime: UInt64) -> TritonMotionSample {

@@ -27,7 +27,10 @@ Keyboard tilt driving and virtual gamepad output are excluded.
   It projects yaw/roll using the selected right-handed pitch convention, leaving
   pitch as vertical aiming. Existing profiles use 0°; no sensor bias is saved.
 - Calibration requires at least 500 ms and 50 fresh samples, low stable angular
-  velocity and stable acceleration near gravity. Bias belongs to the output epoch
+  velocity and stable acceleration near gravity. The app requires an explicit
+  guided request; enabling output never requests calibration. Completed bias lost
+  to stale motion or a clock discontinuity requires another request. The headless
+  CLI explicitly selects stationary-start calibration. Bias belongs to the output epoch
   and is never persisted. Physical drift and axis-direction checks remain necessary.
 - Relative mouse deltas retain signed fractional remainder before integer CGEvent
   fields are emitted. Absolute cursor positions and held-button dragging remain.
@@ -134,5 +137,40 @@ rotation. This does not establish exhaustive game, drift or output-loss acceptan
 
 The follow-up preserves default 0° aiming and adds a separate calibration request
 channel to the same runtime. Generic explanation lives in native help/popovers;
-current calibration state stays in the single summary row beside the gyro toggle; its immediate instruction remains available through status help. The summary row also holds Calibrate Again, aligned to the left selector edge, and the activation selector, with ready state labeled Calibrated, Ready. Tuning holds the remaining seven controls across two columns and four logical rows, including sensitivity. Contact labels are hidden when that grip action is None, without changing sensor observation or gyro activation. Verification
+current calibration state stays in the single summary row beside the gyro toggle; its immediate instruction remains available through status help. The summary row also holds Calibrate or Calibrate Again, aligned to the left selector edge, with ready state labeled Calibrated, Ready. Activation is on a separate row aligned with Left grip. Tuning holds the remaining seven controls across two columns and four logical rows, including sensitivity. Contact labels are hidden when that grip action is None, without changing sensor observation or gyro activation. Verification
 of the refinement and its exact candidate is recorded with the PR evidence.
+
+
+## Guided calibration and shared activation refinement
+
+The app now waits for an explicit calibration request. The initial action is
+**Calibrate**; after Ready or Aiming it is **Calibrate Again**. Both open a native
+preparation popover asking the user to put the controller on a stable surface or
+hold it still, then press **Calibrate**. Opening, canceling or dismissing the
+prompt does not start a measurement. The request still uses the independent gate
+revision, with the existing profile, output, freshness and neutral-admission checks.
+
+The target/status icon is removed, information buttons use secondary caption
+styling, and **Activation** aligns with **Left grip**. These changes retain
+collapsed tuning, individual native control names and responsive RTL layout.
+
+Source inspection confirms that a grip binding and gyro activation read the same
+contact independently. The combined runtime regression covers right-grip activation
+with a key, left mouse button and right mouse button, including initial held
+admission, explicit calibration, recalibration while held, release/re-touch,
+disable, disconnect and stale-input cleanup. Its injected CGEvent sink checks
+button down → dragged movement → button up without posting physical input. This
+establishes runtime/event composition, not a particular game's camera behavior.
+Physical recalibration, holding-angle sweeps and full assistive-technology
+acceptance remain pending.
+
+Validation of this refinement covered 591 distinct tests: 590 passed and the
+existing key-window-dependent map-focus test remained skipped. The full run
+initially skipped the compact exporter because its opt-in directory was unset;
+that exporter then passed separately with the directory supplied. Both other
+exporters ran in the full suite. The automatic-start mutation failed the new
+manual-calibration/combined-grip regressions; restored source passed. Localization,
+arm64 release app/CLI builds, CLI checks, and release identity/production fixtures
+passed. Native fixture captures cover light/dark, RTL, narrow and calibration
+states. The running personal preview had an unsaved draft and was left untouched;
+these checks did not enable live output or alter saved mappings.

@@ -51,6 +51,7 @@ package enum CLIExecution {
         try TrackpadRuntime.run(
             configuration: configuration,
             observeOnly: observeOnly,
+            gyroCalibrationMode: .whenStationary,
             stopToken: stopToken,
             duration: duration,
             onEvent: { event in

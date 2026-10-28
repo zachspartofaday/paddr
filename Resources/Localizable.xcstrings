@@ -2479,6 +2479,42 @@
     "Calibrated, Ready": {
       "comment": "Gyro calibration completed and aiming is ready for activation.",
       "extractionState": "manual"
+    },
+    "Activation": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Calibrate": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Calibrate Gyro": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Put the controller down on a stable surface, or hold it still. Choose Calibrate, then keep it still until Calibrated, Ready appears.": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Put the controller down on a stable surface, or hold it still, then choose Calibrate.": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Enable output, then choose Calibrate.": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Connect the controller, enable output, then choose Calibrate.": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Keep the controller still until Calibrated, Ready appears.": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Gyro aiming turns controller rotation into mouse movement. Choose a touch for Activation, or Always. Save & Apply changes and enable output, then choose Calibrate. Put the controller down on a stable surface, or hold it still, before starting calibration. With touch activation, release the control after calibration, then touch again to aim. Calibration resets sensor bias without changing your mappings; it requires active output, fresh motion data and no profile operation in progress.": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

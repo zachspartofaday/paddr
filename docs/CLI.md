@@ -85,6 +85,6 @@ In raw configuration files the equivalent fields are:
 "gripTouch": { "left": "mouse-right", "right": null }
 ```
 
-The holding angle mixes the controller’s yaw and roll so horizontal aiming follows your normal grip position. It does not rotate the desktop mouse axes. It defaults to 0° in existing profiles. Recalibration is a session action in the app; it never saves sensor bias or restarts pad/grip output.
+The holding angle mixes the controller’s yaw and roll so horizontal aiming follows your normal grip position. It does not rotate the desktop mouse axes. It defaults to 0° in existing profiles. The app requires its guided **Calibrate** action before aiming. The headless CLI explicitly retains stationary calibration at runtime startup and after stale motion, so put the controller down or hold it still when starting it. Calibration never saves sensor bias or restarts pad/grip output.
 
 See the [mapping guide](USING.md#gyro-mouse-and-grip-touch) for calibration, safe activation and the passive sensor-availability boundary.

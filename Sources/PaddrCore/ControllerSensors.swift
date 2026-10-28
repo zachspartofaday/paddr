@@ -38,9 +38,17 @@ public struct TritonMotionSample: Equatable, Sendable {
 public enum GyroStatus: Equatable, Sendable {
     case off
     case unavailable
+    case calibrationNeeded
     case calibrating
     case ready
     case active
+}
+
+/// The app waits for its guided Calibrate action. The headless CLI can explicitly
+/// retain stationary-start calibration without adding a second input owner.
+public enum GyroCalibrationMode: Sendable {
+    case onRequest
+    case whenStationary
 }
 
 public struct ControllerSensorStatus: Equatable, Sendable {

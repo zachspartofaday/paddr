@@ -425,9 +425,11 @@ final class MenuModelTests: XCTestCase {
         XCTAssertFalse(model.canRecalibrateGyro, "An output-off observation cannot accept calibration")
         model.isEnabled = true
         await waitUntil(model: model) { model.outputGateSnapshotForTesting.isEnabled }
+        XCTAssertEqual(model.outputGateSnapshotForTesting.gyroCalibrationRevision, 0,
+            "Enabling output must not request calibration")
         XCTAssertFalse(model.canRecalibrateGyro, "Output must first finish neutral admission")
         await session.send(.outputArmed)
-        await session.send(.sensorsUpdated(.init(motionAvailable: true, gyroStatus: .ready)))
+        await session.send(.sensorsUpdated(.init(motionAvailable: true, gyroStatus: .calibrationNeeded)))
         await waitUntil(model: model) { model.canRecalibrateGyro }
 
         let before = model.outputGateSnapshotForTesting
@@ -443,7 +445,7 @@ final class MenuModelTests: XCTestCase {
         XCTAssertEqual(requested.revision, before.revision, "Calibration must not impersonate an output-gate transition")
         XCTAssertTrue(requested.isEnabled)
         XCTAssertEqual(model.status, statusBefore, "Only actual sensor events publish calibration progress")
-        XCTAssertEqual(model.sensorStatus?.gyroStatus, .ready)
+        XCTAssertEqual(model.sensorStatus?.gyroStatus, .calibrationNeeded)
         XCTAssertEqual(model.configuration, draftBefore)
         XCTAssertEqual(model.savedConfiguration, savedBefore)
         XCTAssertEqual(state.saveCallCount, savesBefore)

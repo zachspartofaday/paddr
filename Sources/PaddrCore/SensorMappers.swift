@@ -67,6 +67,8 @@ struct GripTouchMapper: Sendable {
 /// task, output sink or persisted calibration. Both elapsed clocks must be fresh.
 struct GyroMapper: Sendable {
     private let configuration: GyroConfiguration
+    private let calibrationMode: GyroCalibrationMode
+    private var calibrationRequested = false
     private var timeline = MotionTimeline()
     private var lastAcceptedUptime: UInt64?
     private var calibrationNotBeforeUptime: UInt64?
@@ -77,8 +79,9 @@ struct GyroMapper: Sendable {
     private var filteredRate = SIMD2<Double>(repeating: 0)
     private(set) var status: GyroStatus
 
-    init(configuration: GyroConfiguration) {
+    init(configuration: GyroConfiguration, calibrationMode: GyroCalibrationMode = .onRequest) {
         self.configuration = configuration
+        self.calibrationMode = calibrationMode
         status = configuration.enabled ? .unavailable : .off
     }
 
@@ -86,6 +89,7 @@ struct GyroMapper: Sendable {
         timeline.reset()
         lastAcceptedUptime = nil
         calibrationNotBeforeUptime = nil
+        calibrationRequested = false
         calibration = .init()
         bias = nil
         activationReleased = false
@@ -99,7 +103,10 @@ struct GyroMapper: Sendable {
     /// be freshly released before re-engagement.
     mutating func beginCalibration(at now: UInt64, motionAvailable: Bool) {
         reset()
-        if configuration.enabled { calibrationNotBeforeUptime = now }
+        if configuration.enabled {
+            calibrationNotBeforeUptime = now
+            calibrationRequested = true
+        }
         if configuration.enabled, motionAvailable {
             lastAcceptedUptime = now
             status = .calibrating
@@ -111,8 +118,10 @@ struct GyroMapper: Sendable {
         // Expiry clears the measurement, not the explicit request's admission
         // boundary. A newly drained callback can still predate that request.
         let requestCutoff = calibrationNotBeforeUptime
+        let pendingRequest = calibrationRequested && bias == nil
         reset()
         calibrationNotBeforeUptime = requestCutoff
+        calibrationRequested = pendingRequest
     }
 
     mutating func process(_ state: TritonControllerState, at now: UInt64) -> [TrackpadOutputAction] {
@@ -135,8 +144,8 @@ struct GyroMapper: Sendable {
         case .first:
             if !activation { activationReleased = true }
             lastAcceptedUptime = sample.timestampNanoseconds
-            status = .calibrating
-            _ = calibration.process(sample, seconds: 0)
+            status = canMeasureCalibration ? .calibrating : .calibrationNeeded
+            if canMeasureCalibration { _ = calibration.process(sample, seconds: 0) }
             return []
         case .duplicate:
             expire(at: now)
@@ -145,13 +154,16 @@ struct GyroMapper: Sendable {
             // Retain only the new timestamp baseline. No previous integration,
             // calibration, smoothing or activation admission survives a clock reset.
             lastAcceptedUptime = sample.timestampNanoseconds
+            // A clock reset invalidates a completed calibration. An explicit
+            // measurement still in progress may restart its stationary interval.
+            if bias != nil { calibrationRequested = false }
             calibration = .init()
             bias = nil
             activationReleased = !activation
             wasActive = false
             filteredRate = .zero
-            status = .calibrating
-            _ = calibration.process(sample, seconds: 0)
+            status = canMeasureCalibration ? .calibrating : .calibrationNeeded
+            if canMeasureCalibration { _ = calibration.process(sample, seconds: 0) }
             return []
         case let .interval(seconds):
             interval = seconds
@@ -160,7 +172,12 @@ struct GyroMapper: Sendable {
 
         if !activation { activationReleased = true }
         if bias == nil {
+            guard canMeasureCalibration else {
+                status = .calibrationNeeded
+                return []
+            }
             bias = calibration.process(sample, seconds: interval)
+            if bias != nil { calibrationRequested = false }
             status = bias == nil ? .calibrating : .ready
             wasActive = false
             return []
@@ -199,6 +216,10 @@ struct GyroMapper: Sendable {
             * (configuration.invertVertical ? -1 : 1)
         guard dx.isFinite, dy.isFinite, dx != 0 || dy != 0 else { return [] }
         return [.mouseMove(dx: dx, dy: dy)]
+    }
+
+    private var canMeasureCalibration: Bool {
+        calibrationRequested || calibrationMode == .whenStationary
     }
 
     private func isActivated(_ state: TritonControllerState) -> Bool {
