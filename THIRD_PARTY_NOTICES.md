@@ -6,7 +6,7 @@ Paddr includes adapted presentation material from a bounded set of BottleRocket 
 declarations at source revision
 `6c65d74fac9add281918438629228333535752a4`.
 
-Copyright (c) 2026 Zach Skjaveland / Part of a Day
+Copyright (c) 2026 Zach S / Part of a Day
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
 software and associated documentation files (the "Software"), to deal in the Software

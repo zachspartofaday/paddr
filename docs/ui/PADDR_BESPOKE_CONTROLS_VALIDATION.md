@@ -742,7 +742,7 @@ apple-interface-pro `dda24f5e…37be`; apple-accessibility-pro `dff21f4a…3d5d`
 swift-focusengine-pro `55df2dcf…8e97`. Relevant SwiftUI layout/localization,
 AppKit/SwiftUI accessibility, macOS focus and interface layout/color/polish guidance
 was applied. Accepted personal integration was read through `git show` in
-`/Users/zachskjaveland/Coding/LimitlessPlatform` at exact
+`<workspace>/LimitlessPlatform` at exact
 `e306df32db241cc9b755702255d5bf3e6f056f03`; no live process replacement was adopted.
 
 ### Final validation
