@@ -297,6 +297,65 @@ final class ControllerSensorsPresentationTests: XCTestCase {
         }
     }
 
+    func testSummaryCalibrationButtonUsesActualLeftInspectorEdgeForEveryStateAndDirection() async throws {
+        let states: [(String, Bool, Bool, Bool, GyroStatus)] = [
+            ("Off", false, false, false, .off),
+            ("Calibrated, Ready", true, true, true, .ready),
+            ("Calibration needed", true, true, false, .off),
+            ("Calibrating—hold still", true, true, true, .calibrating),
+            ("Save & Apply needed", true, false, true, .off)
+        ]
+        for width in [CGFloat(916), 1080] {
+            let edges = try XCTUnwrap(PaddrPadColumns.workspaceInspectorTrailingEdges(in: width))
+            for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+                for (title, draft, saved, output, statusValue) in states {
+                    let host = NSHostingView(rootView: ControllerSensorsConfigurationView(
+                        gyro: .constant(.init(enabled: draft)), gripTouch: .constant(.unassigned),
+                        sensorStatus: .init(motionAvailable: true, gyroStatus: statusValue), isEditable: true,
+                        isOutputEnabled: output, savedGyroEnabled: saved,
+                        canRecalibrate: output && saved && statusValue == .ready)
+                        .frame(width: width).environment(\.layoutDirection, direction)
+                        .environment(\.accessibilityEnabled, true))
+                    let window = makeWindow(host, width: width, height: 600)
+                    defer { window.close() }
+                    await settle(host)
+                    let calibration = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro.calibrate"))
+                    XCTAssertEqual(calibration.accessibilityRole?(), .button)
+                    XCTAssertEqual(calibration.accessibilityLabel?(), "Calibrate Again")
+                    let screenFrame = try XCTUnwrap(calibration.accessibilityFrame?())
+                    let frame = host.convert(window.convertFromScreen(screenFrame), from: nil)
+                    let menu = try XCTUnwrap(descendants(PaddrPopUpButton.self, in: host)
+                        .first { $0.accessibilityLabel() == "Gyro activation" })
+                    let menuFrame = menu.convert(menu.bounds, to: host)
+                    if direction == .leftToRight {
+                        XCTAssertEqual(frame.maxX, edges.left, accuracy: 0.5, title)
+                        XCTAssertEqual(menuFrame.maxX, edges.right, accuracy: 0.5, title)
+                    } else {
+                        XCTAssertEqual(frame.minX, width - edges.left, accuracy: 0.5, title)
+                        XCTAssertEqual(menuFrame.minX, width - edges.right, accuracy: 0.5, title)
+                    }
+                    let status = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro.status"))
+                    XCTAssertEqual(status.accessibilityLabel?(), title)
+                    let statusFrame = try XCTUnwrap(status.accessibilityFrame?())
+                    let toggle = try XCTUnwrap(descendants(PaddrTuningSwitchButton.self, in: host).first)
+                    XCTAssertEqual(screenFrame.midY, toggle.accessibilityFrame().midY, accuracy: 0.5, title)
+                    XCTAssertEqual(screenFrame.midY, menu.accessibilityFrame().midY, accuracy: 0.5, title)
+                    XCTAssertEqual(screenFrame.midY, statusFrame.midY, accuracy: 0.5, title)
+                    let controlFrames = [screenFrame, statusFrame, toggle.accessibilityFrame(), menu.accessibilityFrame()]
+                    for index in controlFrames.indices {
+                        for other in controlFrames.indices where other > index {
+                            XCTAssertFalse(controlFrames[index].intersects(controlFrames[other]),
+                                "The full status and pinned controls must remain distinct: \(title)")
+                        }
+                    }
+                    XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.grip.left.state"))
+                    XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.grip.right.state"))
+                    XCTAssertFalse(accessibilityTree(host).contains("Gyro sensitivity"))
+                }
+            }
+        }
+    }
+
     func testSummaryNativeIdentityFocusAndBindingsSurviveWidthReflow() async throws {
         var activation = GyroConfiguration(enabled: true)
         var grips = GripTouchConfiguration.unassigned
@@ -485,9 +544,14 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 try data.write(to: directory.appendingPathComponent("sensor-settings-\(name)-\(suffix).png"))
             }
         }
-        for (name, gyroStatus, outputEnabled) in [("needed", GyroStatus.off, false),
-                                                  ("calibrating", .calibrating, true),
-                                                  ("ready", .ready, true), ("aiming", .active, true)] {
+        for (name, gyroStatus, outputEnabled, draftEnabled, savedEnabled) in [
+            ("off", GyroStatus.off, false, false, false),
+            ("draft-only", .off, true, true, false),
+            ("needed", .off, false, true, true),
+            ("calibrating", .calibrating, true, true, true),
+            ("ready", .ready, true, true, true),
+            ("aiming", .active, true, true, true)
+        ] {
             for (theme, scheme, appearance) in [("light", ColorScheme.light, NSAppearance.Name.aqua),
                                                ("dark", ColorScheme.dark, NSAppearance.Name.darkAqua)] {
                 var extremes = gyro
@@ -496,24 +560,27 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 extremes.holdingAngleDegrees = 90
                 extremes.noiseThreshold = 5
                 extremes.smoothing = 1
-                let host = NSHostingView(rootView: ControllerSensorsConfigurationView(
-                    gyro: .constant(extremes), gripTouch: .constant(.init(left: "code:65535", right: "mouse-right")),
-                    sensorStatus: .init(motionAvailable: true, gyroStatus: gyroStatus), isEditable: true,
-                    initialTuningExpanded: true, isOutputEnabled: outputEnabled, savedGyroEnabled: true,
-                    canRecalibrate: outputEnabled && gyroStatus != .calibrating)
-                    .padding(20).environment(\.colorScheme, scheme)
-                    .foregroundStyle(PaddrStyle.textPrimary).tint(PaddrStyle.controlTint)
-                    .background(PanelBackgroundView()))
-                let window = makeWindow(host, width: 956, height: 1000)
-                defer { window.close() }
-                host.appearance = NSAppearance(named: appearance)
-                await settle(host)
-                host.frame.size.height = host.fittingSize.height
-                await settle(host)
-                let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-                host.cacheDisplay(in: host.bounds, to: bitmap)
-                let data = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
-                try data.write(to: directory.appendingPathComponent("sensor-\(name)-extremes-\(theme).png"))
+                extremes.enabled = draftEnabled
+                for (directionName, direction) in [("ltr", LayoutDirection.leftToRight), ("rtl", .rightToLeft)] {
+                    let host = NSHostingView(rootView: ControllerSensorsConfigurationView(
+                        gyro: .constant(extremes), gripTouch: .constant(.init(left: "code:65535", right: "mouse-right")),
+                        sensorStatus: .init(motionAvailable: true, gyroStatus: gyroStatus), isEditable: true,
+                        initialTuningExpanded: true, isOutputEnabled: outputEnabled, savedGyroEnabled: savedEnabled,
+                        canRecalibrate: outputEnabled && savedEnabled && gyroStatus != .calibrating)
+                        .padding(20).environment(\.colorScheme, scheme).environment(\.layoutDirection, direction)
+                        .foregroundStyle(PaddrStyle.textPrimary).tint(PaddrStyle.controlTint)
+                        .background(PanelBackgroundView()))
+                    let window = makeWindow(host, width: 956, height: 1000)
+                    defer { window.close() }
+                    host.appearance = NSAppearance(named: appearance)
+                    await settle(host)
+                    host.frame.size.height = host.fittingSize.height
+                    await settle(host)
+                    let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                    host.cacheDisplay(in: host.bounds, to: bitmap)
+                    let data = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                    try data.write(to: directory.appendingPathComponent("sensor-\(name)-extremes-\(theme)-\(directionName).png"))
+                }
             }
         }
     }

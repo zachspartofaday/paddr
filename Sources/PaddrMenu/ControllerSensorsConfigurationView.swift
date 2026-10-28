@@ -102,7 +102,7 @@ struct ControllerSensorsConfigurationView: View {
     private var gyroSection: some View {
         VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
             ControllerSensorSummaryLayout(forceStacked: dynamicTypeSize.isAccessibilitySize) {
-                HStack(spacing: PaddrStyle.Spacing.s3) {
+                HStack(spacing: PaddrStyle.Spacing.s2) {
                     sectionHeading("Gyro to mouse", infoTitle: "About gyro aiming",
                         message: "Gyro aiming turns controller rotation into mouse movement. Choose a touch to activate it, or Always. Save & Apply changes before enabling output. Keep the controller still for calibration. With touch activation, release the control after enabling output, then touch again to aim. Calibrate Again resets sensor bias without changing your mappings; it requires active output, fresh motion data and no profile operation in progress.",
                         identifier: "gyro-info", currentInstruction: gyroState.instruction)
@@ -112,6 +112,7 @@ struct ControllerSensorsConfigurationView: View {
                 }
                 Label(gyroState.title, systemImage: gyroState.systemImage)
                     .paddrTypography(.sectionLabel)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(gyroState.title)
                     .foregroundStyle(gyroState.isReady ? PaddrStyle.action : PaddrStyle.textPrimary)
@@ -279,7 +280,7 @@ struct ControllerSensorsConfigurationView: View {
 }
 
 /// One mounted control family reflows as whole items. At ordinary widths the
-/// activation menu ends on the same bounded edge as the right pad inspector.
+/// calibration action and activation menu end on the left and right pad inspectors.
 private struct ControllerSensorSummaryLayout: Layout {
     let forceStacked: Bool
     private var spacing: CGFloat { PaddrStyle.Spacing.s3 }
@@ -302,23 +303,37 @@ private struct ControllerSensorSummaryLayout: Layout {
             wrapping.placeSubviews(in: bounds, proposal: proposal, subviews: subviews, cache: &cache)
             return
         }
-        var x = bounds.minX
         for index in subviews.indices {
             let size = row.sizes[index]
-            let origin = index == subviews.count - 1 ? bounds.minX + row.trailingEdge - size.width : x
-            subviews[index].place(at: CGPoint(x: origin, y: bounds.midY - size.height / 2),
+            subviews[index].place(at: CGPoint(x: bounds.minX + row.origins[index], y: bounds.midY - size.height / 2),
                 anchor: .topLeading, proposal: ProposedViewSize(size))
-            x = origin + size.width + spacing
         }
     }
 
-    private func inlineRow(width: CGFloat, subviews: Subviews) -> (sizes: [CGSize], trailingEdge: CGFloat)? {
-        guard !forceStacked, subviews.count == 4 else { return nil }
-        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
-        let trailingEdge = PaddrPadColumns.workspaceInspectorTrailingEdges(in: width)?.right ?? width
-        let required = sizes.reduce(CGFloat.zero) { $0 + $1.width } + spacing * CGFloat(sizes.count - 1)
-        guard required <= trailingEdge else { return nil }
-        return (sizes, trailingEdge)
+    private func inlineRow(width: CGFloat, subviews: Subviews) -> (sizes: [CGSize], origins: [CGFloat])? {
+        guard !forceStacked, subviews.count == 4,
+              let edges = PaddrPadColumns.workspaceInspectorTrailingEdges(in: width) else { return nil }
+        var sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let calibrationOrigin = edges.left - sizes[2].width
+        let activationOrigin = edges.right - sizes[3].width
+        let gaps = [PaddrStyle.Spacing.s3, PaddrStyle.Spacing.s2, PaddrStyle.Spacing.s1]
+        guard let maximumGap = gaps.first(where: {
+            edges.left + $0 <= activationOrigin && sizes[0].width + $0 < calibrationOrigin
+        }) else { return nil }
+        let fullStatusGap = gaps.first {
+            $0 <= maximumGap && sizes[0].width + sizes[1].width + 2 * $0 <= calibrationOrigin
+        }
+        let gap = fullStatusGap ?? min(maximumGap, PaddrStyle.Spacing.s2)
+        let statusOrigin = sizes[0].width + gap
+        let statusWidth = calibrationOrigin - gap - statusOrigin
+        guard statusWidth > 0 else { return nil }
+        if fullStatusGap == nil {
+            // Preserve the complete status while keeping both actual controls on
+            // their anchors. A longer title may wrap inside this horizontal band.
+            sizes[1] = subviews[1].sizeThatFits(ProposedViewSize(width: statusWidth, height: nil))
+            guard sizes[1].width <= statusWidth + 0.5 else { return nil }
+        }
+        return (sizes, [0, statusOrigin, calibrationOrigin, activationOrigin])
     }
 }
 
