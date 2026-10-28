@@ -24,6 +24,7 @@ public enum CenterTapTrackingMode: String, Codable, CaseIterable, Sendable {
 public enum ConfigurationLimits {
     public static let sensitivity = 0.1...20.0
     public static let gyroSensitivity = 0.1...40.0
+    public static let gyroHoldingAngle = 0.0...90.0
     public static let gyroVerticalScale = 0.1...4.0
     public static let gyroSmoothing = 0.0...1.0
     public static let gyroNoiseThreshold = 0.0...5.0

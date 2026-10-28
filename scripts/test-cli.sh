@@ -610,7 +610,7 @@ if [ "$(plutil -extract gyro.enabled raw -o - "$stdout_path")" != false ] \
 fi
 "$cli_path" --config "$sensor_source" \
     --gyro on --gyro-activation either-grip --gyro-sensitivity 8.5 \
-    --gyro-vertical-scale 1.5 --gyro-invert-horizontal on --gyro-invert-vertical off \
+    --gyro-vertical-scale 1.5 --gyro-holding-angle 45 --gyro-invert-horizontal on --gyro-invert-vertical off \
     --gyro-smoothing 0.4 --gyro-noise-threshold 0.75 \
     --left-grip ' F1 ' --right-grip mouse-right --show-config \
     >"$sensor_effective" 2>"$stderr_path"
@@ -618,6 +618,7 @@ if [ "$(plutil -extract gyro.enabled raw -o - "$sensor_effective")" != true ] \
     || [ "$(plutil -extract gyro.activation raw -o - "$sensor_effective")" != either-grip ] \
     || [ "$(plutil -extract gyro.sensitivity raw -o - "$sensor_effective")" != 8.500000 ] \
     || [ "$(plutil -extract gyro.verticalScale raw -o - "$sensor_effective")" != 1.500000 ] \
+    || [ "$(plutil -extract gyro.holdingAngleDegrees raw -o - "$sensor_effective")" != 45 ] \
     || [ "$(plutil -extract gyro.invertHorizontal raw -o - "$sensor_effective")" != true ] \
     || [ "$(plutil -extract gyro.invertVertical raw -o - "$sensor_effective")" != false ] \
     || [ "$(plutil -extract gyro.smoothing raw -o - "$sensor_effective")" != 0.400000 ] \
@@ -689,6 +690,9 @@ assert_invalid_sensor_option --gyro-sensitivity 0
 assert_invalid_sensor_option --gyro-sensitivity 41
 assert_invalid_sensor_option --gyro-vertical-scale 0
 assert_invalid_sensor_option --gyro-vertical-scale 5
+assert_invalid_sensor_option --gyro-holding-angle -1
+assert_invalid_sensor_option --gyro-holding-angle 91
+assert_invalid_sensor_option --gyro-holding-angle nan
 assert_invalid_sensor_option --gyro-smoothing -0.1
 assert_invalid_sensor_option --gyro-smoothing 1.1
 assert_invalid_sensor_option --gyro-noise-threshold -1

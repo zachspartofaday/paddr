@@ -1881,6 +1881,93 @@ final class RuntimeTests: XCTestCase {
         XCTAssertFalse(opened.withLock { $0 })
     }
 
+    func testCalibrationRequestRevisionIsIndependentAndDisabledRequestsAreRejected() {
+        let gate = OutputGate(enabled: false)
+        XCTAssertFalse(gate.requestGyroCalibration())
+        XCTAssertEqual(gate.snapshot, .init(isEnabled: false, revision: 0, gyroCalibrationRevision: 0))
+        XCTAssertEqual(gate.setEnabled(true), 1)
+        for _ in 0..<3 { XCTAssertTrue(gate.requestGyroCalibration()) }
+        XCTAssertEqual(gate.snapshot, .init(isEnabled: true, revision: 1, gyroCalibrationRevision: 3))
+        XCTAssertEqual(gate.setEnabled(false), 2)
+        XCTAssertFalse(gate.requestGyroCalibration())
+        XCTAssertEqual(gate.snapshot, .init(isEnabled: false, revision: 2, gyroCalibrationRevision: 3))
+    }
+
+    func testRuntimeRecalibrationStopsGyroWithoutReleasingPadRearOrGripOwners() throws {
+        let clock = ManualUptimeClock()
+        let output = RecordingOutput()
+        let events = EventRecorder()
+        let gate = OutputGate(enabled: true)
+        var configuration = PaddrConfiguration.default
+        configuration.left.mode = .dpad
+        configuration.left.dpadKeys.up = "space"
+        configuration.gripTouch.left = "f1"
+        configuration.rearButtons.l4 = "f2"
+        configuration.gyro = .init(enabled: true, smoothing: 0)
+        var steps: [ScriptedHID.Step] = []
+        for index in 0...130 {
+            steps.append(.report(sensorRuntimeReport(tick: UInt32(index * 4000)), at: UInt64(index) * 4_000_000))
+        }
+        let held: UInt32 = 0x3002_0000
+        steps.append(.report(sensorRuntimeReport(tick: 524_000, grips: held, padHeld: true), at: 524_000_000))
+        steps.append(.report(sensorRuntimeReport(tick: 528_000, grips: held, gyroZ: 164, padHeld: true), at: 528_000_000))
+        steps.append(.perform { XCTAssertTrue(gate.requestGyroCalibration()) })
+        steps.append(.wake(at: 532_000_000))
+        for index in 134...274 {
+            let bytes = sensorRuntimeReport(tick: UInt32(index * 4000), grips: held,
+                                            gyroZ: index < 144 ? 164 : 0, padHeld: true)
+            steps.append(.report(bytes, at: UInt64(index) * 4_000_000))
+        }
+        steps.append(.report(sensorRuntimeReport(tick: 1_100_000, grips: 0x2002_0000, padHeld: true), at: 1_100_000_000))
+        steps.append(.report(sensorRuntimeReport(tick: 1_104_000, grips: held, gyroZ: 164, padHeld: true), at: 1_104_000_000))
+        steps.append(.report(sensorRuntimeReport(tick: 1_108_000, grips: held, gyroZ: 164, padHeld: true), at: 1_108_000_000))
+        steps.append(.report(sensorRuntimeReport(tick: 1_112_000), at: 1_112_000_000))
+        let hid = ScriptedHID(clock: clock, steps: steps)
+        _ = try run(configuration: configuration, outputGate: gate, hid: hid, clock: clock, output: output, events: events)
+        let movements = output.actions.filter { if case .mouseMove = $0 { true } else { false } }
+        XCTAssertEqual(movements.count, 2)
+        let heldActions = output.actions.filter { if case .key = $0 { true } else { false } }
+        let space = try KeyCatalog.resolve("space")
+        let f1 = try KeyCatalog.resolve("f1")
+        let f2 = try KeyCatalog.resolve("f2")
+        XCTAssertEqual(heldActions, [.key(space, isPressed: true), .key(f2, isPressed: true), .key(f1, isPressed: true),
+                                     .key(space, isPressed: false), .key(f2, isPressed: false), .key(f1, isPressed: false)])
+        XCTAssertEqual(gate.snapshot, .init(isEnabled: true, revision: 0, gyroCalibrationRevision: 1))
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 1)
+        XCTAssertTrue(outputReleasedEvents(in: events.events).isEmpty)
+        let calibrations = events.events.filter { event in
+            if case let .sensorsUpdated(value) = event { value.gyroStatus == .calibrating } else { false }
+        }
+        XCTAssertEqual(calibrations.count, 2)
+    }
+
+    func testCalibrationRequestsWithoutAnEpochOrAfterControllerLossCannotReviveOutput() throws {
+        let clock = ManualUptimeClock()
+        let output = RecordingOutput()
+        let events = EventRecorder()
+        let gate = OutputGate(enabled: true)
+        var configuration = PaddrConfiguration.default
+        configuration.gyro.enabled = true
+        configuration.gripTouch.left = "f1"
+        let hid = ScriptedHID(clock: clock, steps: [
+            .perform { XCTAssertTrue(gate.requestGyroCalibration()) }, .wake(at: 0),
+            .report(sensorRuntimeReport(), at: 4_000_000),
+            .report(sensorRuntimeReport(grips: 0x2000_0000), at: 8_000_000),
+            .report([0x46, 1], at: 12_000_000),
+            .perform { XCTAssertTrue(gate.requestGyroCalibration()) }, .wake(at: 16_000_000),
+            .report(sensorRuntimeReport(grips: 0x2000_0000), at: 20_000_000),
+            .report(sensorRuntimeReport(), at: 24_000_000),
+            .report(sensorRuntimeReport(grips: 0x2000_0000), at: 28_000_000), .remove
+        ])
+        _ = try run(configuration: configuration, outputGate: gate, hid: hid, clock: clock, output: output, events: events)
+        let key = try KeyCatalog.resolve("f1")
+        XCTAssertEqual(output.actions, [.key(key, isPressed: true), .key(key, isPressed: false),
+                                        .key(key, isPressed: true), .key(key, isPressed: false)])
+        XCTAssertEqual(gate.snapshot, .init(isEnabled: true, revision: 0, gyroCalibrationRevision: 2))
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 2)
+        XCTAssertTrue(outputReleasedEvents(in: events.events).isEmpty)
+    }
+
     private func run(
         configuration: PaddrConfiguration = .default,
         observeOnly: Bool = false,

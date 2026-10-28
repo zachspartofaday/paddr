@@ -93,10 +93,12 @@ public final class TrackpadStopToken: Sendable {
 public struct OutputGateSnapshot: Equatable, Sendable {
     public let isEnabled: Bool
     public let revision: UInt64
+    public let gyroCalibrationRevision: UInt64
 
-    public init(isEnabled: Bool, revision: UInt64) {
+    public init(isEnabled: Bool, revision: UInt64, gyroCalibrationRevision: UInt64 = 0) {
         self.isEnabled = isEnabled
         self.revision = revision
+        self.gyroCalibrationRevision = gyroCalibrationRevision
     }
 }
 
@@ -104,6 +106,7 @@ public final class OutputGate: Sendable {
     private struct State: ~Copyable {
         var isEnabled: Bool
         var revision: UInt64 = 0
+        var gyroCalibrationRevision: UInt64 = 0
     }
 
     private let state: Mutex<State>
@@ -121,12 +124,26 @@ public final class OutputGate: Sendable {
         }
     }
 
+    /// An independent request channel: calibration must never impersonate an
+    /// Enable output transition or consume its release acknowledgement revision.
+    @discardableResult
+    public func requestGyroCalibration() -> Bool {
+        state.withLock { state in
+            guard state.isEnabled else { return false }
+            state.gyroCalibrationRevision &+= 1
+            return true
+        }
+    }
+
     public var isEnabled: Bool {
         state.withLock { $0.isEnabled }
     }
 
     public var snapshot: OutputGateSnapshot {
-        state.withLock { OutputGateSnapshot(isEnabled: $0.isEnabled, revision: $0.revision) }
+        state.withLock {
+            OutputGateSnapshot(isEnabled: $0.isEnabled, revision: $0.revision,
+                               gyroCalibrationRevision: $0.gyroCalibrationRevision)
+        }
     }
 }
 
@@ -385,12 +402,25 @@ public enum TrackpadRuntime {
         func reconcileOutputGate() throws {
             guard let outputGate else { return }
             let current = outputGate.snapshot
-            guard current.revision != observedGate.revision else { return }
+            let gateChanged = current.revision != observedGate.revision
+            let calibrationRequested = current.gyroCalibrationRevision != observedGate.gyroCalibrationRevision
+            guard gateChanged || calibrationRequested else { return }
             observedGate = current
-            guard !current.isEnabled else { return }
-            try releaseEpochOutputs()
-            onEvent?(.outputReleased(revision: current.revision))
-            if controllerLive { publishSensors(at: dependencies.uptimeNanoseconds(), force: true) }
+            let now = dependencies.uptimeNanoseconds()
+            if gateChanged, !current.isEnabled {
+                try releaseEpochOutputs()
+                onEvent?(.outputReleased(revision: current.revision))
+                if controllerLive { publishSensors(at: now, force: true) }
+                return
+            }
+            if calibrationRequested, current.isEnabled, var epoch = controllerEpoch {
+                let freshMotion = epoch.isArmed
+                    && SensorFreshness.isFresh(sensorObservation.lastMotionUptime, at: now)
+                epoch.gyroMapper.beginCalibration(at: now, motionAvailable: freshMotion)
+                controllerEpoch = epoch
+                output.resetMouseMotion()
+                publishSensors(at: now, force: true)
+            }
         }
 
         onEvent?(.waitingForController(device.summaryDescription))

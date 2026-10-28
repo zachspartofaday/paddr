@@ -15,6 +15,8 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
     /// Mouse points per degree of rotation.
     public var sensitivity: Double
     public var verticalScale: Double
+    /// Controller pitch from flat (0°) toward upright (90°), used for horizontal aiming.
+    public var holdingAngleDegrees: Double
     public var invertHorizontal: Bool
     public var invertVertical: Bool
     public var smoothing: Double
@@ -26,6 +28,7 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
         activation: GyroActivation = .rightGrip,
         sensitivity: Double = 12,
         verticalScale: Double = 1,
+        holdingAngleDegrees: Double = 0,
         invertHorizontal: Bool = false,
         invertVertical: Bool = false,
         smoothing: Double = 0.15,
@@ -35,6 +38,7 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
         self.activation = activation
         self.sensitivity = sensitivity
         self.verticalScale = verticalScale
+        self.holdingAngleDegrees = holdingAngleDegrees
         self.invertHorizontal = invertHorizontal
         self.invertVertical = invertVertical
         self.smoothing = smoothing
@@ -42,7 +46,8 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case enabled, activation, sensitivity, verticalScale, invertHorizontal, invertVertical, smoothing, noiseThreshold
+        case enabled, activation, sensitivity, verticalScale, holdingAngleDegrees
+        case invertHorizontal, invertVertical, smoothing, noiseThreshold
     }
 
     public init(from decoder: Decoder) throws {
@@ -52,6 +57,7 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
             activation: try values.decodeIfPresent(GyroActivation.self, forKey: .activation) ?? .rightGrip,
             sensitivity: try values.decodeIfPresent(Double.self, forKey: .sensitivity) ?? 12,
             verticalScale: try values.decodeIfPresent(Double.self, forKey: .verticalScale) ?? 1,
+            holdingAngleDegrees: try values.decodeIfPresent(Double.self, forKey: .holdingAngleDegrees) ?? 0,
             invertHorizontal: try values.decodeIfPresent(Bool.self, forKey: .invertHorizontal) ?? false,
             invertVertical: try values.decodeIfPresent(Bool.self, forKey: .invertVertical) ?? false,
             smoothing: try values.decodeIfPresent(Double.self, forKey: .smoothing) ?? 0.15,
@@ -63,6 +69,7 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
         for (name, value, range) in [
             ("sensitivity", sensitivity, ConfigurationLimits.gyroSensitivity),
             ("verticalScale", verticalScale, ConfigurationLimits.gyroVerticalScale),
+            ("holdingAngleDegrees", holdingAngleDegrees, ConfigurationLimits.gyroHoldingAngle),
             ("smoothing", smoothing, ConfigurationLimits.gyroSmoothing),
             ("noiseThreshold", noiseThreshold, ConfigurationLimits.gyroNoiseThreshold)
         ] {

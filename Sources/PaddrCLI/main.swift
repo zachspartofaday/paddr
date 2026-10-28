@@ -69,6 +69,7 @@ private func help() -> String {
       --gyro-activation MODE        right-grip, left-grip, either-grip, either-pad, or always.
       --gyro-sensitivity N          Mouse points per degree, 0.1...40.
       --gyro-vertical-scale N       Vertical sensitivity multiplier, 0.1...4.
+      --gyro-holding-angle N        Controller pitch: 0° flat through 90° upright.
       --gyro-invert-horizontal on|off
       --gyro-invert-vertical on|off  Reverse the corresponding gyro mouse direction.
       --gyro-smoothing N            Gyro smoothing strength, 0...1.
@@ -250,6 +251,8 @@ private func parse(_ rawArguments: [String]) throws -> CLIOptions {
             options.configuration.gyro.sensitivity = try parseDouble(nextValue(), option: argument)
         case "--gyro-vertical-scale":
             options.configuration.gyro.verticalScale = try parseDouble(nextValue(), option: argument)
+        case "--gyro-holding-angle":
+            options.configuration.gyro.holdingAngleDegrees = try parseDouble(nextValue(), option: argument)
         case "--gyro-invert-horizontal":
             options.configuration.gyro.invertHorizontal = try parseToggle(nextValue(), option: argument)
         case "--gyro-invert-vertical":
@@ -428,7 +431,8 @@ private func run(_ options: CLIOptions) throws {
     }.joined(separator: ", "))
     print("Gyro mouse: \(options.configuration.gyro.enabled ? "on" : "off"), "
         + "activation \(options.configuration.gyro.activation.rawValue), "
-        + "\(options.configuration.gyro.sensitivity) points/degree")
+        + "\(options.configuration.gyro.sensitivity) points/degree, "
+        + "holding angle \(options.configuration.gyro.holdingAngleDegrees)°")
     print("Grip touch: left=\(options.configuration.gripTouch.left ?? "none"), "
         + "right=\(options.configuration.gripTouch.right ?? "none")")
     print("Controller feature reports: unavailable by design")

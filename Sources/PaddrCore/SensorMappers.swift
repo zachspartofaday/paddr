@@ -69,6 +69,7 @@ struct GyroMapper: Sendable {
     private let configuration: GyroConfiguration
     private var timeline = MotionTimeline()
     private var lastAcceptedUptime: UInt64?
+    private var calibrationNotBeforeUptime: UInt64?
     private var calibration = StationaryGyroCalibration()
     private var bias: SIMD3<Double>?
     private var activationReleased = false
@@ -84,12 +85,25 @@ struct GyroMapper: Sendable {
     mutating func reset() {
         timeline.reset()
         lastAcceptedUptime = nil
+        calibrationNotBeforeUptime = nil
         calibration = .init()
         bias = nil
         activationReleased = false
         wasActive = false
         filteredRate = .zero
         status = configuration.enabled ? .unavailable : .off
+    }
+
+    /// Recalibration changes only this mapper, never output admission or held owners.
+    /// The next sample begins a new stationary interval and touch activation must
+    /// be freshly released before re-engagement.
+    mutating func beginCalibration(at now: UInt64, motionAvailable: Bool) {
+        reset()
+        if configuration.enabled { calibrationNotBeforeUptime = now }
+        if configuration.enabled, motionAvailable {
+            lastAcceptedUptime = now
+            status = .calibrating
+        }
     }
 
     mutating func expire(at now: UInt64) {
@@ -103,6 +117,11 @@ struct GyroMapper: Sendable {
         guard let sample = state.motion,
               SensorFreshness.isFresh(sample.timestampNanoseconds, at: now),
               Self.isFinite(sample.angularVelocity), Self.isFinite(sample.acceleration) else {
+            expire(at: now)
+            return []
+        }
+        // Buffered callbacks from before an explicit request cannot seed its bias.
+        guard calibrationNotBeforeUptime.map({ sample.timestampNanoseconds >= $0 }) ?? true else {
             expire(at: now)
             return []
         }
@@ -157,8 +176,11 @@ struct GyroMapper: Sendable {
         let rate = sample.angularVelocity - (bias ?? .zero)
         let degreesPerRadian = 180 / Double.pi
         // SDL axes: positive yaw turns left; positive pitch lifts the nose.
-        // macOS mouse coordinates increase rightward and downward.
-        var aim = SIMD2(-rate.y, -rate.x) * degreesPerRadian
+        // Pitching the controller toward upright rotates world yaw between its
+        // yaw and roll axes. macOS coordinates increase rightward and downward.
+        let holdingAngle = configuration.holdingAngleDegrees * Double.pi / 180
+        let horizontalRate = rate.y * cos(holdingAngle) - rate.z * sin(holdingAngle)
+        var aim = SIMD2(-horizontalRate, -rate.x) * degreesPerRadian
         if abs(aim.x) < configuration.noiseThreshold { aim.x = 0 }
         if abs(aim.y) < configuration.noiseThreshold { aim.y = 0 }
         if configuration.smoothing == 0 {
