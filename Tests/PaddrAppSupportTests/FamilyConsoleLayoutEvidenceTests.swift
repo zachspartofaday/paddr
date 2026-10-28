@@ -248,9 +248,16 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                         XCTAssertEqual(view.bounds.width, width, accuracy: 0.5)
                         let scroll = self.configurationScrollView(in: view)
                         XCTAssertNotNil(scroll)
-                        if let scroll, let document = scroll.documentView {
-                            XCTAssertLessThanOrEqual(document.bounds.height, scroll.contentSize.height + 1,
-                                "The fixed-width evidence must contain the complete rear row")
+                        if let scroll {
+                            let rearMenus = self.descendants(of: PaddrPopUpButton.self, in: view).filter {
+                                $0.accessibilityLabel()?.contains("rear button") == true
+                            }
+                            XCTAssertEqual(rearMenus.count, 4)
+                            for menu in rearMenus {
+                                let rect = self.frame(of: menu, in: scroll.contentView)
+                                XCTAssertTrue(scroll.contentView.bounds.insetBy(dx: -1, dy: -1).contains(rect),
+                                    "The fixed-width evidence must contain each rear selector; sensor settings below may scroll")
+                            }
                         }
                     })
             }
