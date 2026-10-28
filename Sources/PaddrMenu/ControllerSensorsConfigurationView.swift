@@ -127,19 +127,20 @@ struct ControllerSensorsConfigurationView: View {
                     .padding(.top, PaddrStyle.Spacing.s2)
                     .disabled(!isEditable)
             } label: {
-                Button {
-                    tuningExpanded.toggle()
-                } label: {
-                    Text("Gyro tuning")
-                        .paddrTypography(.sectionLabel)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .focusable(false)
-                .accessibilityHidden(true)
+                Text("Gyro tuning")
+                    .paddrTypography(.sectionLabel)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .overlay {
+                        // Keep the native text label for disclosure semantics;
+                        // extend only pointer activation across the complete row.
+                        Button { tuningExpanded.toggle() } label: {
+                            Color.clear.contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .focusable(false)
+                        .accessibilityHidden(true)
+                    }
             }
-            .accessibilityLabel(Text("Gyro tuning"))
             .paddrAccessibilityID("gyro", "tuning")
         }
     }

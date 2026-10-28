@@ -104,6 +104,37 @@ final class ControllerSensorsPresentationTests: XCTestCase {
         XCTAssertEqual(gyro.activation, .rightGrip)
     }
 
+    func testExpandedGyroSlidersKeepIndividualAccessibleNames() async throws {
+        let host = NSHostingView(rootView: ControllerSensorsConfigurationView(
+            gyro: .constant(.init()), gripTouch: .constant(.unassigned),
+            sensorStatus: nil, isEditable: true, initialTuningExpanded: true)
+            .environment(\.accessibilityEnabled, true))
+        let window = makeWindow(host, width: 916, height: 900)
+        defer { window.close() }
+        await settle(host)
+        var visited = Set<ObjectIdentifier>()
+        var sliderLabels: [String] = []
+        var disclosureLabels: [String] = []
+        func collect(_ element: AnyObject) {
+            guard visited.insert(ObjectIdentifier(element)).inserted else { return }
+            if element.accessibilityRole?() == .slider {
+                sliderLabels.append(element.accessibilityLabel?() ?? "")
+            }
+            if element.accessibilityRole?() == .disclosureTriangle {
+                disclosureLabels.append(element.accessibilityLabel?() ?? "")
+            }
+            for child in element.accessibilityChildren?() as? [Any] ?? [] {
+                collect(child as AnyObject)
+            }
+        }
+        collect(host)
+        XCTAssertEqual(Set(sliderLabels), ["Gyro sensitivity", "Vertical sensitivity", "Gyro smoothing", "Noise threshold"],
+            "The disclosure's name must not replace its child controls' accessible labels")
+        XCTAssertEqual(sliderLabels.count, 4)
+        XCTAssertEqual(disclosureLabels, ["Gyro tuning"],
+            "The group must keep one correctly named native disclosure control: " + accessibilityTree(host))
+    }
+
     func testGyroTuningLabelExpandsAndCollapsesInReadOnlyProfileWithoutEditing() async throws {
         var gyro = GyroConfiguration()
         var writes = 0
