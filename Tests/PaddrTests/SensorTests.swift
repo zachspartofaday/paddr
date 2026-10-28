@@ -340,6 +340,27 @@ final class SensorTests: XCTestCase {
         XCTAssertEqual(mapper.status, .ready)
     }
 
+    func testRecalibrationWithoutFreshMotionKeepsWatermarkAcrossExpiryAndQueuedReports() {
+        for expiresOnWake in [false, true] {
+            var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, smoothing: 0))
+            mapper.beginCalibration(at: 600_000_000, motionAvailable: false)
+            if expiresOnWake { mapper.expire(at: 600_000_000) }
+            // These callbacks were captured before the request was consumed.
+            // They remain within the freshness deadline when the queue drains.
+            for index in 145...274 {
+                let timestamp = UInt64(index) * 4_000_000
+                XCTAssertTrue(mapper.process(state(index: index), at: max(600_000_000, timestamp)).isEmpty)
+            }
+            XCTAssertEqual(mapper.status, .calibrating,
+                "Pre-request callbacks must not shorten a new 500 ms measurement, wake expiry: \(expiresOnWake)")
+            XCTAssertTrue(mapper.process(state(index: 275), at: 1_100_000_000).isEmpty)
+            XCTAssertEqual(mapper.status, .ready)
+            XCTAssertTrue(mapper.process(state(index: 276), at: 1_104_000_000).isEmpty)
+            XCTAssertEqual(mapper.status, .active)
+            XCTAssertFalse(mapper.process(state(index: 277, rate: SIMD3(0, 1, 0)), at: 1_108_000_000).isEmpty)
+        }
+    }
+
     private func sample(tick: TritonMotionTimestamp, at uptime: UInt64) -> TritonMotionSample {
         .init(angularVelocity: .zero, acceleration: SIMD3(0, 9.80665, 0), sensorTimestamp: tick, timestampNanoseconds: uptime)
     }

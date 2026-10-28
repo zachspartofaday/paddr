@@ -108,7 +108,11 @@ struct GyroMapper: Sendable {
 
     mutating func expire(at now: UInt64) {
         guard configuration.enabled, !SensorFreshness.isFresh(lastAcceptedUptime, at: now) else { return }
+        // Expiry clears the measurement, not the explicit request's admission
+        // boundary. A newly drained callback can still predate that request.
+        let requestCutoff = calibrationNotBeforeUptime
         reset()
+        calibrationNotBeforeUptime = requestCutoff
     }
 
     mutating func process(_ state: TritonControllerState, at now: UInt64) -> [TrackpadOutputAction] {
