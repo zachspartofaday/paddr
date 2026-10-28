@@ -514,6 +514,29 @@ final class MenuModelTests: XCTestCase {
         XCTAssertEqual(offState.saveCallCount, 0)
     }
 
+    func testSavedGyroEnableWithOutputOffAsksForOutputRatherThanAnotherSave() async throws {
+        var document = ConfigurationProfileDocument.default
+        let profile = try document.createProfile(named: "Gyro off", configuration: .default)
+        document.activeProfileID = profile.id
+        let state = readyState(receiver: "Fake receiver")
+        state.loadedProfileDocument = document
+        let session = ManualEventSession()
+        let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
+        await waitUntil(model: model) { model.isInitialized }
+        await waitUntil(model: model) { await session.startCount == 1 }
+        model.configuration.gyro.enabled = true
+        model.saveAndApply()
+        await waitUntil(model: model) { model.savedConfiguration.gyro.enabled && model.canManageProfiles }
+        XCTAssertFalse(model.hasUnsavedChanges)
+        XCTAssertFalse(model.isEnabled)
+        XCTAssertFalse(model.canRecalibrateGyro)
+        XCTAssertFalse(model.requestGyroCalibration())
+        XCTAssertEqual(String(localized: try XCTUnwrap(model.gyroCalibrationUnavailableReason)),
+            "Enable output before calibrating gyro.")
+        let starts = await session.startCount
+        XCTAssertEqual(starts, 1, "Saving with output off retains the existing observation session")
+    }
+
     func testSensorStatusUpdatesWhileOutputOffAndClearsOnControllerLoss() async {
         let state = readyState(receiver: "Fake receiver")
         let session = ManualEventSession()

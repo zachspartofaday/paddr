@@ -198,11 +198,14 @@ public final class PaddrMenuModel {
               !replacesActiveConfiguration, !activationCommitPending else {
             return "Wait for the current profile operation to finish before calibrating."
         }
-        guard savedConfiguration.gyro.enabled, sessionConfiguration?.gyro.enabled == true else {
+        guard savedConfiguration.gyro.enabled else {
             return "Enable gyro in an editable profile, then choose Save & Apply."
         }
         guard isEnabled, !isReleasingOutput, outputGate.isEnabled else {
             return "Enable output before calibrating gyro."
+        }
+        guard sessionConfiguration?.gyro.enabled == true else {
+            return "Wait for the current profile operation to finish before calibrating."
         }
         guard controllerConnected, sensorStatus?.motionAvailable == true else {
             return "Connect the controller and wait for fresh motion data before calibrating."
