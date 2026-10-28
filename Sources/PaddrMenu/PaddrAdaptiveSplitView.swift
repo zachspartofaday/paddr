@@ -46,6 +46,7 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
     /// unsupported fixed-leading or divider combinations unrepresentable.
     init(
         equalHeightColumnsBreakpoint breakpoint: CGFloat,
+        spacing: CGFloat = PaddrStyle.cardSpacing,
         @ViewBuilder leading: @escaping () -> Leading,
         @ViewBuilder trailing: @escaping () -> Trailing
     ) {
@@ -54,7 +55,7 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
         showsDivider = false
         alignsPadInspector = false
         equalizesColumnHeights = true
-        columnSpacing = PaddrStyle.cardSpacing
+        columnSpacing = spacing
         self.leading = leading
         self.trailing = trailing
     }

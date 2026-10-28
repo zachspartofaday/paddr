@@ -78,10 +78,12 @@ struct ControllerSensorsConfigurationView: View {
             alignsPadInspector: true, forceStacked: dynamicTypeSize.isAccessibilitySize) {
             HStack(spacing: PaddrStyle.Spacing.s2) {
                 Text(label).paddrTypography(.rowLabel)
-                Text(ControllerSensorPresentation.gripState(touched))
-                    .paddrTypography(.caption)
-                    .foregroundStyle(touched == true ? PaddrStyle.action : PaddrStyle.textSecondary)
-                    .paddrAccessibilityID("grip", identifier, "state")
+                if selection.wrappedValue != nil {
+                    Text(ControllerSensorPresentation.gripState(touched))
+                        .paddrTypography(.caption)
+                        .foregroundStyle(touched == true ? PaddrStyle.action : PaddrStyle.textSecondary)
+                        .paddrAccessibilityID("grip", identifier, "state")
+                }
             }
             OptionalOutputBindingPicker(selection: selection, title: title,
                 accessibilityIdentifier: PaddrAccessibility.identifier("grip", identifier, "action"))
@@ -92,34 +94,45 @@ struct ControllerSensorsConfigurationView: View {
         .accessibilityElement(children: .contain)
     }
 
+    private var gyroState: GyroPresentation {
+        ControllerSensorPresentation.gyroPresentation(sensorStatus,
+            draftEnabled: gyro.enabled, savedEnabled: savedGyroEnabled, isOutputEnabled: isOutputEnabled)
+    }
+
     private var gyroSection: some View {
         VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
-            HStack(spacing: PaddrStyle.Spacing.s3) {
-                sectionHeading("Gyro to mouse", infoTitle: "About gyro aiming",
-                    message: "Gyro aiming turns controller rotation into mouse movement. Choose a touch to activate it, or Always. Save & Apply changes before enabling output. Keep the controller still for calibration. With touch activation, release the control after enabling output, then touch again to aim. Calibrate Again resets sensor bias without changing your mappings; it requires active output, fresh motion data and no profile operation in progress.",
-                    identifier: "gyro-info")
-                PaddrTuningSwitch(title: "Gyro to mouse", isOn: $gyro.enabled,
-                    accessibilityIdentifier: "paddr.gyro.enabled")
-                    .disabled(!isEditable)
-                Spacer(minLength: 0)
-            }
-            PaddrAdaptiveSplitView(columnsBreakpoint: PaddrStyle.Metrics.padEditorColumnsBreakpoint) {
-                calibrationStatus
-            } trailing: {
-                VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
-                    settingRow("Activate while") {
-                        PaddrMenuPicker(title: "Gyro activation", selection: $gyro.activation,
-                            options: GyroActivation.allCases.map {
-                                .init(value: $0, title: String(localized: ControllerSensorPresentation.activationTitle($0)))
-                            }, accessibilityIdentifier: "paddr.gyro.activation")
-                    }
-                    sensorSlider("Gyro sensitivity", value: $gyro.sensitivity,
-                        range: ConfigurationLimits.gyroSensitivity, step: 0.1,
-                        valueText: ControllerSensorPresentation.sensitivity(gyro.sensitivity, locale: locale),
-                        readoutWidth: PaddrStyle.Width.gyroReadout)
+            ControllerSensorSummaryLayout(forceStacked: dynamicTypeSize.isAccessibilitySize) {
+                HStack(spacing: PaddrStyle.Spacing.s3) {
+                    sectionHeading("Gyro to mouse", infoTitle: "About gyro aiming",
+                        message: "Gyro aiming turns controller rotation into mouse movement. Choose a touch to activate it, or Always. Save & Apply changes before enabling output. Keep the controller still for calibration. With touch activation, release the control after enabling output, then touch again to aim. Calibrate Again resets sensor bias without changing your mappings; it requires active output, fresh motion data and no profile operation in progress.",
+                        identifier: "gyro-info", currentInstruction: gyroState.instruction)
+                    PaddrTuningSwitch(title: "Gyro to mouse", isOn: $gyro.enabled,
+                        accessibilityIdentifier: "paddr.gyro.enabled")
+                        .disabled(!isEditable)
+                }
+                Label(gyroState.title, systemImage: gyroState.systemImage)
+                    .paddrTypography(.sectionLabel)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(gyroState.title)
+                    .foregroundStyle(gyroState.isReady ? PaddrStyle.action : PaddrStyle.textPrimary)
+                    .help(gyroState.instruction ?? gyroState.title)
+                    .paddrAccessibilityID("gyro", "status")
+                Button("Calibrate Again", action: recalibrate)
+                    .paddrActionButton(.secondary)
+                    .disabled(!canRecalibrate)
+                    .help(calibrationUnavailableReason ?? "Keep the controller still while a fresh gyro calibration is measured.")
+                    .paddrAccessibilityID("gyro", "calibrate")
+                HStack(spacing: PaddrStyle.Spacing.s2) {
+                    Text("Activate while").paddrTypography(.rowLabel)
+                    PaddrMenuPicker(title: "Gyro activation", selection: $gyro.activation,
+                        options: GyroActivation.allCases.map {
+                            .init(value: $0, title: String(localized: ControllerSensorPresentation.activationTitle($0)))
+                        }, accessibilityIdentifier: "paddr.gyro.activation")
                 }
                 .disabled(!isEditable)
             }
+            .accessibilityElement(children: .contain)
+            .paddrAccessibilityID("gyro", "summary")
             DisclosureGroup(isExpanded: $tuningExpanded) {
                 tuning
                     .padding(.top, PaddrStyle.Spacing.s2)
@@ -143,62 +156,56 @@ struct ControllerSensorsConfigurationView: View {
         }
     }
 
-    private var calibrationStatus: some View {
-        let state = ControllerSensorPresentation.gyroPresentation(sensorStatus,
-            draftEnabled: gyro.enabled, savedEnabled: savedGyroEnabled, isOutputEnabled: isOutputEnabled)
-        return VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s2) {
-            PaddrAdaptiveHeaderLayout(spacing: PaddrStyle.Spacing.s2,
-                alignsPadInspector: true, forceStacked: dynamicTypeSize.isAccessibilitySize) {
-                Label(state.title, systemImage: state.systemImage)
-                    .paddrTypography(.sectionLabel)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(state.title)
-                    .foregroundStyle(state.isReady ? PaddrStyle.action : PaddrStyle.textPrimary)
-                    .paddrAccessibilityID("gyro", "status")
-                Button("Calibrate Again", action: recalibrate)
-                    .paddrActionButton(.secondary)
-                    .disabled(!canRecalibrate)
-                    .help(calibrationUnavailableReason ?? "Keep the controller still while a fresh gyro calibration is measured.")
-                    .paddrAccessibilityID("gyro", "calibrate")
-                    .frame(width: PaddrStyle.Width.control, alignment: .trailing)
-            }
-            if let instruction = state.instruction {
-                Text(instruction)
-                    .paddrTypography(.caption)
-                    .foregroundStyle(PaddrStyle.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .paddrAccessibilityID("gyro", "calibration-instruction")
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .contain)
-    }
-
     private var tuning: some View {
-        PaddrAdaptiveSplitView(columnsBreakpoint: PaddrStyle.Metrics.padEditorColumnsBreakpoint) {
-            VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
+        VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
+            tuningPair {
+                sensorSlider("Gyro sensitivity", value: $gyro.sensitivity,
+                    range: ConfigurationLimits.gyroSensitivity, step: 0.1,
+                    valueText: ControllerSensorPresentation.sensitivity(gyro.sensitivity, locale: locale),
+                    readoutWidth: PaddrStyle.Width.gyroReadout)
+            } trailing: {
+                sensorSlider("Gyro smoothing", value: $gyro.smoothing,
+                    range: ConfigurationLimits.gyroSmoothing, step: 0.05,
+                    valueText: gyro.smoothing.formatted(.percent.precision(.fractionLength(0)).locale(locale)))
+            }
+            tuningPair {
                 sensorSlider("Holding angle", value: $gyro.holdingAngleDegrees,
                     range: ConfigurationLimits.gyroHoldingAngle, step: 1,
                     valueText: ControllerSensorPresentation.angle(gyro.holdingAngleDegrees, locale: locale),
                     showsHoldingAngleGuide: true)
                     .help("Match how you hold the controller: 0° is flat and 90° is upright.")
-                sensorSlider("Vertical sensitivity", value: $gyro.verticalScale,
-                    range: ConfigurationLimits.gyroVerticalScale, step: 0.1,
-                    valueText: gyro.verticalScale.formatted(.number.precision(.fractionLength(1)).locale(locale)) + "×")
-                inversionRow("Invert horizontal", value: $gyro.invertHorizontal, identifier: "invert-horizontal")
-                inversionRow("Invert vertical", value: $gyro.invertVertical, identifier: "invert-vertical")
-            }
-        } trailing: {
-            VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
-                sensorSlider("Gyro smoothing", value: $gyro.smoothing,
-                    range: ConfigurationLimits.gyroSmoothing, step: 0.05,
-                    valueText: gyro.smoothing.formatted(.percent.precision(.fractionLength(0)).locale(locale)))
+            } trailing: {
                 sensorSlider("Noise threshold", value: $gyro.noiseThreshold,
                     range: ConfigurationLimits.gyroNoiseThreshold, step: 0.1,
                     valueText: ControllerSensorPresentation.noise(gyro.noiseThreshold, locale: locale),
                     readoutWidth: PaddrStyle.Width.gyroReadout)
                     .help("Ignores rotation slower than this rate after stationary calibration.")
             }
+            tuningPair {
+                sensorSlider("Vertical sensitivity", value: $gyro.verticalScale,
+                    range: ConfigurationLimits.gyroVerticalScale, step: 0.1,
+                    valueText: gyro.verticalScale.formatted(.number.precision(.fractionLength(1)).locale(locale)) + "×")
+            } trailing: {
+                inversionRow("Invert horizontal", value: $gyro.invertHorizontal, identifier: "invert-horizontal")
+            }
+            tuningPair {
+                // The fourth left cell is intentionally empty: there are seven settings.
+                Color.clear.frame(height: 0).accessibilityHidden(true).allowsHitTesting(false)
+            } trailing: {
+                inversionRow("Invert vertical", value: $gyro.invertVertical, identifier: "invert-vertical")
+            }
+        }
+    }
+
+    private func tuningPair<Leading: View, Trailing: View>(
+        @ViewBuilder leading: @escaping () -> Leading,
+        @ViewBuilder trailing: @escaping () -> Trailing
+    ) -> some View {
+        PaddrAdaptiveSplitView(equalHeightColumnsBreakpoint: PaddrStyle.Metrics.padEditorColumnsBreakpoint,
+            spacing: PaddrPadColumns.workspaceSpacing) {
+            ControllerSensorTuningCell(content: leading)
+        } trailing: {
+            ControllerSensorTuningCell(content: trailing)
         }
     }
 
@@ -260,12 +267,69 @@ struct ControllerSensorsConfigurationView: View {
         _ title: LocalizedStringResource,
         infoTitle: LocalizedStringResource,
         message: LocalizedStringResource,
-        identifier: String
+        identifier: String,
+        currentInstruction: LocalizedStringResource? = nil
     ) -> some View {
         HStack(spacing: PaddrStyle.Spacing.s1) {
             Text(title).paddrTypography(.sectionLabel).accessibilityAddTraits(.isHeader)
-            ControllerSensorInfoButton(title: infoTitle, message: message, identifier: identifier)
+            ControllerSensorInfoButton(title: infoTitle, message: message, identifier: identifier,
+                currentInstruction: currentInstruction)
         }
+    }
+}
+
+/// One mounted control family reflows as whole items. At ordinary widths the
+/// activation menu ends on the same bounded edge as the right pad inspector.
+private struct ControllerSensorSummaryLayout: Layout {
+    let forceStacked: Bool
+    private var spacing: CGFloat { PaddrStyle.Spacing.s3 }
+    private var wrapping: PaddrWrappingHStack {
+        PaddrWrappingHStack(horizontalSpacing: spacing, verticalSpacing: spacing,
+            maximumItemsPerRow: forceStacked ? 1 : nil)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width.flatMap { $0.isFinite ? max(0, $0) : nil }
+            ?? (PaddrStyle.Metrics.defaultWindowSize.width - 2 * PaddrStyle.Inset.chrome)
+        if let row = inlineRow(width: width, subviews: subviews) {
+            return CGSize(width: width, height: row.sizes.map(\.height).max() ?? 0)
+        }
+        return wrapping.sizeThatFits(proposal: ProposedViewSize(width: width, height: nil), subviews: subviews, cache: &cache)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let row = inlineRow(width: bounds.width, subviews: subviews) else {
+            wrapping.placeSubviews(in: bounds, proposal: proposal, subviews: subviews, cache: &cache)
+            return
+        }
+        var x = bounds.minX
+        for index in subviews.indices {
+            let size = row.sizes[index]
+            let origin = index == subviews.count - 1 ? bounds.minX + row.trailingEdge - size.width : x
+            subviews[index].place(at: CGPoint(x: origin, y: bounds.midY - size.height / 2),
+                anchor: .topLeading, proposal: ProposedViewSize(size))
+            x = origin + size.width + spacing
+        }
+    }
+
+    private func inlineRow(width: CGFloat, subviews: Subviews) -> (sizes: [CGSize], trailingEdge: CGFloat)? {
+        guard !forceStacked, subviews.count == 4 else { return nil }
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let trailingEdge = PaddrPadColumns.workspaceInspectorTrailingEdges(in: width)?.right ?? width
+        let required = sizes.reduce(CGFloat.zero) { $0 + $1.width } + spacing * CGFloat(sizes.count - 1)
+        guard required <= trailingEdge else { return nil }
+        return (sizes, trailingEdge)
+    }
+}
+
+/// Existing equal-height columns measure each paired tuning row. Centering the
+/// smaller cell keeps corresponding labels aligned beside the angle guide.
+private struct ControllerSensorTuningCell<Content: View>: View {
+    @Environment(\.paddrFillsEqualHeightColumn) private var fillsColumn
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        content().frame(maxHeight: fillsColumn ? .infinity : nil, alignment: .center)
     }
 }
 
@@ -275,7 +339,16 @@ struct ControllerSensorInfoButton: View {
     let title: LocalizedStringResource
     let message: LocalizedStringResource
     let identifier: String
+    var currentInstruction: LocalizedStringResource?
     @State private var isPresented = false
+
+    private var helpText: String {
+        guard let currentInstruction else { return String(localized: message) }
+        let instruction = String(localized: currentInstruction)
+        let explanation = String(localized: message)
+        return String(localized: "\(instruction)\n\n\(explanation)",
+            comment: "Current gyro instruction followed by its general help text.")
+    }
 
     var body: some View {
         Button { isPresented.toggle() } label: {
@@ -286,11 +359,11 @@ struct ControllerSensorInfoButton: View {
         .buttonStyle(.borderless)
         .controlSize(.small)
         .accessibilityLabel(title)
-        .help(message)
+        .help(Text(verbatim: helpText))
         .paddrAccessibilityID(identifier)
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
-                Text(message)
+                Text(verbatim: helpText)
                     .paddrTypography(.rowLabel)
                     .fixedSize(horizontal: false, vertical: true)
                 Button("Done") { isPresented = false }
@@ -352,7 +425,7 @@ enum ControllerSensorPresentation {
             .init(title: "Calibrating—hold still", systemImage: "scope",
                 instruction: "Keep the controller still until Ready appears.")
         case .ready:
-            .init(title: "Ready", systemImage: "checkmark.circle", isReady: true)
+            .init(title: "Calibrated, Ready", systemImage: "checkmark.circle", isReady: true)
         case .active:
             .init(title: "Aiming", systemImage: "scope", isReady: true)
         case .off, .unavailable, nil:

@@ -21,7 +21,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 draftEnabled: true, savedEnabled: true, isOutputEnabled: false).title), "Calibration needed")
         }
         for (status, title, needsInstruction) in [(GyroStatus.calibrating, "Calibrating—hold still", true),
-                                                (.ready, "Ready", false), (.active, "Aiming", false),
+                                                (.ready, "Calibrated, Ready", false), (.active, "Aiming", false),
                                                 (.unavailable, "Calibration needed", true)] {
             let presentation = ControllerSensorPresentation.gyroPresentation(.init(motionAvailable: true, gyroStatus: status),
                 draftEnabled: true, savedEnabled: true, isOutputEnabled: true)
@@ -187,6 +187,8 @@ final class ControllerSensorsPresentationTests: XCTestCase {
         XCTAssertEqual(requests, 0)
         let status = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro.status"))
         XCTAssertEqual(status.accessibilityLabel?(), "Calibration needed", accessibilityTree(host))
+        XCTAssertEqual(status.accessibilityHelp?(), "Enable output, then hold the controller still.")
+        XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.gyro.calibration-instruction"))
     }
 
     func testInfoButtonIsNamedAndEscapeDismissesItsPopover() async throws {
@@ -218,6 +220,176 @@ final class ControllerSensorsPresentationTests: XCTestCase {
         await settle(host)
         XCTAssertFalse(popover.isVisible)
         XCTAssertNotNil(accessibilityElement(in: host, identifier: "paddr.test-grip-info"))
+    }
+
+    func testUnassignedGripContactsStayHiddenAcrossDraftChangesAndGyroActivation() async throws {
+        var gyro = GyroConfiguration(enabled: true, activation: .rightGrip)
+        var grips = GripTouchConfiguration.unassigned
+        var sensors = ControllerSensorStatus(grips: .init(leftTouched: false, rightTouched: true),
+            motionAvailable: true, gyroStatus: .active)
+        let view = {
+            ControllerSensorsConfigurationView(gyro: Binding(get: { gyro }, set: { gyro = $0 }),
+                gripTouch: Binding(get: { grips }, set: { grips = $0 }), sensorStatus: sensors,
+                isEditable: true, isOutputEnabled: true, savedGyroEnabled: true)
+                .environment(\.accessibilityEnabled, true)
+        }
+        let host = NSHostingView(rootView: view())
+        let window = makeWindow(host, width: 916, height: 600)
+        defer { window.close() }
+        for (left, right) in [(false, true), (true, false), (false, false)] {
+            sensors.grips = .init(leftTouched: left, rightTouched: right)
+            host.rootView = view()
+            await settle(host)
+            XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.grip.left.state"))
+            XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.grip.right.state"))
+            XCTAssertEqual(gyro.activation, .rightGrip, "A None binding must not remove gyro touch activation")
+            XCTAssertEqual(accessibilityElement(in: host, identifier: "paddr.gyro.status")?.accessibilityLabel?(), "Aiming")
+        }
+        grips.left = "space"
+        host.rootView = view()
+        await settle(host)
+        XCTAssertNotNil(accessibilityElement(in: host, identifier: "paddr.grip.left.state"),
+            "An assigned draft displays its live state before it is saved")
+        XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.grip.right.state"))
+        grips.left = nil
+        grips.right = "mouse-right"
+        sensors.grips = nil
+        host.rootView = view()
+        await settle(host)
+        XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.grip.left.state"),
+            "Unassigning the draft removes the state immediately")
+        XCTAssertNotNil(accessibilityElement(in: host, identifier: "paddr.grip.right.state"),
+            "An assigned grip still distinguishes missing telemetry from release")
+    }
+
+    func testCollapsedGyroKeepsOneSummaryRowAndMovesAllSevenTuningControlsUnderDisclosure() async throws {
+        for width in [CGFloat(916), 1080] {
+            for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+                let host = NSHostingView(rootView: ControllerSensorsConfigurationView(
+                    gyro: .constant(.init(enabled: true)), gripTouch: .constant(.unassigned),
+                    sensorStatus: .init(motionAvailable: true, gyroStatus: .ready), isEditable: true,
+                    isOutputEnabled: true, savedGyroEnabled: true, canRecalibrate: true)
+                    .frame(width: width).environment(\.layoutDirection, direction)
+                    .environment(\.accessibilityEnabled, true))
+                let window = makeWindow(host, width: width, height: 700)
+                defer { window.close() }
+                await settle(host)
+                let controls = descendants(PaddrTuningSwitchButton.self, in: host)
+                let toggle = try XCTUnwrap(controls.first { $0.accessibilityLabel() == "Gyro to mouse" })
+                XCTAssertEqual(controls.count, 1, "Collapsed tuning exposes only its main gyro switch")
+                let activation = try XCTUnwrap(descendants(PaddrPopUpButton.self, in: host)
+                    .first { $0.accessibilityLabel() == "Gyro activation" })
+                let status = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro.status"))
+                let calibration = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro.calibrate"))
+                let info = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro-info"))
+                let frames = [toggle.accessibilityFrame(), activation.accessibilityFrame(),
+                    try XCTUnwrap(status.accessibilityFrame?()), try XCTUnwrap(calibration.accessibilityFrame?()),
+                    try XCTUnwrap(info.accessibilityFrame?())]
+                for frame in frames.dropFirst() {
+                    XCTAssertEqual(frame.midY, frames[0].midY, accuracy: 1,
+                        "Heading info, switch, state, calibration and activation stay on one row")
+                }
+                XCTAssertEqual(status.accessibilityLabel?(), "Calibrated, Ready")
+                XCTAssertFalse(accessibilityTree(host).contains("Gyro sensitivity"))
+                XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.gyro.calibration-instruction"),
+                    "Guidance belongs in help and the information popover, not a permanent extra row")
+            }
+        }
+    }
+
+    func testSummaryNativeIdentityFocusAndBindingsSurviveWidthReflow() async throws {
+        var activation = GyroConfiguration(enabled: true)
+        var grips = GripTouchConfiguration.unassigned
+        var calibrationRequests = 0
+        let host = NSHostingView(rootView: ControllerSensorsConfigurationView(
+            gyro: Binding(get: { activation }, set: { activation = $0 }),
+            gripTouch: Binding(get: { grips }, set: { grips = $0 }),
+            sensorStatus: .init(motionAvailable: true, gyroStatus: .ready), isEditable: true,
+            isOutputEnabled: true, savedGyroEnabled: true, canRecalibrate: true,
+            recalibrate: { calibrationRequests += 1 }).environment(\.accessibilityEnabled, true))
+        let window = makeWindow(host, width: 916, height: 700)
+        defer { window.close() }
+        window.makeKeyAndOrderFront(nil)
+        await settle(host)
+        let menu = try XCTUnwrap(descendants(PaddrPopUpButton.self, in: host)
+            .first { $0.accessibilityLabel() == "Gyro activation" })
+        let toggle = try XCTUnwrap(descendants(PaddrTuningSwitchButton.self, in: host)
+            .first { $0.accessibilityLabel() == "Gyro to mouse" })
+        XCTAssertTrue(window.makeFirstResponder(menu))
+        for width in [CGFloat(560), 1080, 916] {
+            window.setContentSize(NSSize(width: width, height: 700))
+            await settle(host)
+            XCTAssertTrue(descendants(PaddrPopUpButton.self, in: host)
+                .first { $0.accessibilityLabel() == "Gyro activation" } === menu)
+            XCTAssertTrue(descendants(PaddrTuningSwitchButton.self, in: host)
+                .first { $0.accessibilityLabel() == "Gyro to mouse" } === toggle)
+            XCTAssertTrue(window.firstResponder === menu)
+            XCTAssertEqual(activation.activation, .rightGrip)
+            XCTAssertTrue(activation.enabled)
+            XCTAssertNil(grips.left)
+            XCTAssertNil(grips.right)
+            XCTAssertEqual(calibrationRequests, 0, "Reflow must not invoke runtime actions")
+            assertFits(menu, in: host)
+            assertFits(toggle, in: host)
+        }
+    }
+
+    func testExpandedTuningKeepsSevenControlsOnSharedInspectorEdges() async throws {
+        for width in [CGFloat(916), 1080] {
+            let edges = try XCTUnwrap(PaddrPadColumns.workspaceInspectorTrailingEdges(in: width))
+            for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+                let host = NSHostingView(rootView: ControllerSensorsConfigurationView(
+                    gyro: .constant(.init(enabled: true)), gripTouch: .constant(.unassigned),
+                    sensorStatus: .init(motionAvailable: true, gyroStatus: .ready), isEditable: true,
+                    initialTuningExpanded: true, isOutputEnabled: true, savedGyroEnabled: true,
+                    canRecalibrate: true).frame(width: width).environment(\.layoutDirection, direction)
+                    .environment(\.accessibilityEnabled, true))
+                let window = makeWindow(host, width: width, height: 900)
+                defer { window.close() }
+                await settle(host)
+                var elements: [String: AnyObject] = [:]
+                var visited = Set<ObjectIdentifier>()
+                func collect(_ object: AnyObject) {
+                    guard visited.insert(ObjectIdentifier(object)).inserted else { return }
+                    if object.accessibilityRole?() == .slider, let label = object.accessibilityLabel?() {
+                        elements[label] = object
+                    }
+                    for child in object.accessibilityChildren?() as? [Any] ?? [] { collect(child as AnyObject) }
+                }
+                collect(host)
+                XCTAssertEqual(elements.count, 5)
+                for (label, end, readout) in [("Gyro sensitivity", edges.left, PaddrStyle.Width.gyroReadout),
+                                             ("Vertical sensitivity", edges.left, PaddrStyle.Width.readout),
+                                             ("Gyro smoothing", edges.right, PaddrStyle.Width.readout),
+                                             ("Noise threshold", edges.right, PaddrStyle.Width.gyroReadout)] {
+                    let slider = try XCTUnwrap(elements[label])
+                    let screenFrame = try XCTUnwrap(slider.accessibilityFrame?())
+                    let frame = host.convert(window.convertFromScreen(screenFrame), from: nil)
+                    if direction == .leftToRight {
+                        XCTAssertEqual(frame.maxX + readout + PaddrStyle.Spacing.s2, end, accuracy: 0.5, label)
+                    } else {
+                        XCTAssertEqual(frame.minX - readout - PaddrStyle.Spacing.s2, width - end, accuracy: 0.5, label)
+                    }
+                }
+                let switches = descendants(PaddrTuningSwitchButton.self, in: host)
+                    .filter { $0.accessibilityLabel() != "Gyro to mouse" }
+                XCTAssertEqual(switches.count, 2, "Five sliders and two inversion switches are the seven tuning controls")
+                for control in switches {
+                    let frame = control.convert(control.bounds, to: host)
+                    if direction == .leftToRight {
+                        XCTAssertEqual(frame.maxX, edges.right, accuracy: 0.5)
+                    } else {
+                        XCTAssertEqual(frame.minX, width - edges.right, accuracy: 0.5)
+                    }
+                }
+                let sensitivityY = try XCTUnwrap(elements["Gyro sensitivity"]?.accessibilityFrame?()).midY
+                let smoothingY = try XCTUnwrap(elements["Gyro smoothing"]?.accessibilityFrame?()).midY
+                XCTAssertEqual(sensitivityY, smoothingY, accuracy: 0.5)
+                let verticalY = try XCTUnwrap(elements["Vertical sensitivity"]?.accessibilityFrame?()).midY
+                let horizontalSwitch = try XCTUnwrap(switches.first { $0.accessibilityLabel() == "Invert horizontal" })
+                XCTAssertEqual(verticalY, horizontalSwitch.accessibilityFrame().midY, accuracy: 0.5)
+            }
+        }
     }
 
     func testExpandedGyroSlidersKeepIndividualAccessibleNames() async throws {

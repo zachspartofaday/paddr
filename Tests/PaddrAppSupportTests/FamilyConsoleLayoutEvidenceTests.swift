@@ -164,6 +164,42 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         }
     }
 
+    /// Focused integrated evidence for the compact sensor summary; all dependencies
+    /// are inert in-memory fixtures and never attach to the running personal app.
+    func testExportCompactControllerConfigurationEvidence() async throws {
+        guard let path = ProcessInfo.processInfo.environment["PADDR_COMPACT_SENSOR_EVIDENCE_DIR"] else {
+            throw XCTSkip("Set PADDR_COMPACT_SENSOR_EVIDENCE_DIR to export the compact sensor workspace")
+        }
+        let directory = URL(fileURLWithPath: path, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var configuration = PaddrConfiguration.default
+        configuration.gyro.enabled = true
+        configuration.gripTouch = .init(left: nil, right: "space")
+        var document = ConfigurationProfileDocument.default
+        let profile = try document.createProfile(named: "Controller", configuration: configuration)
+        try document.activateProfile(id: profile.id)
+        let fixtureDocument = document
+        let model = PaddrMenuModel(dependencies: MenuDependencies(
+            session: LayoutEvidenceSession(),
+            loadProfiles: { ConfigurationProfileLoadResult(document: fixtureDocument) },
+            saveProfiles: { _ in }, probeReceiver: { nil }, accessibilityTrusted: { _ in true },
+            inputMonitoringAccess: { _ in .granted }, openPrivacySettings: { _ in },
+            sleep: { _ in throw CancellationError() }, reconnectDelay: { _ in throw CancellationError() }))
+        let initialized = await waitUntil { model.isInitialized }
+        XCTAssertTrue(initialized)
+        for (theme, scheme, appearance) in [("light", ColorScheme.light, NSAppearance.Name.aqua),
+                                          ("dark", ColorScheme.dark, NSAppearance.Name.darkAqua)] {
+            for (name, size, direction) in [("default", PaddrStyle.Metrics.defaultWindowSize, LayoutDirection.leftToRight),
+                                           ("narrow-rtl", NSSize(width: 680, height: 740), .rightToLeft)] {
+                try await exportReadmeWindow(
+                    ConfigurationView(model: model, managesWindowSize: name == "default").environment(\.layoutDirection, direction),
+                    scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("compact-configuration-\(name)-\(theme).png"),
+                    expectsFullDocumentFit: name == "default", evidenceSize: size)
+            }
+        }
+    }
+
     /// README captures use production window construction, not the deliberately
     /// fixed viewports above that exercise constrained/responsive layouts.
     func testExportReadmeWindowEvidence() async throws {

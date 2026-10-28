@@ -134,5 +134,5 @@ rotation. This does not establish exhaustive game, drift or output-loss acceptan
 
 The follow-up preserves default 0° aiming and adds a separate calibration request
 channel to the same runtime. Generic explanation lives in native help/popovers;
-current calibration state and its immediate next step stay visible. Verification
+current calibration state stays in the single summary row beside the gyro toggle; its immediate instruction remains available through status help. The summary row also holds Calibrate Again and the activation selector, with ready state labeled Calibrated, Ready. Tuning holds the remaining seven controls across two columns and four logical rows, including sensitivity. Contact labels are hidden when that grip action is None, without changing sensor observation or gyro activation. Verification
 of the refinement and its exact candidate is recorded with the PR evidence.
