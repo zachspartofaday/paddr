@@ -76,3 +76,42 @@ Before calling the hardware feature accepted, verify:
 Automated checks and independent review receipts are recorded below after the
 candidate is frozen. Fixture renders establish sampled layout, not hardware or
 assistive-technology acceptance.
+
+## Automated and live verification
+
+The completed source review covers base `95ea61b` through `56a0094`, with the
+bounded accessibility correction `46c0789` independently inspected as a fix delta.
+One confirmed P2 at the reviewed head—tuning sliders inheriting the disclosure's
+accessible name—was repaired using the native text label and a hidden pointer
+activation overlay. Its semantic regression failed before the change and passed
+afterward, including individual slider names and one named native disclosure.
+Packaged AX inspection confirmed the corrected names and disclosure state.
+No additional actionable defect was established in the independent review.
+
+The full canonical test run at `56a0094` completed 563 tests: 562 passed and the
+existing key-window-dependent map-focus test was skipped. All image exporters ran.
+Seven affected UI/window tests passed after `46c0789`, including the new semantic
+regression and full-label disclosure interaction. Localization, arm64 release app
+and CLI builds, CLI configuration checks, release identity and production fixture
+checks passed. A clean-source Developer ID-signed preview at `46c0789` passed strict
+signature verification and the inert artifact smoke test. It is a local preview,
+not a notarized release. No release tag/version was changed.
+
+The first full run retained failed old fixed-height layout expectations. Tests
+were corrected to check the production measured-height contract and individual
+rear-control visibility in intentionally constrained captures; sensor content below
+that rear row may scroll. A guessed CLI output path also failed before rerunning
+against Swift's actual build-products path. These failures were not treated as passes.
+
+Post-review live checks with the updated signed preview confirmed left-only contact
+as Left Touching/Right Released, then right-only contact as Left Released/Right
+Touching. Disconnected/asleep intervals cleared availability; a Steam-button wake
+restored reports. This is not an exhaustive cold-start/reconnect or output-loss test.
+
+A real five-second observe-only runtime check received 1,332 state reports,
+completed stationary calibration and reached Active with no mapped actions at rest.
+An earlier five-second check stayed Calibrating while the controller was being put
+down. Two earlier three-second checks received no reports during an unavailable
+interval. Observe-only checks posted no mouse or key events and wrote no controller
+settings. Actual mouse aiming and grip-held mapped output still require attended
+acceptance, along with the target-game and assistive-technology scenarios above.
