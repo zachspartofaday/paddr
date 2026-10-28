@@ -65,6 +65,16 @@ private func help() -> String {
       --right-deadzone N            Right D-pad center deadzone from 0..<1.
       --left-layout LAYOUT          radial-four, four-corners, horizontal-two, vertical-two, or grid-nine.
       --right-layout LAYOUT         Set the right button-zone layout.
+      --gyro on|off                 Enable gyro-to-mouse aiming (off by default).
+      --gyro-activation MODE        right-grip, left-grip, either-grip, either-pad, or always.
+      --gyro-sensitivity N          Mouse points per degree, 0.1...40.
+      --gyro-vertical-scale N       Vertical sensitivity multiplier, 0.1...4.
+      --gyro-invert-horizontal on|off
+      --gyro-invert-vertical on|off  Reverse the corresponding gyro mouse direction.
+      --gyro-smoothing N            Gyro smoothing strength, 0...1.
+      --gyro-noise-threshold N      Stationary noise cutoff in degrees/second, 0...5.
+      --left-grip ACTION|none       Hold a key or mouse button on left grip contact.
+      --right-grip ACTION|none      Likewise for the right grip (contact, not squeeze force).
       --left-grid-POSITION ACTION   Set a 3×3 action: top-left, top, top-right, left, center,
                                     right, bottom-left, bottom, or bottom-right. Right side also supported.
       --tap-max-ms N                Tap duration for both pads, 1...5000 ms.
@@ -78,7 +88,7 @@ private func help() -> String {
     Keys:
       Letters, digits, up/down/left/right, space, return, tab, escape, delete, shift,
       control, option, command, F1–F4, or a raw macOS virtual key code written as code:N.
-      Any button zone or assigned rear button can instead use mouse-left or mouse-right.
+      Any button zone, assigned rear button, or grip can instead use mouse-left or mouse-right.
       Rear bindings are configured through rearButtons.l4/l5/r4/r5 in --config or saved
       profiles. Missing/null bindings mean None; assigned outputs are held until release.
 
@@ -87,10 +97,13 @@ private func help() -> String {
       scripts/paddr.sh --left-mode dpad --left-up w --left-right d --left-down s --left-left a
       scripts/paddr.sh --left-mode dpad --left-up mouse-left --left-down mouse-right
       scripts/paddr.sh --right-mode mouse --right-sensitivity 1.5 --right-tap space
+      scripts/paddr.sh --gyro on --gyro-activation right-grip --left-grip mouse-right
 
     Safety:
       Puck/dongle mode only. Paddr opens IOHID without seizing it and has no feature-report API;
       it never changes lizard mode, IMU, haptics, rumble, firmware, or Apple's native gamepad mapping.
+      Gyro requires fresh motion reports already available from the puck. Hold still for
+      calibration, then release and retouch the activation input. Game acceptance varies.
     """
 }
 
@@ -224,6 +237,32 @@ private func parse(_ rawArguments: [String]) throws -> CLIOptions {
             let value = try parseDouble(nextValue(), option: argument)
             options.configuration.left.tapMaximumMovement = value
             options.configuration.right.tapMaximumMovement = value
+        case "--gyro":
+            options.configuration.gyro.enabled = try parseToggle(nextValue(), option: argument)
+        case "--gyro-activation":
+            guard let activation = GyroActivation(rawValue: try nextValue()) else {
+                throw PaddrError.configuration(
+                    "\(argument) requires right-grip, left-grip, either-grip, either-pad, or always."
+                )
+            }
+            options.configuration.gyro.activation = activation
+        case "--gyro-sensitivity":
+            options.configuration.gyro.sensitivity = try parseDouble(nextValue(), option: argument)
+        case "--gyro-vertical-scale":
+            options.configuration.gyro.verticalScale = try parseDouble(nextValue(), option: argument)
+        case "--gyro-invert-horizontal":
+            options.configuration.gyro.invertHorizontal = try parseToggle(nextValue(), option: argument)
+        case "--gyro-invert-vertical":
+            options.configuration.gyro.invertVertical = try parseToggle(nextValue(), option: argument)
+        case "--gyro-smoothing":
+            options.configuration.gyro.smoothing = try parseDouble(nextValue(), option: argument)
+        case "--gyro-noise-threshold":
+            options.configuration.gyro.noiseThreshold = try parseDouble(nextValue(), option: argument)
+        case "--left-grip", "--right-grip":
+            let raw = try nextValue()
+            let binding: String? = raw.lowercased() == "none" ? nil : raw
+            if argument == "--left-grip" { options.configuration.gripTouch.left = binding }
+            else { options.configuration.gripTouch.right = binding }
         case "--left-mode", "--right-mode":
             let side: PadSide = argument.hasPrefix("--left") ? .left : .right
             guard let mode = PadMode(rawValue: try nextValue()) else {
@@ -387,6 +426,11 @@ private func run(_ options: CLIOptions) throws {
     print("Rear buttons: " + RearButton.allCases.map {
         "\($0.rawValue.uppercased())=\(options.configuration.rearButtons[$0] ?? "none")"
     }.joined(separator: ", "))
+    print("Gyro mouse: \(options.configuration.gyro.enabled ? "on" : "off"), "
+        + "activation \(options.configuration.gyro.activation.rawValue), "
+        + "\(options.configuration.gyro.sensitivity) points/degree")
+    print("Grip touch: left=\(options.configuration.gripTouch.left ?? "none"), "
+        + "right=\(options.configuration.gripTouch.right ?? "none")")
     print("Controller feature reports: unavailable by design")
 
     if options.dryRun {

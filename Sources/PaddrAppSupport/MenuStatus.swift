@@ -80,7 +80,7 @@ public enum MenuStatus: Equatable, Sendable {
         switch self {
         case .off: "Output is off."
         case .waitingForController: "Waiting for Steam Controller 2 through the puck…"
-        case .waitingForNeutral: "Release both trackpads and any assigned rear buttons to activate output…"
+        case .waitingForNeutral: "Release both trackpads and any assigned rear buttons or grips to activate output…"
         case .connecting: "Connecting…"
         case .active: "Output is active."
         case .configurationSaved: "Configuration saved."

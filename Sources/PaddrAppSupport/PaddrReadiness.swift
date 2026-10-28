@@ -91,7 +91,7 @@ public enum PaddrReadinessNextAction: Equatable, Sendable {
         case .waitForOutputRelease: "Wait for mapped input to release"
         case .waitForProfileOperation: "Wait for the profile operation to finish"
         case .enableOutput: "Enable output"
-        case .releaseTrackpads: "Release both trackpads and any assigned rear buttons"
+        case .releaseTrackpads: "Release both trackpads and any assigned rear buttons or grips"
         case .none: "Ready"
         }
     }

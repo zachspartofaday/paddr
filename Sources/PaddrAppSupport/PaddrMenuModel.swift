@@ -78,6 +78,7 @@ public final class PaddrMenuModel {
     public private(set) var receiverDescription: String?
     public private(set) var controllerConnected = false
     public private(set) var batteryStatus: ControllerBatteryStatus?
+    public private(set) var sensorStatus: ControllerSensorStatus?
     public private(set) var accessibilityTrusted = false
     public private(set) var inputMonitoringGranted = false
     public private(set) var status: MenuStatus = .off
@@ -1389,7 +1390,7 @@ public final class PaddrMenuModel {
         switch event {
         case .stopped, .receiverRemoved, .receiverUnavailable, .failed:
             isSessionEnding = true
-        case .connecting, .waitingForController, .controllerConnected, .batteryUpdated,
+        case .connecting, .waitingForController, .controllerConnected, .batteryUpdated, .sensorsUpdated,
              .outputArmed, .outputReleased, .progress, .controllerLost:
             isSessionEnding = false
         }
@@ -1414,6 +1415,9 @@ public final class PaddrMenuModel {
                 if isEnabled { publishStatus(.waitingForNeutral) }
             case let .batteryUpdated(battery):
                 batteryStatus = battery
+            case let .sensorsUpdated(sensors):
+                guard controllerConnected else { break }
+                sensorStatus = sensors
             case .outputArmed:
                 guard controllerConnected, isEnabled else { break }
                 isRunning = true
@@ -1511,6 +1515,7 @@ public final class PaddrMenuModel {
     private func clearControllerPresence() {
         controllerConnected = false
         batteryStatus = nil
+        sensorStatus = nil
     }
 
     private var currentStatusGeneration: UInt64 {

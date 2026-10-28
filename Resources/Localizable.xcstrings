@@ -2228,6 +2228,143 @@
     "Higher values increase fast-motion gain. Turning acceleration off keeps your strength setting.": {
       "comment": "Pointer acceleration switch and strength control.",
       "extractionState": "manual"
+    },
+    "%arg pt/°": {
+      "comment": "Gyro sensitivity in cursor points per degree of controller rotation."
+    },
+    "%arg °/s": {
+      "comment": "Gyro noise threshold in degrees per second."
+    },
+    "Gyro tuning": {},
+    "Hold an action while your hand touches a grip. This senses contact, not squeeze pressure.": {},
+    "Ignores rotation slower than this rate after stationary calibration.": {},
+    "On enabling output, hold the controller still to calibrate. Always-on aiming starts after calibration.": {},
+    "On enabling output, hold the controller still to calibrate. Release the activation touch, then touch again to aim.": {},
+    "The Paddr menu shows receiver and controller status with the Enable output switch. When output starts, release both trackpads and any assigned rear buttons or grips to return to neutral before mapped input activates.": {},
+    "Touch holds the assigned action; releasing the grip releases it. A grip can also activate gyro aiming.": {},
+    "Grip touch": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Left grip": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Right grip": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Left grip touch action": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Right grip touch action": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Gyro to mouse": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Activate while": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Gyro activation": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Gyro sensitivity": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Vertical sensitivity": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Invert horizontal": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Invert vertical": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Gyro smoothing": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Noise threshold": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Touching": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Released": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Right grip touched": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Left grip touched": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Either grip touched": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Either trackpad touched": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Always": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Motion data unavailable. Connect the controller through the puck.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Motion data unavailable. Paddr waits for the controller to send it.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Motion data available. Gyro output is off in this draft.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Waiting for fresh motion data.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Calibrating. Keep the controller still.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Calibrated. Waiting for gyro activation.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Gyro aiming active.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Release both trackpads and any assigned rear buttons or grips": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Release both trackpads and any assigned rear buttons or grips to activate output…": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Enable output to calibrate and aim. Save & Apply any changes first.": {
+      "comment": "Gyro status while motion is available and mapped output is off.",
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

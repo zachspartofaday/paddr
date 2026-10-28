@@ -55,7 +55,9 @@ public struct ConfigurationProfile: Codable, Equatable, Identifiable, Sendable {
 }
 
 public struct ConfigurationProfileDocument: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 1
+    // Schema 2 prevents older Paddr versions from silently dropping sensor settings.
+    // Schema 1 is accepted on read and upgraded in memory; load alone never rewrites it.
+    public static let currentSchemaVersion = 2
 
     public var schemaVersion: Int
     public var activeProfileID: ConfigurationProfileID
@@ -120,7 +122,7 @@ public struct ConfigurationProfileDocument: Codable, Equatable, Sendable {
     }
 
     public func validated(repairingMissingActiveProfile: Bool = false) throws -> ConfigurationProfileDocument {
-        guard schemaVersion == Self.currentSchemaVersion else {
+        guard (1...Self.currentSchemaVersion).contains(schemaVersion) else {
             throw PaddrError.configuration(
                 "Unsupported profile document schema version \(schemaVersion)."
             )
@@ -157,7 +159,7 @@ public struct ConfigurationProfileDocument: Codable, Equatable, Sendable {
             activeProfileID: activeProfileID,
             userProfiles: validatedProfiles,
             builtInDefaultCenterTapTrackingMode: builtInDefaultCenterTapTrackingMode,
-            schemaVersion: schemaVersion
+            schemaVersion: Self.currentSchemaVersion
         )
         guard copy.profile(id: copy.activeProfileID) != nil else {
             if repairingMissingActiveProfile {

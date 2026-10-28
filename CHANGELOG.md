@@ -2,6 +2,20 @@
 
 User-visible changes to Paddr are recorded here. Release entries describe confirmed behavior at the time of each release; later entries may supersede earlier limitations.
 
+## Unreleased
+
+- Add opt-in gyro-to-mouse aiming with touch activation, sensitivity, inversion,
+  smoothing and session-local stationary calibration.
+- Add independent left/right grip-contact key and mouse-button bindings, with
+  live contact and motion availability indicators while output is off.
+- Keep sensor output inside the existing output gate and held-action ownership;
+  reject stale motion and release grip actions when their reports expire.
+- Add native profile settings and CLI options. Read existing profile documents
+  with Off/None defaults and save schema version 2 to prevent older writers from
+  silently discarding the new settings.
+- Sensor support remains passive: no IMU setting writes, analog grip pressure,
+  virtual gamepad output, direct USB transport or tilt driving is introduced.
+
 ## 2.0.1 — 2026-10-27
 
 - Soften button, selector, mode and tuning-switch outlines to 50% opacity in the

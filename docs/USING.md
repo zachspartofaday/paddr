@@ -12,7 +12,7 @@ Apple's HID service continues to provide native buttons, sticks, triggers, and c
 - optional **Rear buttons** mappings for L4, L5, R4, and R5, held as keyboard keys or mouse buttons until release;
 - touch-taps mapped to a keyboard key, left click, or right click;
 - a pointer-mode center tap radius that confines taps to the pad center while pointer tracking uses the full pad by default, with a per-pad switch for restoring the former coupled tracking dead zone; and
-- named profiles for saving and quickly switching complete pad and rear-button setups.
+- named profiles for saving and quickly switching complete pad, rear-button, gyro and grip setups.
 
 The interactive squircle map mirrors runtime hit-testing. Select a region on the map or with the **Selected area** pop-up, then assign its action. Radial, corner, and two-way layouts support an adjustable neutral region; the 3×3 layout dedicates the full pad to nine actions.
 
@@ -41,3 +41,17 @@ Choose **Zones** on either pad, select a layout, then click an area on the map o
 Expand **Pointer tuning** on either pad to adjust acceleration, smoothing, tap stabilization and the center tap region. The window grows to fit, and shrinks when you close it. Turning acceleration off preserves its strength.
 
 ![Expanded Pointer tuning in the automatically fitted window](images/paddr-auto-sized-tuning.png)
+
+## Gyro mouse and grip touch
+
+**Gyro to mouse** translates rotation into mouse movement. It is Off in existing and new profiles. Duplicate Default to edit it, enable gyro, choose **Activate while**, then **Save & Apply**. Start with right-grip activation: keep the controller still during stationary calibration, release the activation contact, then touch that grip to aim. Use **Always** only when you want motion aiming without a touch condition. Gyro and trackpad pointer movement can be used together.
+
+Sensitivity is measured in mouse points per degree of rotation. **Gyro tuning** provides vertical scale, horizontal/vertical inversion, smoothing and a stationary-noise cutoff. Calibration estimates sensor bias for the current output session; it is not saved into the game profile. Enabling output or recovering from stale motion starts a fresh calibration. If calibration does not finish, set the controller down briefly. Live status distinguishes unavailable motion, calibration and active aiming.
+
+**Grip touch** assigns separate left and right key/mouse actions. Touch holds the action; lifting your hand releases it. This senses hand contact, not squeezing force. The contact indicators work with output off, and distinguish released contacts from missing reports. A grip can both activate gyro and hold an action; choose None if it should only activate gyro. Assigned grips must be released before output first arms. A grip used only for gyro activation must be released before that activation can engage, without blocking ordinary pad output.
+
+All mapped output follows the existing Enable output switch, permissions and profile lifecycle. Disable, controller loss or expired input releases held grip actions; another pad/rear/grip holding the same action retains its ownership. Stale motion is discarded rather than integrated into a large cursor jump. Stationary readings of zero are valid sensor data.
+
+Paddr only reads motion that the puck already supplies. It does not enable the controller's IMU or change firmware settings. If **Motion unavailable** persists, gyro cannot operate in that session; grip and pad mappings remain usable when their reports are available. Cold-start, sleep/wake and reconnect availability require physical verification. Direct USB and Bluetooth are outside this implementation.
+
+Mouse-event support varies by game. The emitter supplies movement deltas and preserves dragging while mouse buttons are held, but captured-camera aiming, cursor recentering and screen-edge behavior need acceptance in each target game. Games that consume raw GameController/GCMouse input may bypass synthetic events entirely. This feature does not create a virtual joystick or triggers. Keyboard tilt driving remains separate future work.

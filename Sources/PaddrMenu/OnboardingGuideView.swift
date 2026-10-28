@@ -87,7 +87,7 @@ struct OnboardingGuideView: View {
                     symbol: "play.circle.fill",
                     title: LocalizedStringResource("Start Output Safely"),
                     detail: LocalizedStringResource(
-                        "The Paddr menu shows receiver and controller status with the Enable output switch. When output starts, release both trackpads and any assigned rear buttons to return to neutral before mapped input activates."
+                        "The Paddr menu shows receiver and controller status with the Enable output switch. When output starts, release both trackpads and any assigned rear buttons or grips to return to neutral before mapped input activates."
                     )
                 )
             }

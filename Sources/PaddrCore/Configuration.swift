@@ -23,6 +23,10 @@ public enum CenterTapTrackingMode: String, Codable, CaseIterable, Sendable {
 
 public enum ConfigurationLimits {
     public static let sensitivity = 0.1...20.0
+    public static let gyroSensitivity = 0.1...40.0
+    public static let gyroVerticalScale = 0.1...4.0
+    public static let gyroSmoothing = 0.0...1.0
+    public static let gyroNoiseThreshold = 0.0...5.0
     public static let scrollSensitivity = 0.0...1.0
     public static let mouseAcceleration = 0.0...1.0
     public static let pointerSmoothingStrength = 0.0...1.0
@@ -333,6 +337,8 @@ public struct PaddrConfiguration: Codable, Equatable, Sendable {
     public var left: PadConfiguration
     public var right: PadConfiguration
     public var rearButtons: RearButtonConfiguration
+    public var gyro: GyroConfiguration
+    public var gripTouch: GripTouchConfiguration
 
     public static let `default` = PaddrConfiguration(
         left: PadConfiguration(mode: .scroll),
@@ -344,16 +350,20 @@ public struct PaddrConfiguration: Codable, Equatable, Sendable {
         right: PadConfiguration(mode: .mouse, centerTapTrackingMode: .coupled)
     )
 
-    private enum CodingKeys: String, CodingKey { case left, right, rearButtons }
+    private enum CodingKeys: String, CodingKey { case left, right, rearButtons, gyro, gripTouch }
 
     public init(
         left: PadConfiguration,
         right: PadConfiguration,
-        rearButtons: RearButtonConfiguration = .unassigned
+        rearButtons: RearButtonConfiguration = .unassigned,
+        gyro: GyroConfiguration = .init(),
+        gripTouch: GripTouchConfiguration = .unassigned
     ) {
         self.left = left
         self.right = right
         self.rearButtons = rearButtons
+        self.gyro = gyro
+        self.gripTouch = gripTouch
     }
 
     public init(from decoder: Decoder) throws {
@@ -365,12 +375,17 @@ public struct PaddrConfiguration: Codable, Equatable, Sendable {
         left = try values.decodeIfPresent(PadConfiguration.self, forKey: .left) ?? missingLeft
         right = try values.decodeIfPresent(PadConfiguration.self, forKey: .right) ?? missingRight
         rearButtons = try values.decodeIfPresent(RearButtonConfiguration.self, forKey: .rearButtons) ?? .unassigned
+        gyro = try values.decodeIfPresent(GyroConfiguration.self, forKey: .gyro) ?? .init()
+        gripTouch = try values.decodeIfPresent(GripTouchConfiguration.self, forKey: .gripTouch) ?? .unassigned
     }
 
     public func validated() throws -> PaddrConfiguration {
         var copy = self
         try copy.validate(side: .left, pad: &copy.left)
         try copy.validate(side: .right, pad: &copy.right)
+        copy.gyro = try copy.gyro.validated()
+        if let binding = copy.gripTouch.left { copy.gripTouch.left = try normalizedOutputBinding(binding) }
+        if let binding = copy.gripTouch.right { copy.gripTouch.right = try normalizedOutputBinding(binding) }
         for button in RearButton.allCases {
             if let binding = copy.rearButtons[button], !TapBindingCatalog.isMouseButton(binding) {
                 copy.rearButtons[button] = try KeyCatalog.resolve(binding).name

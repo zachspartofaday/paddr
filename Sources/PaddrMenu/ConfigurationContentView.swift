@@ -20,6 +20,13 @@ struct ConfigurationContentView: View {
                 configuration: $model.configuration.rearButtons,
                 isEditable: model.canEditActiveProfile
             )
+            Divider()
+            ControllerSensorsConfigurationView(
+                gyro: $model.configuration.gyro,
+                gripTouch: $model.configuration.gripTouch,
+                sensorStatus: model.sensorStatus,
+                isEditable: model.canEditActiveProfile
+            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .paddrCard()

@@ -404,6 +404,40 @@ final class MenuModelTests: XCTestCase {
         XCTAssertEqual(startCount, 1)
     }
 
+    func testSensorStatusUpdatesWhileOutputOffAndClearsOnControllerLoss() async {
+        let state = readyState(receiver: "Fake receiver")
+        let session = ManualEventSession()
+        let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
+        await waitUntil(model: model) { model.isInitialized }
+        await waitUntil(model: model) { await session.startCount == 1 }
+        let touched = ControllerSensorStatus(grips: .init(leftTouched: true, rightTouched: false),
+            motionAvailable: true, gyroStatus: .off)
+        await session.send(.sensorsUpdated(touched))
+        await session.send(.waitingForController("Fake receiver"))
+        await waitUntil(model: model) { model.receiverDescription == "Fake receiver" }
+        XCTAssertNil(model.sensorStatus, "Disconnected telemetry must not publish contact states")
+        await session.send(.controllerConnected)
+        await session.send(.sensorsUpdated(touched))
+        await waitUntil(model: model) { model.sensorStatus == touched }
+        XCTAssertFalse(model.isEnabled)
+        XCTAssertFalse(model.isRunning)
+        XCTAssertEqual(model.status, .off, "Passive sensor updates must not replace output guidance")
+        XCTAssertEqual(model.reportCount, 0)
+        XCTAssertEqual(model.actionCount, 0)
+
+        let unavailable = ControllerSensorStatus(grips: nil, motionAvailable: false, gyroStatus: .unavailable)
+        await session.send(.sensorsUpdated(unavailable))
+        await waitUntil(model: model) { model.sensorStatus == unavailable }
+        XCTAssertNil(model.sensorStatus?.grips)
+        await session.send(.controllerLost(.init(reportCount: 2, actionCount: 0)))
+        await waitUntil(model: model) { !model.controllerConnected }
+        XCTAssertNil(model.sensorStatus)
+        await session.send(.sensorsUpdated(touched))
+        await session.send(.progress(.init(reportCount: 3, actionCount: 0)))
+        await waitUntil(model: model) { model.reportCount == 3 }
+        XCTAssertNil(model.sensorStatus, "Late telemetry cannot resurrect a lost controller")
+    }
+
     func testBatteryStatusSetsUpdatesWithoutOtherStateChangesAndClearsAcrossLoss() async {
         let state = readyState(receiver: "Fake receiver")
         let session = ManualEventSession()
@@ -454,7 +488,7 @@ final class MenuModelTests: XCTestCase {
         )
     }
 
-    func testTerminalSessionEventsClearBatteryStatus() async {
+    func testTerminalSessionEventsClearBatteryAndSensorStatus() async {
         let terminalEvents: [TrackpadSessionEvent] = [
             .stopped(.init(reportCount: 1, actionCount: 0)),
             .receiverRemoved(.init(reportCount: 1, actionCount: 0)),
@@ -470,11 +504,14 @@ final class MenuModelTests: XCTestCase {
             await waitUntil(model: model) { await session.startCount == 1 }
             await session.send(.controllerConnected)
             await session.send(.batteryUpdated(.init(chargeState: .charging, percentage: 82)))
-            await waitUntil(model: model) { model.batteryStatus != nil }
+            await session.send(.sensorsUpdated(.init(grips: .init(leftTouched: false, rightTouched: true),
+                motionAvailable: true, gyroStatus: .ready)))
+            await waitUntil(model: model) { model.batteryStatus != nil && model.sensorStatus != nil }
 
             await session.send(terminalEvent)
             await waitUntil(model: model) { model.batteryStatus == nil }
             XCTAssertNil(model.batteryStatus, "Terminal event did not clear battery: \(terminalEvent)")
+            XCTAssertNil(model.sensorStatus, "Terminal event did not clear sensors: \(terminalEvent)")
             XCTAssertFalse(model.controllerConnected)
             await session.stop()
         }
@@ -3275,6 +3312,10 @@ final class MenuModelTests: XCTestCase {
             to: 0
         )
         await waitUntil(model: model) { model.status == .active && model.batteryStatus != nil }
+        let currentSensors = ControllerSensorStatus(grips: .init(leftTouched: false, rightTouched: true),
+            motionAvailable: true, gyroStatus: .active)
+        await session.send(.sensorsUpdated(currentSensors), to: 0)
+        await waitUntil(model: model) { model.sensorStatus == currentSensors }
 
         XCTAssertEqual(
             model.batteryStatus,
@@ -3294,12 +3335,14 @@ final class MenuModelTests: XCTestCase {
 
         await session.waitForTermination(of: 0)
         await session.send(.failed("stale session"), to: 0)
+        await session.send(.sensorsUpdated(currentSensors), to: 0)
         await session.send(
             .batteryUpdated(.init(chargeState: .charging, percentage: 82)),
             to: 0
         )
         XCTAssertTrue(model.isEnabled)
         XCTAssertNil(model.batteryStatus)
+        XCTAssertNil(model.sensorStatus)
         XCTAssertEqual(model.status, .releasingOutputs)
 
         saveGate.signal()

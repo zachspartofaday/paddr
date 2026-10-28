@@ -55,6 +55,10 @@ final class HeldOutputLedger: TrackpadOutputDispatching, Sendable {
         }
     }
 
+    func resetMouseMotion() {
+        state.withLock { $0.sink.resetMouseMotion() }
+    }
+
     func releasePending(maxPasses: Int) -> OutputReleaseAttempt {
         state.withLock { state in
             var failures: [OutputReleaseFailure] = []

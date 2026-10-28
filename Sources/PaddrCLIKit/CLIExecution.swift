@@ -53,6 +53,17 @@ package enum CLIExecution {
             observeOnly: observeOnly,
             stopToken: stopToken,
             duration: duration,
+            onEvent: { event in
+                guard case let .sensorsUpdated(status) = event else { return }
+                func contact(_ touched: Bool?) -> String {
+                    guard let touched else { return "unavailable" }
+                    return touched ? "touched" : "released"
+                }
+                onAction("Sensors: motion=\(status.motionAvailable ? "available" : "unavailable"), "
+                    + "gyro=\(status.gyroStatus), "
+                    + "left grip=\(contact(status.grips?.leftTouched)), "
+                    + "right grip=\(contact(status.grips?.rightTouched))")
+            },
             onAction: onAction
         )
     }

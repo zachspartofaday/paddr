@@ -155,6 +155,7 @@ public enum TrackpadSessionEvent: Equatable, Sendable {
     case waitingForController(String)
     case controllerConnected
     case batteryUpdated(ControllerBatteryStatus)
+    case sensorsUpdated(ControllerSensorStatus)
     case outputArmed
     case outputReleased(revision: UInt64)
     case progress(TrackpadRunSummary)
@@ -269,9 +270,50 @@ public enum TrackpadRuntime {
         var observedGate = outputGate?.snapshot ?? OutputGateSnapshot(isEnabled: true, revision: 0)
         var reportCount = 0
         var actionCount = 0
+        var sensorObservation = ControllerSensorObservation()
+        var lastPublishedSensorStatus: ControllerSensorStatus?
+        var lastSensorPublishUptime: UInt64?
 
         func summary() -> TrackpadRunSummary {
             TrackpadRunSummary(reportCount: reportCount, actionCount: actionCount)
+        }
+
+        func publishSensors(at now: UInt64, force: Bool = false) {
+            let status = ControllerSensorStatus(
+                grips: sensorObservation.grips,
+                motionAvailable: sensorObservation.motionAvailable,
+                gyroStatus: observedGate.isEnabled
+                    ? (controllerEpoch?.gyroMapper.status ?? (validated.gyro.enabled ? .unavailable : .off))
+                    : .off
+            )
+            guard status != lastPublishedSensorStatus else { return }
+            if !force, let previous = lastSensorPublishUptime, now >= previous,
+               now - previous < 100_000_000 { return }
+            lastPublishedSensorStatus = status
+            lastSensorPublishUptime = now
+            onEvent?(.sensorsUpdated(status))
+        }
+
+        func dispatchMapped(_ actions: [TrackpadOutputAction]) throws {
+            if !observeOnly { try output.dispatch(actions) }
+            actionCount += actions.count
+            for action in actions { onAction?(action.description) }
+        }
+
+        func expireSensors(at now: UInt64) throws {
+            sensorObservation.expire(at: now)
+            if var epoch = controllerEpoch {
+                var releases: [TrackpadOutputAction] = []
+                if sensorObservation.grips == nil {
+                    for (source, action) in epoch.gripMapper.releaseAndReset() {
+                        releases += epoch.arbiter.process([action], from: source)
+                    }
+                }
+                epoch.gyroMapper.expire(at: now)
+                controllerEpoch = epoch
+                try dispatchMapped(releases)
+            }
+            if controllerLive { publishSensors(at: now) }
         }
 
         func releaseEpochOutputs() throws {
@@ -309,6 +351,7 @@ public enum TrackpadRuntime {
             }
 
             let releaseAttempt = output.releasePending(maxPasses: 2)
+            output.resetMouseMotion()
             guard releaseAttempt.isDrained, mappingFailures.isEmpty else {
                 var cleanupFailures = mappingFailures
                 if !releaseAttempt.isDrained {
@@ -325,7 +368,9 @@ public enum TrackpadRuntime {
             activeSlot = nil
             lastAcceptedReportUptime = nil
             controllerLive = false
+            sensorObservation = .init()
             try releaseEpochOutputs()
+            publishSensors(at: dependencies.uptimeNanoseconds(), force: true)
             onEvent?(.controllerLost(summary()))
         }
 
@@ -345,6 +390,7 @@ public enum TrackpadRuntime {
             guard !current.isEnabled else { return }
             try releaseEpochOutputs()
             onEvent?(.outputReleased(revision: current.revision))
+            if controllerLive { publishSensors(at: dependencies.uptimeNanoseconds(), force: true) }
         }
 
         onEvent?(.waitingForController(device.summaryDescription))
@@ -360,7 +406,9 @@ public enum TrackpadRuntime {
                 },
                 onWake: {
                     try reconcileOutputGate()
-                    try loseControllerIfDeadlineReached(at: dependencies.uptimeNanoseconds())
+                    let now = dependencies.uptimeNanoseconds()
+                    try loseControllerIfDeadlineReached(at: now)
+                    try expireSensors(at: now)
                 },
                 onReport: { report in
                     let now = dependencies.uptimeNanoseconds()
@@ -368,6 +416,7 @@ public enum TrackpadRuntime {
                           runLimit.map({ $0.permits(now) }) ?? true else { return }
                     let bytes = report.bytes
                     let timestamp = report.timestampNanoseconds
+                    try expireSensors(at: now)
                     // Queued input cannot renew liveness or re-arm a new epoch after expiry.
                     guard now >= timestamp,
                           now - timestamp < controllerLossDeadlineNanoseconds else {
@@ -411,7 +460,10 @@ public enum TrackpadRuntime {
                         onEvent?(.controllerConnected)
                     }
                     try reconcileOutputGate()
+                    sensorObservation.observe(state, at: now)
+                    sensorObservation.expire(at: now)
                     guard observedGate.isEnabled else {
+                        publishSensors(at: now)
                         if reportCount.isMultiple(of: 100) { onEvent?(.progress(summary())) }
                         return
                     }
@@ -422,15 +474,22 @@ public enum TrackpadRuntime {
                     guard var epoch = controllerEpoch else { return }
 
                     if !epoch.isArmed {
-                        guard pads.isNeutral, epoch.rearMapper.isNeutral(state.rearButtons) else {
+                        guard pads.isNeutral, epoch.rearMapper.isNeutral(state.rearButtons),
+                              epoch.gripMapper.isNeutral(state.grips),
+                              validated.gripTouch == .unassigned
+                                || SensorFreshness.isFresh(timestamp, at: now) else {
                             controllerEpoch = epoch
+                            publishSensors(at: now)
                             return
                         }
                         _ = try epoch.leftMapper.process(pads.left)
                         _ = try epoch.rightMapper.process(pads.right)
+                        _ = epoch.gripMapper.process(state.grips)
+                        _ = epoch.gyroMapper.process(state, at: now)
                         epoch.isArmed = true
                         controllerEpoch = epoch
                         onEvent?(.outputArmed)
+                        publishSensors(at: now)
                         if reportCount.isMultiple(of: 100) { onEvent?(.progress(summary())) }
                         return
                     }
@@ -442,10 +501,16 @@ public enum TrackpadRuntime {
                     for (source, action) in epoch.rearMapper.process(state.rearButtons) {
                         actions += epoch.arbiter.process([action], from: source)
                     }
-                    if !observeOnly { try output.dispatch(actions) }
+                    if SensorFreshness.isFresh(timestamp, at: now),
+                       sensorObservation.lastGripUptime.map({ timestamp >= $0 }) ?? true {
+                        for (source, action) in epoch.gripMapper.process(state.grips) {
+                            actions += epoch.arbiter.process([action], from: source)
+                        }
+                    }
+                    actions += epoch.arbiter.process(epoch.gyroMapper.process(state, at: now), from: .gyro)
+                    try dispatchMapped(actions)
                     controllerEpoch = epoch
-                    actionCount += actions.count
-                    for action in actions { onAction?(action.description) }
+                    publishSensors(at: now)
                     if reportCount.isMultiple(of: 100) { onEvent?(.progress(summary())) }
                 }
             ))
@@ -477,6 +542,8 @@ private struct ControllerEpoch {
     var leftMapper: PadMapper
     var rightMapper: PadMapper
     var rearMapper: RearButtonMapper
+    var gripMapper: GripTouchMapper
+    var gyroMapper: GyroMapper
     var arbiter = OutputArbiter()
     var isArmed = false
 
@@ -484,6 +551,8 @@ private struct ControllerEpoch {
         leftMapper = PadMapper(side: .left, configuration: configuration.left)
         rightMapper = PadMapper(side: .right, configuration: configuration.right)
         rearMapper = try RearButtonMapper(configuration: configuration.rearButtons)
+        gripMapper = try GripTouchMapper(configuration: configuration.gripTouch)
+        gyroMapper = GyroMapper(configuration: configuration.gyro)
     }
 }
 
@@ -764,14 +833,18 @@ private final class SessionEventBuffer: Sendable {
                 )
             case .controllerConnected:
                 snapshot = preservingReleaseAcknowledgement(
-                    base: [.controllerConnected] + latestBatterySnapshot(in: snapshot),
+                    base: [.controllerConnected] + latestBatterySnapshot(in: snapshot) + latestSensorsSnapshot(in: snapshot),
                     from: snapshot
                 )
             case let .batteryUpdated(battery):
                 snapshot.removeAll { $0.isBatteryUpdate }
                 snapshot.append(.batteryUpdated(battery))
+            case let .sensorsUpdated(sensors):
+                snapshot.removeAll { $0.isSensorsUpdate }
+                snapshot.append(.sensorsUpdated(sensors))
             case .outputArmed:
                 snapshot = [.controllerConnected, .outputArmed] + latestBatterySnapshot(in: snapshot)
+                    + latestSensorsSnapshot(in: snapshot)
             case let .outputReleased(revision):
                 snapshot = snapshot.filter { event in
                     switch event {
@@ -818,7 +891,16 @@ private func latestBatterySnapshot(in snapshot: [TrackpadSessionEvent]) -> [Trac
     snapshot.last(where: \.isBatteryUpdate).map { [$0] } ?? []
 }
 
+private func latestSensorsSnapshot(in snapshot: [TrackpadSessionEvent]) -> [TrackpadSessionEvent] {
+    snapshot.last(where: \.isSensorsUpdate).map { [$0] } ?? []
+}
+
 private extension TrackpadSessionEvent {
+    var isSensorsUpdate: Bool {
+        if case .sensorsUpdated = self { return true }
+        return false
+    }
+
     var isBatteryUpdate: Bool {
         if case .batteryUpdated = self { return true }
         return false
@@ -826,7 +908,7 @@ private extension TrackpadSessionEvent {
 
     var isControllerState: Bool {
         switch self {
-        case .connecting, .waitingForController, .controllerConnected, .batteryUpdated,
+        case .connecting, .waitingForController, .controllerConnected, .batteryUpdated, .sensorsUpdated,
              .outputArmed, .outputReleased, .controllerLost:
             true
         case .progress, .stopped, .receiverRemoved, .receiverUnavailable, .failed:

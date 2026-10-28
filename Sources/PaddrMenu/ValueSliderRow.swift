@@ -21,6 +21,7 @@ struct ValueSliderRow: View {
     let range: ClosedRange<Double>
     let step: Double
     let valueText: String
+    var readoutWidth: CGFloat = PaddrStyle.Width.readout
 
     var body: some View {
         PaddrSettingsRow(
@@ -36,7 +37,7 @@ struct ValueSliderRow: View {
                 Text(valueText)
                     .paddrTypography(.value)
                     .foregroundStyle(PaddrStyle.textSecondary)
-                    .frame(width: PaddrStyle.Width.readout, alignment: .trailing)
+                    .frame(width: readoutWidth, alignment: .trailing)
                     .accessibilityHidden(true)
             }
         }

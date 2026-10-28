@@ -38,8 +38,49 @@ Raw `--config` files accept an optional `rearButtons` object, for example:
 "rearButtons": { "l4": "f1", "l5": "mouse-left", "r4": null, "r5": "code:118" }
 ```
 
-Missing or null bindings mean None. Other values use the existing key catalog (including F1–F4 and `code:N`) or `mouse-left` / `mouse-right`; empty strings and `"none"` are invalid. CLI profile selection and import/export preserve these bindings. Profile documents retain schema version 1: older binaries ignore the added fields and can discard them when saving, so export a backup before downgrading.
+Missing or null bindings mean None. Other values use the existing key catalog (including F1–F4 and `code:N`) or `mouse-left` / `mouse-right`; empty strings and `"none"` are invalid. CLI profile selection and import/export preserve these bindings. New saves use profile schema version 2. Version-1 documents remain readable and are upgraded on save, with gyro Off and both grip actions None when absent. Older Paddr builds reject version 2 rather than silently discard sensor settings. Keep a backup before downgrading; raw configuration exports have no schema-version protection.
 
 Pointer acceleration has an independent switch per pad. Turning it off retains the strength and uses linear motion; enabling a zero-strength setup starts at 25%. Profiles store `mouseAccelerationEnabled` separately from `mouseAcceleration`. When the flag is absent, nonzero acceleration stays enabled and zero stays off. The existing CLI acceleration options set the strength and enable it for nonzero values. Older builds ignore the new flag and use the stored amount.
 
 Scroll retains signed fractional movement per pad until a whole scroll point accumulates; lifting or replacing the output session clears that remainder. Reports already one second old are rejected before they can emit or re-arm output. Fresh neutral input is required after such a loss. These behaviors have deterministic fixture coverage; physical rear-button behavior and latency still require controller verification.
+
+## Gyro mouse and grip touch
+
+Gyro and grip mappings are controller-wide profile settings, independent of the pad modes and rear buttons. They start Off/None. To stage a gyro setup without posting input:
+
+```bash
+scripts/paddr.sh --gyro on --gyro-activation right-grip \
+  --gyro-sensitivity 12 --left-grip mouse-right --show-config
+```
+
+`--gyro-activation` accepts `right-grip`, `left-grip`, `either-grip`, `either-pad`, or `always`. `--left-grip` and `--right-grip` accept a key, `mouse-left`, `mouse-right`, or `none`; each action is held only while its grip is touched. Contact can activate gyro and hold an assigned action simultaneously. Grip input detects contact with the handle, not squeeze strength.
+
+| Option | Range / meaning |
+| --- | --- |
+| `--gyro on\|off` | Enable gyro mouse output; retains tuning when off |
+| `--gyro-sensitivity` | 0.1–40 mouse points per degree |
+| `--gyro-vertical-scale` | 0.1–4 times horizontal sensitivity |
+| `--gyro-invert-horizontal on\|off` | Reverse horizontal movement |
+| `--gyro-invert-vertical on\|off` | Reverse vertical movement |
+| `--gyro-smoothing` | 0–1 smoothing strength |
+| `--gyro-noise-threshold` | 0–5 degrees/second stationary noise cutoff |
+
+With `--observe-only --verbose`, sensor availability and grip transitions are logged without posting mouse/key events. This still requires Input Monitoring. Diagnostics use contact states, not raw packets or device identifiers. Do not run a second mapper beside an active Paddr instance during output testing.
+
+In raw configuration files the equivalent fields are:
+
+```json
+"gyro": {
+  "enabled": true,
+  "activation": "right-grip",
+  "sensitivity": 12,
+  "verticalScale": 1,
+  "invertHorizontal": false,
+  "invertVertical": false,
+  "smoothing": 0.15,
+  "noiseThreshold": 0.5
+},
+"gripTouch": { "left": "mouse-right", "right": null }
+```
+
+See the [mapping guide](USING.md#gyro-mouse-and-grip-touch) for calibration, safe activation and the passive sensor-availability boundary.

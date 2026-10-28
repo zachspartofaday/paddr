@@ -43,6 +43,13 @@ final class MenuStatusTests: XCTestCase {
         }
     }
 
+    func testNeutralGuidanceIncludesMappedGripContactsAlongsideExistingInputs() {
+        XCTAssertEqual(String(localized: PaddrReadinessNextAction.releaseTrackpads.title),
+            "Release both trackpads and any assigned rear buttons or grips")
+        XCTAssertEqual(String(localized: MenuStatus.waitingForNeutral.message),
+            "Release both trackpads and any assigned rear buttons or grips to activate output…")
+    }
+
     func testEveryFailureMessageIncludesItsRecoveryAction() {
         let messages: [(MenuFailure, String)] = [
             (.accessibilityRequired, "Enable Paddr in Accessibility, then enable output again."),
