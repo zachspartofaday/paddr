@@ -135,7 +135,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 let menus = descendants(PaddrPopUpButton.self, in: host)
                 for (name, logicalEnd) in [("Left grip touch action", edges.left),
                                             ("Right grip touch action", edges.right),
-                                            ("Gyro activation", edges.left)] {
+                                            ("Gyro activation", edges.right)] {
                     let menu = try XCTUnwrap(menus.first { $0.accessibilityLabel() == name })
                     let frame = menu.convert(menu.bounds, to: host)
                     XCTAssertEqual(frame.width, PaddrStyle.Width.control, accuracy: 0.5)
@@ -313,7 +313,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
             "An assigned grip still distinguishes missing telemetry from release")
     }
 
-    func testCollapsedGyroKeepsSummaryBandAndLeadingActivationAboveTuningDisclosure() async throws {
+    func testCollapsedGyroKeepsSummaryBandAndRightGripAlignedActivationAboveTuningDisclosure() async throws {
         for width in [CGFloat(916), 1080] {
             for direction in [LayoutDirection.leftToRight, .rightToLeft] {
                 let host = NSHostingView(rootView: ControllerSensorsConfigurationView(
@@ -341,7 +341,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                         "Heading info, switch, state and calibration stay on one row")
                 }
                 let activationLabel = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro.activation-label"))
-                let gripLabel = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.grip.left.label"))
+                let gripLabel = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.grip.right.label"))
                 let labelFrame = try XCTUnwrap(activationLabel.accessibilityFrame?())
                 let gripFrame = try XCTUnwrap(gripLabel.accessibilityFrame?())
                 XCTAssertEqual(activationLabel.accessibilityLabel?(), "Activation")
@@ -351,7 +351,8 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                     XCTAssertEqual(labelFrame.maxX, gripFrame.maxX, accuracy: 0.5)
                 }
                 XCTAssertEqual(labelFrame.midY, activation.accessibilityFrame().midY, accuracy: 0.5)
-                XCTAssertFalse(labelFrame.intersects(frames[0]), "Activation gets its own aligned row")
+                XCTAssertEqual(labelFrame.midY, frames[0].midY, accuracy: 1,
+                    "Activation shares the summary band and the Right grip column")
                 XCTAssertEqual(status.accessibilityLabel?(), "Calibrated, Ready")
                 XCTAssertFalse(accessibilityTree(host).contains("Gyro sensitivity"))
                 XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.gyro.calibration-instruction"),
@@ -392,10 +393,10 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                     let menuFrame = menu.convert(menu.bounds, to: host)
                     if direction == .leftToRight {
                         XCTAssertEqual(frame.maxX, edges.left, accuracy: 0.5, title)
-                        XCTAssertEqual(menuFrame.maxX, edges.left, accuracy: 0.5, title)
+                        XCTAssertEqual(menuFrame.maxX, edges.right, accuracy: 0.5, title)
                     } else {
                         XCTAssertEqual(frame.minX, width - edges.left, accuracy: 0.5, title)
-                        XCTAssertEqual(menuFrame.minX, width - edges.left, accuracy: 0.5, title)
+                        XCTAssertEqual(menuFrame.minX, width - edges.right, accuracy: 0.5, title)
                     }
                     let status = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro.status"))
                     XCTAssertEqual(status.accessibilityLabel?(), title)

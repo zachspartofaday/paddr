@@ -134,10 +134,6 @@ struct ControllerSensorsConfigurationView: View {
                 .popover(isPresented: $calibrationGuidePresented, arrowEdge: .bottom) {
                     calibrationGuide
                 }
-            }
-            .accessibilityElement(children: .contain)
-            .paddrAccessibilityID("gyro", "summary")
-            PaddrAdaptiveSplitView(columnsBreakpoint: PaddrStyle.Metrics.padEditorColumnsBreakpoint) {
                 PaddrAdaptiveHeaderLayout(spacing: PaddrStyle.Spacing.s2,
                     alignsPadInspector: true, forceStacked: dynamicTypeSize.isAccessibilitySize) {
                     Text("Activation").paddrTypography(.rowLabel)
@@ -152,9 +148,9 @@ struct ControllerSensorsConfigurationView: View {
                         .disabled(!isEditable)
                 }
                 .frame(maxWidth: .infinity, minHeight: PaddrStyle.Metrics.row, alignment: .leading)
-            } trailing: {
-                Color.clear.frame(height: 0).accessibilityHidden(true).allowsHitTesting(false)
             }
+            .accessibilityElement(children: .contain)
+            .paddrAccessibilityID("gyro", "summary")
             DisclosureGroup(isExpanded: $tuningExpanded) {
                 tuning
                     .padding(.top, PaddrStyle.Spacing.s2)
@@ -331,8 +327,8 @@ struct ControllerSensorsConfigurationView: View {
 }
 
 /// One mounted control family reflows as whole items. At ordinary widths the
-/// calibration action ends on the left pad inspector; Activation uses the same
-/// inspector on its own row so its label aligns with Left grip.
+/// calibration action ends on the left pad inspector; Activation shares the
+/// right grip's label and inspector edges on the same band.
 private struct ControllerSensorSummaryLayout: Layout {
     let forceStacked: Bool
     private var spacing: CGFloat { PaddrStyle.Spacing.s3 }
@@ -363,9 +359,12 @@ private struct ControllerSensorSummaryLayout: Layout {
     }
 
     private func inlineRow(width: CGFloat, subviews: Subviews) -> (sizes: [CGSize], origins: [CGFloat])? {
-        guard !forceStacked, subviews.count == 3,
+        guard !forceStacked, subviews.count == 4,
               let edges = PaddrPadColumns.workspaceInspectorTrailingEdges(in: width) else { return nil }
         var sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let columnWidth = (width - PaddrPadColumns.workspaceSpacing) / 2
+        sizes[3] = subviews[3].sizeThatFits(ProposedViewSize(width: columnWidth, height: nil))
+        guard sizes[3].width <= columnWidth + 0.5 else { return nil }
         let calibrationOrigin = edges.left - sizes[2].width
         let gaps = [PaddrStyle.Spacing.s3, PaddrStyle.Spacing.s2, PaddrStyle.Spacing.s1]
         guard let maximumGap = gaps.first(where: {
@@ -384,7 +383,7 @@ private struct ControllerSensorSummaryLayout: Layout {
             sizes[1] = subviews[1].sizeThatFits(ProposedViewSize(width: statusWidth, height: nil))
             guard sizes[1].width <= statusWidth + 0.5 else { return nil }
         }
-        return (sizes, [0, statusOrigin, calibrationOrigin])
+        return (sizes, [0, statusOrigin, calibrationOrigin, columnWidth + PaddrPadColumns.workspaceSpacing])
     }
 }
 

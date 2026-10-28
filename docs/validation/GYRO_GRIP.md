@@ -137,7 +137,7 @@ rotation. This does not establish exhaustive game, drift or output-loss acceptan
 
 The follow-up preserves default 0° aiming and adds a separate calibration request
 channel to the same runtime. Generic explanation lives in native help/popovers;
-current calibration state stays in the single summary row beside the gyro toggle; its immediate instruction remains available through status help. The summary row also holds Calibrate or Calibrate Again, aligned to the left selector edge, with ready state labeled Calibrated, Ready. Activation is on a separate row aligned with Left grip. Tuning holds the remaining seven controls across two columns and four logical rows, including sensitivity. Contact labels are hidden when that grip action is None, without changing sensor observation or gyro activation. Verification
+current calibration state stays in the single summary row beside the gyro toggle; its immediate instruction remains available through status help. The summary row also holds Calibrate or Calibrate Again, aligned to the left selector edge, with ready state labeled Calibrated, Ready. Activation shares the summary row and aligns with Right grip. Tuning holds the remaining seven controls across two columns and four logical rows, including sensitivity. Contact labels are hidden when that grip action is None, without changing sensor observation or gyro activation. Verification
 of the refinement and its exact candidate is recorded with the PR evidence.
 
 
@@ -151,7 +151,7 @@ prompt does not start a measurement. The request still uses the independent gate
 revision, with the existing profile, output, freshness and neutral-admission checks.
 
 The target/status icon is removed, information buttons use secondary caption
-styling, and **Activation** aligns with **Left grip**. These changes retain
+styling, and **Activation** aligns with **Right grip**. These changes retain
 collapsed tuning, individual native control names and responsive RTL layout.
 
 Source inspection confirms that a grip binding and gyro activation read the same
