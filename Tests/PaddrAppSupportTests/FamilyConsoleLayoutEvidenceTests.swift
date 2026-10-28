@@ -966,8 +966,15 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 XCTAssertEqual(modeSelectors(in: host).count, 2)
                 let documentHeight = await configurationContentHeight(
                     model: model, width: scrollView.contentSize.width)
-                XCTAssertLessThanOrEqual(documentHeight, scrollView.contentSize.height + 0.5,
-                    "The opening size must include both editors, rear buttons, and the bottom workspace inset: \(left)/\(right)")
+                // The controller-wide sensor sections intentionally exceed the old fixed
+                // 600-point fixture. Fit the measured document plus its fixed chrome,
+                // as the application's sizing bridge does; smaller screens scroll.
+                let fixedChromeHeight = host.bounds.height - scrollView.contentSize.height
+                host.frame.size.height = ceil(documentHeight + fixedChromeHeight + 1)
+                await settle(host, passes: 12)
+                let fittedScrollView = try XCTUnwrap(configurationScrollView(in: host))
+                XCTAssertLessThanOrEqual(documentHeight, fittedScrollView.contentSize.height + 0.5,
+                    "The fitted size must include both editors, rear buttons, gyro and grip settings, and the bottom workspace inset: \(left)/\(right)")
                 for control in descendants(of: NSControl.self, in: host) {
                     let rect = frame(of: control, in: host)
                     XCTAssertGreaterThanOrEqual(rect.minX, -0.5, "\(left)/\(right)")

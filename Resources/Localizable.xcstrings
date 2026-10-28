@@ -2338,7 +2338,7 @@
       "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
       "extractionState": "manual"
     },
-    "Waiting for fresh motion data.": {
+    "Waiting for output to arm before calibration.": {
       "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
       "extractionState": "manual"
     },

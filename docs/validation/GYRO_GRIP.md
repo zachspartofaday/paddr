@@ -54,7 +54,12 @@ and 7,728 µs (10 samples). Both grip bits were released; angular rates were nea
 zero and acceleration near gravity. This establishes current awake-session motion
 availability, not cold-start/reconnect behavior or physical direction/contact
 correlation. The earlier planning capture observed right-grip contact on this puck.
-No settings or mapped output were changed by either capture.
+A later ten-second grip-only check, with the operator holding both handles,
+received 2,694 state reports with both grip bits set throughout. This confirms both
+contact flags are available. Separate left/right transitions and correlated axis
+signs remain pending: the earlier timed movement prompts were not synchronized
+well enough to establish them. No settings or mapped output were changed by any
+of these captures.
 
 Before calling the hardware feature accepted, verify:
 

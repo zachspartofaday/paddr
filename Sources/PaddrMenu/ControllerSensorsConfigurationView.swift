@@ -204,7 +204,7 @@ enum ControllerSensorPresentation {
         if !configured { return "Motion data available. Gyro output is off in this draft." }
         return switch status.gyroStatus {
         case .off: "Enable output to calibrate and aim. Save & Apply any changes first."
-        case .unavailable: "Waiting for fresh motion data."
+        case .unavailable: "Waiting for output to arm before calibration."
         case .calibrating: "Calibrating. Keep the controller still."
         case .ready: "Calibrated. Waiting for gyro activation."
         case .active: "Gyro aiming active."

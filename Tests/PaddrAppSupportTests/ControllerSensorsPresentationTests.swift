@@ -19,6 +19,9 @@ final class ControllerSensorsPresentationTests: XCTestCase {
             "Calibrating. Keep the controller still.")
         XCTAssertTrue(String(localized: ControllerSensorPresentation.gyroState(calibrating, configured: false))
             .contains("off in this draft"))
+        let awaitingNeutral = ControllerSensorStatus(motionAvailable: true, gyroStatus: .unavailable)
+        XCTAssertEqual(String(localized: ControllerSensorPresentation.gyroState(awaitingNeutral, configured: true)),
+            "Waiting for output to arm before calibration.")
         XCTAssertEqual(String(localized: ControllerSensorPresentation.activationTitle(.rightGrip)), "Right grip touched")
         XCTAssertEqual(String(localized: ControllerSensorPresentation.activationTitle(.leftGrip)), "Left grip touched")
         XCTAssertEqual(String(localized: ControllerSensorPresentation.activationTitle(.eitherGrip)), "Either grip touched")
