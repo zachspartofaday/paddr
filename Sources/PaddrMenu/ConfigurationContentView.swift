@@ -25,7 +25,12 @@ struct ConfigurationContentView: View {
                 gyro: $model.configuration.gyro,
                 gripTouch: $model.configuration.gripTouch,
                 sensorStatus: model.sensorStatus,
-                isEditable: model.canEditActiveProfile
+                isEditable: model.canEditActiveProfile,
+                isOutputEnabled: model.isEnabled,
+                savedGyroEnabled: model.savedConfiguration.gyro.enabled,
+                canRecalibrate: model.canRecalibrateGyro,
+                calibrationUnavailableReason: model.gyroCalibrationUnavailableReason,
+                recalibrate: { model.requestGyroCalibration() }
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)

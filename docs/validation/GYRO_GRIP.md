@@ -18,6 +18,14 @@ Keyboard tilt driving and virtual gamepad output are excluded.
 - Motion and grip freshness use a conservative 100 ms limit, separate from the
   one-second controller-link timeout. This is a safety bound, not a hardware timing guarantee. Stale motion resets integration/calibration and stale
   grips release their ownership.
+- Recalibration uses an independent request revision in the existing output gate.
+  It resets gyro calibration/activation/filtering and relative mouse remainder,
+  without replacing the session, changing the output revision, saving a profile,
+  or releasing pad/rear/grip owners. It requires an enabled saved gyro session and
+  fresh motion; requests during disabled output do nothing.
+- Holding-angle compensation is a profile value from 0° flat to 90° upright.
+  It projects yaw/roll using the selected right-handed pitch convention, leaving
+  pitch as vertical aiming. Existing profiles use 0°; no sensor bias is saved.
 - Calibration requires at least 500 ms and 50 fresh samples, low stable angular
   velocity and stable acceleration near gravity. Bias belongs to the output epoch
   and is never persisted. Physical drift and axis-direction checks remain necessary.
@@ -56,22 +64,22 @@ availability, not cold-start/reconnect behavior or physical direction/contact
 correlation. The earlier planning capture observed right-grip contact on this puck.
 A later ten-second grip-only check, with the operator holding both handles,
 received 2,694 state reports with both grip bits set throughout. This confirms both
-contact flags are available. Separate left/right transitions and correlated axis
-signs remain pending: the earlier timed movement prompts were not synchronized
-well enough to establish them. No settings or mapped output were changed by any
+contact flags are available. Those captures did not independently correlate
+left/right transitions or axis signs; subsequent live app checks below confirmed
+the separate grip contacts. The timed movement prompts were not synchronized well
+enough to establish axis directions. No settings or mapped output were changed by any
 of these captures.
 
 Before calling the hardware feature accepted, verify:
 
-1. Independent left/right grip contact and release, including both hands together.
-2. Yaw/pitch direction, calibration, stationary drift, slow aiming and touch gating.
-3. Desktop movement and target-game aiming with cursor capture/recentering, screen
+1. Yaw/pitch direction, recalibration, stationary drift, slow aiming and touch gating.
+2. Desktop movement and target-game aiming with cursor capture/recentering, screen
    edges and held mouse buttons. Record games/backends that reject synthetic input.
-4. Shared-action holds, disable, permission loss, controller sleep/disconnect and
+3. Shared-action holds, disable, permission loss, controller sleep/disconnect and
    reconnect, with no stuck input or stale-motion jump.
-5. Cold start and Steam present/absent sensor availability. No IMU enable writes
+4. Cold start and Steam present/absent sensor availability. No IMU enable writes
    are implemented; an unavailable stream stays visibly unavailable.
-6. Keyboard, VoiceOver and constrained-screen/RTL behavior of the new settings.
+5. Keyboard, VoiceOver and constrained-screen/RTL behavior of the new settings.
 
 Automated checks and independent review receipts are recorded below after the
 candidate is frozen. Fixture renders establish sampled layout, not hardware or
@@ -115,3 +123,16 @@ down. Two earlier three-second checks received no reports during an unavailable
 interval. Observe-only checks posted no mouse or key events and wrote no controller
 settings. Actual mouse aiming and grip-held mapped output still require attended
 acceptance, along with the target-game and assistive-technology scenarios above.
+
+## Follow-up interaction refinement
+
+The operator reported that the initial feature worked, then requested aligned
+controller-wide controls, circled hover/click information, more prominent
+calibration state, an explicit recalibration action and holding-angle tuning.
+They selected controller flat-to-upright compensation rather than desktop-axis
+rotation. This does not establish exhaustive game, drift or output-loss acceptance.
+
+The follow-up preserves default 0° aiming and adds a separate calibration request
+channel to the same runtime. Generic explanation lives in native help/popovers;
+current calibration state and its immediate next step stay visible. Verification
+of the refinement and its exact candidate is recorded with the PR evidence.

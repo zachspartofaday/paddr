@@ -186,6 +186,42 @@ public final class PaddrMenuModel {
             && (!profileDocumentSaveInProgress || replacesActiveConfiguration || isEnabled)
             && (isEnabled || !isReleasingOutput)
     }
+    /// Calibration is an in-place runtime request; it neither saves the profile nor
+    /// replaces the session, so existing held outputs keep their owners.
+    public var canRecalibrateGyro: Bool {
+        gyroCalibrationUnavailableReason == nil
+    }
+
+    public var gyroCalibrationUnavailableReason: LocalizedStringResource? {
+        guard terminationState == .idle, !terminationDecisionInProgress,
+              isInitialized, !profileOperationInProgress, !profileDocumentSaveInProgress,
+              !replacesActiveConfiguration, !activationCommitPending else {
+            return "Wait for the current profile operation to finish before calibrating."
+        }
+        guard savedConfiguration.gyro.enabled, sessionConfiguration?.gyro.enabled == true else {
+            return "Enable gyro in an editable profile, then choose Save & Apply."
+        }
+        guard isEnabled, !isReleasingOutput, outputGate.isEnabled else {
+            return "Enable output before calibrating gyro."
+        }
+        guard controllerConnected, sensorStatus?.motionAvailable == true else {
+            return "Connect the controller and wait for fresh motion data before calibrating."
+        }
+        guard sessionID != nil, isRunning else {
+            return "Release assigned controls to activate output before calibrating."
+        }
+        guard sensorStatus?.gyroStatus != .calibrating else {
+            return "Calibration is in progress. Keep the controller still."
+        }
+        return nil
+    }
+
+    @discardableResult
+    public func requestGyroCalibration() -> Bool {
+        guard canRecalibrateGyro else { return false }
+        return outputGate.requestGyroCalibration()
+    }
+
     public var canSaveAndApply: Bool {
         terminationState == .idle
             && !terminationDecisionInProgress
