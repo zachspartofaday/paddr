@@ -114,6 +114,7 @@ struct ApplyBarView: View {
         }
         return usesExplicitStatusMessage
             || (model.hasSystemAccess && model.readiness.nextAction != .none
+                && model.readiness.nextAction != .connectController
                 && model.readiness.nextAction != .enableOutput)
     }
 
@@ -136,22 +137,32 @@ struct ApplyBarView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(alignment: usesInlineLayout ? .trailing : .leading, spacing: PaddrStyle.Spacing.s1) {
+                VStack(alignment: .trailing, spacing: PaddrStyle.Spacing.s1) {
                     HStack(spacing: PaddrStyle.Spacing.s3) {
                         Text(outputValue)
                             .paddrTypography(.caption)
-                            .foregroundStyle(model.readiness.output == .active ? PaddrStyle.activeText : PaddrStyle.textSecondary)
+                            .foregroundStyle(model.readiness.output == .active ? PaddrStyle.activeText
+                                : model.readiness.output == .idle ? PaddrStyle.warningText : PaddrStyle.textSecondary)
                             .accessibilityLabel(Text("Output status"))
                             .accessibilityValue(Text(outputValue))
                             .paddrAccessibilityID("status", "output")
-                        Toggle("Enable output", isOn: $model.isEnabled)
-                            .disabled(!model.canToggleOutput)
-                            .toggleStyle(.switch)
-                            .accessibilityLabel(Text(outputToggleAccessibilityLabel))
-                            .accessibilityValue(Text(outputToggleAccessibilityValue))
-                            .accessibilityHint(Text(outputToggleHelp))
-                            .help(Text(outputToggleHelp))
-                            .accessibilityIdentifier(outputToggleAccessibilityIdentifier)
+                        HStack(spacing: PaddrStyle.Spacing.s2) {
+                            // The visible label shares pointer activation with
+                            // the switch, which owns the single named AX target.
+                            Button("Enable output") { model.isEnabled.toggle() }
+                                .buttonStyle(.plain)
+                                .paddrTypography(.rowLabel)
+                                .focusable(false)
+                                .accessibilityHidden(true)
+                            PaddrTuningSwitch(title: outputToggleAccessibilityLabel, isOn: $model.isEnabled,
+                                accessibilityIdentifier: outputToggleAccessibilityIdentifier,
+                                help: outputToggleHelp)
+                                // Align the drawn track, excluding its invisible
+                                // focus/hit reservation, with Save & Apply.
+                                .padding(.trailing, -(PaddrStyle.Width.toggle - PaddrStyle.Control.TuningSwitch.track.width) / 2)
+                        }
+                        .disabled(!model.canToggleOutput)
+                        .help(Text(outputToggleHelp))
                     }
                     .fixedSize(horizontal: false, vertical: true)
                     if showsPendingSaveHint {
@@ -162,6 +173,7 @@ struct ApplyBarView: View {
                             .paddrAccessibilityID("toolbar", "output", "save-hint")
                     }
                 }
+                .frame(maxWidth: usesInlineLayout ? nil : .infinity, alignment: .trailing)
             }
         }
         .padding(.horizontal, PaddrStyle.Inset.chrome)

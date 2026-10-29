@@ -12,7 +12,7 @@ Apple's HID service continues to provide native buttons, sticks, triggers, and c
 - optional **Rear buttons** mappings for L4, L5, R4, and R5, held as keyboard keys or mouse buttons until release;
 - touch-taps mapped to a keyboard key, left click, or right click;
 - a pointer-mode center tap radius that confines taps to the pad center while pointer tracking uses the full pad by default, with a per-pad switch for restoring the former coupled tracking dead zone; and
-- named profiles for saving and quickly switching complete pad and rear-button setups.
+- named profiles for saving and quickly switching complete pad, rear-button, gyro and grip setups.
 
 The interactive squircle map mirrors runtime hit-testing. Select a region on the map or with the **Selected area** pop-up, then assign its action. Radial, corner, and two-way layouts support an adjustable neutral region; the 3×3 layout dedicates the full pad to nine actions.
 
@@ -20,7 +20,7 @@ Paddr does not send controller feature reports or alter lizard mode, firmware, I
 
 Edits remain a draft until saved. **Save & Apply** saves the draft without turning output on. Turning **Enable output** on also saves a pending draft before activation; a visible hint explains this when edits are pending and output is off.
 
-Disabling output or losing the controller releases held mapped keys and mouse buttons before Paddr becomes idle. Release obligations remain tracked until the matching up events succeed, and reconnect waits for both trackpads and any assigned rear buttons to be released before safely resuming.
+Disabling output or losing the controller releases held mapped keys and mouse buttons before Paddr becomes idle. Release obligations remain tracked until the matching up events succeed, and reconnect waits for both trackpads, assigned rear buttons and assigned grips to be released before safely resuming.
 
 Rear buttons start at **None** in new profiles and profiles created before rear-button support. Assign each one in the Rear buttons group below the pads, then choose **Save & Apply**. Hold a rear button to hold its assigned action; release it to release the action. Hover over a picker for help. Draft edits do not change active output. Restore Defaults requests confirmation before replacing unsaved edits and resets rear bindings to None in the draft; save before using the changes. Unassigned rear buttons emit nothing and do not delay output activation. F1–F4 are available choices, with no automatic game-specific preset.
 
@@ -41,3 +41,25 @@ Choose **Zones** on either pad, select a layout, then click an area on the map o
 Expand **Pointer tuning** on either pad to adjust acceleration, smoothing, tap stabilization and the center tap region. The window grows to fit, and shrinks when you close it. Turning acceleration off preserves its strength.
 
 ![Expanded Pointer tuning in the automatically fitted window](images/paddr-auto-sized-tuning.png)
+
+## Gyro mouse and grip touch
+
+**Gyro to mouse** translates rotation into mouse movement. It starts Off when not explicitly enabled in a saved profile. Duplicate Default to edit it, enable gyro, choose **Activation**, then **Save & Apply** and enable output. Choose **Calibrate**, put the controller down on a stable surface or hold it still, then press **Calibrate** in the preparation prompt. Wait for **Calibrated, Ready**, release the activation contact, then touch that grip to aim. Use **Always** only when you want motion aiming without a touch condition. Gyro and trackpad pointer movement can be used together.
+
+Gyro sensitivity is the shared base, measured in mouse points per degree. **Horizontal sensitivity** multiplies only left/right movement (0.1–8×, default 2.5×); **Vertical sensitivity** remains independent and multiplies only up/down movement. **Gyro tuning** provides independent horizontal and vertical scale, horizontal/vertical inversion, smoothing, a stationary-noise cutoff, **Holding angle**, and **Tilt for horizontal aiming**. Set the holding angle from 0° for a flat controller to 90° for an upright controller; it adjusts which combination of yaw and roll controls horizontal aiming. It defaults to 45° and follows the normal Save & Apply flow. Turn on **Tilt for horizontal aiming** to move the mouse left/right by banking the controller side to side rather than turning it. Forward/back tilt still controls up/down. Holding angle applies to both horizontal modes; horizontal inversion is available if you prefer the opposite direction. Tilt aiming defaults on. Explicitly saved tuning is preserved. Save & Apply the change, then calibrate the new output session.
+
+The starting tuning is **10 pt/°**, **2.5×** horizontal and vertical sensitivity, **45°** holding angle, **25%** smoothing and a **1°/s** noise cutoff, with both inversion switches off. These defaults apply to new or missing values; saved tuning stays intact.
+
+![Live gyro tuning with the maintainer-tested starting settings](images/paddr-gyro-tuning.png)
+
+Calibration estimates sensor bias for the current output session; it is not saved into the game profile. The app waits for an explicit **Calibrate** action; enabling gyro or output does not start a measurement. A new output session, stale calibrated motion or a sensor-clock reset requires another calibration. An already requested measurement can restart its stationary interval if reports briefly pause. If calibration does not finish, set the controller down briefly.
+
+The status row below the **Gyro to mouse** heading distinguishes **Save & Apply needed**, **Calibration needed**, **Calibrating**, **Calibrated, Ready**, and **Aiming**; hover the status for its current instruction. Sensitivity is inside the two-column tuning disclosure. An **Enable** label and switch start the row below the heading. The compact calibration status sits immediately before **Calibrate**; **Activation** shares that row and aligns with **Right grip**. The **Calibrate** button on that row ends on the left inspector’s right edge; it becomes **Calibrate Again** once calibrated. With output enabled and fresh motion available, choose either action to open the preparation prompt, then press **Calibrate** when the controller is still. Cancel or Escape dismisses the prompt without changing calibration. Gyro aiming pauses during this process; pad, rear-button and grip output continue without a session restart. Release and retouch the activation input after calibration. The button is unavailable while output is off, sensor data is missing or profile/session work is pending.
+
+The circled info buttons beside **Grip touch** and **Gyro to mouse** provide explanatory help on hover or click. **Grip touch** assigns separate left and right key/mouse actions. Touch holds the action; lifting your hand releases it. This senses hand contact, not squeezing force. Contact indicators appear beside assigned grip actions, work with output off, and distinguish released contacts from missing reports. Selecting **None** hides that grip’s contact text; it can still activate gyro. A grip can both activate gyro and hold an action; choose None if it should only activate gyro. A mouse-button grip binding makes gyro movement a drag while held, including right-button camera dragging. The game decides how it uses that button and movement. Assigned grips must be released before output first arms. A grip used only for gyro activation must be released before that activation can engage, without blocking ordinary pad output.
+
+All mapped output follows the existing Enable output switch, permissions and profile lifecycle. Disable, controller loss or expired input releases held grip actions; another pad/rear/grip holding the same action retains its ownership. Stale motion is discarded rather than integrated into a large cursor jump. Stationary readings of zero are valid sensor data.
+
+Paddr only reads motion that the puck already supplies. It does not enable the controller's IMU or change firmware settings. If **Motion unavailable** persists, gyro cannot operate in that session; grip and pad mappings remain usable when their reports are available. Cold-start, sleep/wake and reconnect availability require physical verification. Direct USB and Bluetooth are outside this implementation.
+
+Mouse-event support varies by game. The emitter supplies movement deltas and preserves dragging while mouse buttons are held, but captured-camera aiming, cursor recentering and screen-edge behavior need acceptance in each target game. Games that consume raw GameController/GCMouse input may bypass synthetic events entirely. This feature does not create a virtual joystick or triggers. Keyboard tilt driving remains separate future work.

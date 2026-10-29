@@ -50,6 +50,12 @@ public protocol TrackpadOutputDispatching: Sendable {
     /// For a singleton input, throws before posting that action. A successful singleton return
     /// means the action was posted. Callers that need partial-batch accounting dispatch singly.
     func dispatch(_ actions: [TrackpadOutputAction]) throws
+    /// Forget subpoint motion at an output/controller epoch boundary.
+    func resetMouseMotion()
+}
+
+public extension TrackpadOutputDispatching {
+    func resetMouseMotion() {}
 }
 
 #if canImport(CoreGraphics)
@@ -64,14 +70,21 @@ enum CGEventRequest: Equatable, Sendable {
         case rightUp
     }
 
-    case mouse(kind: MouseKind, button: MouseButtonBinding, x: Double, y: Double)
+    case mouse(
+        kind: MouseKind, button: MouseButtonBinding, x: Double, y: Double,
+        deltaX: Int64 = 0, deltaY: Int64 = 0
+    )
     case scroll(horizontal: Int32, vertical: Int32)
     case key(code: UInt16, isPressed: Bool)
 }
 #endif
 
 public final class CGEventOutput: TrackpadOutputDispatching, Sendable {
-    private let heldMouseButtons = Mutex<Set<MouseButtonBinding>>([])
+    private struct MouseState: Sendable {
+        var heldButtons: Set<MouseButtonBinding> = []
+        var deltaRemainder = SIMD2<Double>(repeating: 0)
+    }
+    private let mouseState = Mutex(MouseState())
     #if canImport(CoreGraphics)
     private let currentMouseLocation: @Sendable () -> CGPoint?
     private let postEvent: @Sendable (CGEventRequest) throws -> Void
@@ -100,17 +113,17 @@ public final class CGEventOutput: TrackpadOutputDispatching, Sendable {
     #endif
 
     public func dispatch(_ actions: [TrackpadOutputAction]) throws {
-        try heldMouseButtons.withLock { heldButtons in
+        try mouseState.withLock { state in
             for action in actions {
                 switch action {
                 case let .mouseMove(dx, dy):
-                    try postMouseMove(dx: dx, dy: dy, heldButtons: heldButtons)
+                    try postMouseMove(dx: dx, dy: dy, state: &state)
                 case let .mouseButton(button, isPressed):
                     try postMouseButton(button, isPressed: isPressed)
                     if isPressed {
-                        heldButtons.insert(button)
+                        state.heldButtons.insert(button)
                     } else {
-                        heldButtons.remove(button)
+                        state.heldButtons.remove(button)
                     }
                 case let .scroll(dx, dy):
                     try postScroll(dx: dx, dy: dy)
@@ -119,6 +132,10 @@ public final class CGEventOutput: TrackpadOutputDispatching, Sendable {
                 }
             }
         }
+    }
+
+    public func resetMouseMotion() {
+        mouseState.withLock { $0.deltaRemainder = .zero }
     }
 
     private func postMouseButton(
@@ -153,21 +170,34 @@ public final class CGEventOutput: TrackpadOutputDispatching, Sendable {
     private func postMouseMove(
         dx: Double,
         dy: Double,
-        heldButtons: Set<MouseButtonBinding>
+        state: inout MouseState
     ) throws {
         #if canImport(CoreGraphics)
+        guard dx.isFinite, dy.isFinite,
+              abs(dx) < Double(Int64.max) / 2, abs(dy) < Double(Int64.max) / 2 else {
+            throw PaddrError.output("Mouse movement must be finite and within the supported range.")
+        }
         guard dx != 0 || dy != 0, let current = currentMouseLocation() else { return }
         let destination = CGPoint(x: current.x + dx, y: current.y + dy)
-        let kind = Self.mouseMovementKind(heldButtons: heldButtons)
-        let button: MouseButtonBinding = heldButtons.contains(.right) && !heldButtons.contains(.left)
+        guard destination.x.isFinite, destination.y.isFinite else {
+            throw PaddrError.output("Mouse destination must be finite.")
+        }
+        let accumulated = state.deltaRemainder + SIMD2(dx, dy)
+        let deltaX = Int64(accumulated.x.rounded(.towardZero))
+        let deltaY = Int64(accumulated.y.rounded(.towardZero))
+        let kind = Self.mouseMovementKind(heldButtons: state.heldButtons)
+        let button: MouseButtonBinding = state.heldButtons.contains(.right) && !state.heldButtons.contains(.left)
             ? .right
             : .left
         try postEvent(.mouse(
             kind: kind,
             button: button,
             x: destination.x,
-            y: destination.y
+            y: destination.y,
+            deltaX: deltaX,
+            deltaY: deltaY
         ))
+        state.deltaRemainder = accumulated - SIMD2(Double(deltaX), Double(deltaY))
         #else
         throw PaddrError.output("CoreGraphics output is unavailable.")
         #endif
@@ -214,10 +244,16 @@ public final class CGEventOutput: TrackpadOutputDispatching, Sendable {
     }
 
     private static func postLiveEvent(_ request: CGEventRequest) throws {
+        let event = try makeLiveEvent(request)
+        event.post(tap: .cghidEventTap)
+    }
+
+    /// The same event construction used for live output, exposed internally for field tests.
+    static func makeLiveEvent(_ request: CGEventRequest) throws -> CGEvent {
         let source = CGEventSource(stateID: .hidSystemState)
         let event: CGEvent?
         switch request {
-        case let .mouse(kind, button, x, y):
+        case let .mouse(kind, button, x, y, deltaX, deltaY):
             let eventType: CGEventType
             switch kind {
             case .moved: eventType = .mouseMoved
@@ -234,6 +270,10 @@ public final class CGEventOutput: TrackpadOutputDispatching, Sendable {
                 mouseCursorPosition: CGPoint(x: x, y: y),
                 mouseButton: button == .left ? .left : .right
             )
+            // Preserve absolute desktop placement while captured mouse consumers read
+            // device-relative deltas, even at screen edges or after game recentering.
+            event?.setIntegerValueField(.mouseEventDeltaX, value: deltaX)
+            event?.setIntegerValueField(.mouseEventDeltaY, value: deltaY)
         case let .scroll(horizontal, vertical):
             event = CGEvent(
                 scrollWheelEvent2Source: source,
@@ -251,7 +291,7 @@ public final class CGEventOutput: TrackpadOutputDispatching, Sendable {
             )
         }
         guard let event else { throw PaddrError.output("Could not create a CGEvent output event.") }
-        event.post(tap: .cghidEventTap)
+        return event
     }
     #endif
 }

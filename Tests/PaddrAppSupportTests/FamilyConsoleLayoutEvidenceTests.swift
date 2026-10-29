@@ -164,6 +164,42 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         }
     }
 
+    /// Focused integrated evidence for the compact sensor summary; all dependencies
+    /// are inert in-memory fixtures and never attach to the running personal app.
+    func testExportCompactControllerConfigurationEvidence() async throws {
+        guard let path = ProcessInfo.processInfo.environment["PADDR_COMPACT_SENSOR_EVIDENCE_DIR"] else {
+            throw XCTSkip("Set PADDR_COMPACT_SENSOR_EVIDENCE_DIR to export the compact sensor workspace")
+        }
+        let directory = URL(fileURLWithPath: path, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var configuration = PaddrConfiguration.default
+        configuration.gyro.enabled = true
+        configuration.gripTouch = .init(left: nil, right: "space")
+        var document = ConfigurationProfileDocument.default
+        let profile = try document.createProfile(named: "Controller", configuration: configuration)
+        try document.activateProfile(id: profile.id)
+        let fixtureDocument = document
+        let model = PaddrMenuModel(dependencies: MenuDependencies(
+            session: LayoutEvidenceSession(),
+            loadProfiles: { ConfigurationProfileLoadResult(document: fixtureDocument) },
+            saveProfiles: { _ in }, probeReceiver: { nil }, accessibilityTrusted: { _ in true },
+            inputMonitoringAccess: { _ in .granted }, openPrivacySettings: { _ in },
+            sleep: { _ in throw CancellationError() }, reconnectDelay: { _ in throw CancellationError() }))
+        let initialized = await waitUntil { model.isInitialized }
+        XCTAssertTrue(initialized)
+        for (theme, scheme, appearance) in [("light", ColorScheme.light, NSAppearance.Name.aqua),
+                                          ("dark", ColorScheme.dark, NSAppearance.Name.darkAqua)] {
+            for (name, size, direction) in [("default", PaddrStyle.Metrics.defaultWindowSize, LayoutDirection.leftToRight),
+                                           ("narrow-rtl", NSSize(width: 680, height: 740), .rightToLeft)] {
+                try await exportReadmeWindow(
+                    ConfigurationView(model: model, managesWindowSize: name == "default").environment(\.layoutDirection, direction),
+                    scheme: scheme, appearance: appearance,
+                    to: directory.appendingPathComponent("compact-configuration-\(name)-\(theme).png"),
+                    expectsFullDocumentFit: name == "default", evidenceSize: size)
+            }
+        }
+    }
+
     /// README captures use production window construction, not the deliberately
     /// fixed viewports above that exercise constrained/responsive layouts.
     func testExportReadmeWindowEvidence() async throws {
@@ -248,9 +284,16 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                         XCTAssertEqual(view.bounds.width, width, accuracy: 0.5)
                         let scroll = self.configurationScrollView(in: view)
                         XCTAssertNotNil(scroll)
-                        if let scroll, let document = scroll.documentView {
-                            XCTAssertLessThanOrEqual(document.bounds.height, scroll.contentSize.height + 1,
-                                "The fixed-width evidence must contain the complete rear row")
+                        if let scroll {
+                            let rearMenus = self.descendants(of: PaddrPopUpButton.self, in: view).filter {
+                                $0.accessibilityLabel()?.contains("rear button") == true
+                            }
+                            XCTAssertEqual(rearMenus.count, 4)
+                            for menu in rearMenus {
+                                let rect = self.frame(of: menu, in: scroll.contentView)
+                                XCTAssertTrue(scroll.contentView.bounds.insetBy(dx: -1, dy: -1).contains(rect),
+                                    "The fixed-width evidence must contain each rear selector; sensor settings below may scroll")
+                            }
                         }
                     })
             }
@@ -966,8 +1009,15 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 XCTAssertEqual(modeSelectors(in: host).count, 2)
                 let documentHeight = await configurationContentHeight(
                     model: model, width: scrollView.contentSize.width)
-                XCTAssertLessThanOrEqual(documentHeight, scrollView.contentSize.height + 0.5,
-                    "The opening size must include both editors, rear buttons, and the bottom workspace inset: \(left)/\(right)")
+                // The controller-wide sensor sections intentionally exceed the old fixed
+                // 600-point fixture. Fit the measured document plus its fixed chrome,
+                // as the application's sizing bridge does; smaller screens scroll.
+                let fixedChromeHeight = host.bounds.height - scrollView.contentSize.height
+                host.frame.size.height = ceil(documentHeight + fixedChromeHeight + 1)
+                await settle(host, passes: 12)
+                let fittedScrollView = try XCTUnwrap(configurationScrollView(in: host))
+                XCTAssertLessThanOrEqual(documentHeight, fittedScrollView.contentSize.height + 0.5,
+                    "The fitted size must include both editors, rear buttons, gyro and grip settings, and the bottom workspace inset: \(left)/\(right)")
                 for control in descendants(of: NSControl.self, in: host) {
                     let rect = frame(of: control, in: host)
                     XCTAssertGreaterThanOrEqual(rect.minX, -0.5, "\(left)/\(right)")
@@ -1025,7 +1075,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 await settle(host)
                 XCTAssertLessThanOrEqual(host.fittingSize.width, width + 0.5)
                 XCTAssertGreaterThan(host.fittingSize.height, 0)
-                XCTAssertEqual(descendants(of: NSSwitch.self, in: host).count, 1)
+                XCTAssertEqual(descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.count, 1)
                 for control in descendants(of: NSControl.self, in: host) {
                     let rect = frame(of: control, in: host)
                     XCTAssertGreaterThanOrEqual(rect.minX, -0.5)
@@ -1042,7 +1092,8 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             let model = try makeEditableMenuModel(hasSystemAccess: granted)
             let initialized = await waitUntil { model.isInitialized }
             XCTAssertTrue(initialized)
-            XCTAssertEqual(ApplyBarView(model: model).showsStatusMessage, granted)
+            XCTAssertEqual(ApplyBarView(model: model).showsStatusMessage, granted,
+                "Missing-puck guidance remains actionable once access is granted")
             for textSize in [DynamicTypeSize.medium, .accessibility5] {
                 let host = NSHostingView(rootView: ApplyBarView(model: model)
                     .environment(\.dynamicTypeSize, textSize)
@@ -1063,13 +1114,13 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 }
                 XCTAssertFalse(elements.contains { $0.accessibilityIdentifier?() == "paddr.status.battery" },
                     "Unavailable battery data belongs in connection details, not the footer")
-                XCTAssertEqual(descendants(of: NSSwitch.self, in: host).count, 1)
+                XCTAssertEqual(descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.count, 1)
                 XCTAssertLessThanOrEqual(host.fittingSize.width, 680.5)
             }
         }
     }
 
-    func testEnableOutputRemainsANativeSwitchWhenDraftHasPendingChanges() async throws {
+    func testEnableOutputUsesSquaredNativeSwitchWhenDraftHasPendingChanges() async throws {
         let model = try makeEditableMenuModel(hasSystemAccess: true)
         let initialized = await waitUntil { model.isInitialized }
         XCTAssertTrue(initialized)
@@ -1084,19 +1135,60 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         let host = NSHostingView(rootView: bar)
         host.frame = NSRect(x: 0, y: 0, width: 680, height: 350)
         await settle(host)
-        let toggle = try XCTUnwrap(descendants(of: NSSwitch.self, in: host).first)
-        XCTAssertEqual(descendants(of: NSSwitch.self, in: host).count, 1)
+        let toggle = try XCTUnwrap(descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.first)
+        XCTAssertEqual(descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.count, 1)
         XCTAssertEqual(toggle.isEnabled, model.canToggleOutput)
         XCTAssertEqual(toggle.state, .off)
+        XCTAssertTrue(toggle.accessibilityHelp()?.contains("Turning on saves your pending changes.") == true)
         toggle.performClick(nil)
         let enabled = await waitUntil { model.isEnabled && !model.hasUnsavedChanges }
         XCTAssertTrue(enabled, "The existing dirty-enable path must save before activation")
         await settle(host)
-        XCTAssertTrue(toggle === descendants(of: NSSwitch.self, in: host).first)
+        XCTAssertTrue(toggle === descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.first)
         XCTAssertEqual(toggle.state, .on)
+        XCTAssertEqual(toggle.accessibilityHelp(), "Enable or disable output")
         XCTAssertFalse(ApplyBarView(model: model).showsPendingSaveHint)
         XCTAssertNotEqual(String(localized: ApplyBarView(model: model).outputValue), "Active",
             "Enabling without a connected receiver must not claim active output")
+    }
+
+    func testOutputSwitchVisibleTrackSharesSaveTrailingEdgeAcrossReflowAndDirection() async throws {
+        let model = try makeEditableMenuModel(hasSystemAccess: true)
+        let initialized = await waitUntil { model.isInitialized }
+        XCTAssertTrue(initialized)
+        for width in [CGFloat(680), 800, 996, 1080] {
+            for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+                for textSize in [DynamicTypeSize.medium, .accessibility5] {
+                    let host = NSHostingView(rootView: ConfigurationView(model: model)
+                        .environment(\.accessibilityEnabled, true)
+                        .environment(\.layoutDirection, direction)
+                        .environment(\.dynamicTypeSize, textSize))
+                    let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: 900),
+                        styleMask: [.titled, .closable], backing: .buffered, defer: false)
+                    window.isReleasedWhenClosed = false
+                    window.contentView = host
+                    host.frame = NSRect(x: 0, y: 0, width: width, height: 900)
+                    await settle(host, passes: 12)
+                    let save = try XCTUnwrap(accessibilityElements(in: host).first {
+                        $0.accessibilityIdentifier?() == "paddr.profile.save-apply"
+                    })
+                    let saveFrame = try XCTUnwrap(save.accessibilityFrame?())
+                    let output = try XCTUnwrap(descendants(of: PaddrTuningSwitchButton.self, in: host).first {
+                        $0.accessibilityIdentifier() == "paddr.toolbar.output"
+                    })
+                    let trackFrame = window.convertToScreen(output.convert(output.trackRect, to: nil))
+                    if direction == .leftToRight {
+                        XCTAssertEqual(trackFrame.maxX, saveFrame.maxX, accuracy: 0.5)
+                    } else {
+                        XCTAssertEqual(trackFrame.minX, saveFrame.minX, accuracy: 0.5)
+                    }
+                    XCTAssertTrue(window.frame.contains(output.accessibilityFrame()),
+                        "Visual alignment must keep the complete hit/focus reservation inside the window")
+                    window.close()
+                }
+            }
+        }
+        XCTAssertFalse(model.isEnabled, "Measuring alignment never activates output")
     }
 
     func testSaveAndOutputControlsRemainVisibleWhileMappingDocumentScrolls() async throws {
@@ -1126,7 +1218,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             $0.accessibilityIdentifier?() == "paddr.profile.save-apply"
         })
         XCTAssertEqual(save.accessibilityRole?(), .button)
-        let output = try XCTUnwrap(descendants(of: NSSwitch.self, in: host).first)
+        let output = try XCTUnwrap(descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.first)
         XCTAssertFalse(output.isDescendant(of: document))
         let saveFrame = try XCTUnwrap(save.accessibilityFrame?())
         let outputFrame = output.accessibilityFrame()
@@ -1142,7 +1234,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             $0.accessibilityIdentifier?() == "paddr.profile.save-apply"
         })
         XCTAssertEqual(scrolledSave.accessibilityFrame?(), saveFrame)
-        XCTAssertTrue(output === descendants(of: NSSwitch.self, in: host).first)
+        XCTAssertTrue(output === descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.first)
         XCTAssertEqual(output.accessibilityFrame(), outputFrame)
         for rect in [saveFrame, outputFrame] {
             XCTAssertTrue(window.frame.contains(rect), "Persistent actions must stay inside the window")

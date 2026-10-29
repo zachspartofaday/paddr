@@ -20,6 +20,18 @@ struct ConfigurationContentView: View {
                 configuration: $model.configuration.rearButtons,
                 isEditable: model.canEditActiveProfile
             )
+            Divider()
+            ControllerSensorsConfigurationView(
+                gyro: $model.configuration.gyro,
+                gripTouch: $model.configuration.gripTouch,
+                sensorStatus: model.sensorStatus,
+                isEditable: model.canEditActiveProfile,
+                isOutputEnabled: model.isEnabled,
+                savedGyroEnabled: model.savedConfiguration.gyro.enabled,
+                canRecalibrate: model.canRecalibrateGyro,
+                calibrationUnavailableReason: model.gyroCalibrationUnavailableReason,
+                recalibrate: { model.requestGyroCalibration() }
+            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .paddrCard()

@@ -2149,6 +2149,7 @@
     "Connection details": {},
     "Done": {},
     "Enable Paddr in Accessibility, then enable output again.": {},
+    "Enable": {},
     "Enable output": {},
     "No additional tuning enabled": {},
     "Open setup…": {},
@@ -2227,6 +2228,307 @@
     },
     "Higher values increase fast-motion gain. Turning acceleration off keeps your strength setting.": {
       "comment": "Pointer acceleration switch and strength control.",
+      "extractionState": "manual"
+    },
+    "%arg pt/°": {
+      "comment": "Gyro sensitivity in cursor points per degree of controller rotation."
+    },
+    "%arg °/s": {
+      "comment": "Gyro noise threshold in degrees per second."
+    },
+    "Gyro tuning": {},
+    "Hold an action while your hand touches a grip. This senses contact, not squeeze pressure.": {},
+    "Ignores rotation slower than this rate after stationary calibration.": {},
+    "On enabling output, hold the controller still to calibrate. Always-on aiming starts after calibration.": {},
+    "On enabling output, hold the controller still to calibrate. Release the activation touch, then touch again to aim.": {},
+    "The Paddr menu shows receiver and controller status with the Enable output switch. When output starts, release both trackpads and any assigned rear buttons or grips to return to neutral before mapped input activates.": {},
+    "Touch holds the assigned action; releasing the grip releases it. A grip can also activate gyro aiming.": {},
+    "Grip touch": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Left grip": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Right grip": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Left grip touch action": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Right grip touch action": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Gyro to mouse": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Activate while": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Gyro activation": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Gyro sensitivity": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Vertical sensitivity": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Invert horizontal": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Invert vertical": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Gyro smoothing": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Noise threshold": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Touching": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Released": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Right grip touched": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Left grip touched": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Either grip touched": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Either trackpad touched": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Always": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Motion data unavailable. Connect the controller through the puck.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Motion data unavailable. Paddr waits for the controller to send it.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Motion data available. Gyro output is off in this draft.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Waiting for output to arm before calibration.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Calibrating. Keep the controller still.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Calibrated. Waiting for gyro activation.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Gyro aiming active.": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Release both trackpads and any assigned rear buttons or grips": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Release both trackpads and any assigned rear buttons or grips to activate output…": {
+      "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
+      "extractionState": "manual"
+    },
+    "Enable output to calibrate and aim. Save & Apply any changes first.": {
+      "comment": "Gyro status while motion is available and mapped output is off.",
+      "extractionState": "manual"
+    },
+    "%arg°": {
+      "comment": "Controller holding angle: 0 degrees is flat; 90 degrees is upright."
+    },
+    "0° flat": {},
+    "90° upright": {},
+    "Calibrate Again": {},
+    "Match how you hold the controller: 0° is flat and 90° is upright.": {},
+    "About grip touch": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "About gyro aiming": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Holding angle": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Calibration needed": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Calibrating—hold still": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Motion unavailable": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Aiming": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Connect the controller and wait for fresh motion data.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Enable output, then hold the controller still.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Connect the controller, enable output, then hold still.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Keep the controller still until Ready appears.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Release assigned controls to activate output, then hold still.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Wait for the current profile operation to finish before calibrating.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Enable gyro in an editable profile, then choose Save & Apply.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Enable output before calibrating gyro.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Connect the controller and wait for fresh motion data before calibrating.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Release assigned controls to activate output before calibrating.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Calibration is in progress. Keep the controller still.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Keep the controller still while a fresh gyro calibration is measured.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Touching a grip holds its assigned key or mouse button; releasing it releases that action. This senses hand contact, not squeeze pressure. A grip can also activate gyro aiming.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Gyro aiming turns controller rotation into mouse movement. Choose a touch to activate it, or Always. Save & Apply changes before enabling output. Keep the controller still for calibration. With touch activation, release the control after enabling output, then touch again to aim. Calibrate Again resets sensor bias without changing your mappings; it requires active output, fresh motion data and no profile operation in progress.": {
+      "comment": "Controller sensor settings, calibration guidance, or information popover.",
+      "extractionState": "manual"
+    },
+    "Save & Apply needed": {
+      "comment": "Gyro settings are enabled only in the unsaved profile draft.",
+      "extractionState": "manual"
+    },
+    "Choose Save & Apply to enable gyro calibration.": {
+      "comment": "Gyro settings are enabled only in the unsaved profile draft.",
+      "extractionState": "manual"
+    },
+    "%arg\n\n%arg": {
+      "comment": "Current gyro instruction followed by its general help text.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$arg\n\n%2$arg"
+          }
+        }
+      }
+    },
+    "Calibrated, Ready": {
+      "comment": "Gyro calibration completed and aiming is ready for activation.",
+      "extractionState": "manual"
+    },
+    "Activation": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Calibrate": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Calibrate Gyro": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Put the controller down on a stable surface, or hold it still. Choose Calibrate, then keep it still until Calibrated, Ready appears.": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Put the controller down on a stable surface, or hold it still, then choose Calibrate.": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Enable output, then choose Calibrate.": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Connect the controller, enable output, then choose Calibrate.": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Keep the controller still until Calibrated, Ready appears.": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Gyro aiming turns controller rotation into mouse movement. Choose a touch for Activation, or Always. Save & Apply changes and enable output, then choose Calibrate. Put the controller down on a stable surface, or hold it still, before starting calibration. With touch activation, release the control after calibration, then touch again to aim. Calibration resets sensor bias without changing your mappings; it requires active output, fresh motion data and no profile operation in progress.": {
+      "comment": "Controller sensor settings and explicit gyro calibration guidance.",
+      "extractionState": "manual"
+    },
+    "Tilt for horizontal aiming": {
+      "comment": "Gyro tuning switch: use side-to-side tilt instead of turning to control horizontal mouse movement."
+    },
+    "Use side-to-side tilt instead of turning for horizontal aiming. Holding angle applies to both modes; up and down aiming is unchanged.": {
+      "comment": "Help for the horizontal gyro tilt setting; vertical aiming is unaffected and holding-angle compensation still applies."
+    },
+    "Horizontal sensitivity": {
+      "comment": "Independent horizontal gyro gain; does not change the vertical or base sensitivity.",
+      "extractionState": "manual"
+    },
+    "Adjusts left and right aiming without changing up and down aiming. Defaults to 2.5×.": {
+      "comment": "Independent horizontal gyro gain; does not change the vertical or base sensitivity.",
       "extractionState": "manual"
     }
   },

@@ -78,6 +78,7 @@ public final class PaddrMenuModel {
     public private(set) var receiverDescription: String?
     public private(set) var controllerConnected = false
     public private(set) var batteryStatus: ControllerBatteryStatus?
+    public private(set) var sensorStatus: ControllerSensorStatus?
     public private(set) var accessibilityTrusted = false
     public private(set) var inputMonitoringGranted = false
     public private(set) var status: MenuStatus = .off
@@ -185,6 +186,45 @@ public final class PaddrMenuModel {
             && (!profileDocumentSaveInProgress || replacesActiveConfiguration || isEnabled)
             && (isEnabled || !isReleasingOutput)
     }
+    /// Calibration is an in-place runtime request; it neither saves the profile nor
+    /// replaces the session, so existing held outputs keep their owners.
+    public var canRecalibrateGyro: Bool {
+        gyroCalibrationUnavailableReason == nil
+    }
+
+    public var gyroCalibrationUnavailableReason: LocalizedStringResource? {
+        guard terminationState == .idle, !terminationDecisionInProgress,
+              isInitialized, !profileOperationInProgress, !profileDocumentSaveInProgress,
+              !replacesActiveConfiguration, !activationCommitPending else {
+            return "Wait for the current profile operation to finish before calibrating."
+        }
+        guard savedConfiguration.gyro.enabled else {
+            return "Enable gyro in an editable profile, then choose Save & Apply."
+        }
+        guard isEnabled, !isReleasingOutput, outputGate.isEnabled else {
+            return "Enable output before calibrating gyro."
+        }
+        guard sessionConfiguration?.gyro.enabled == true else {
+            return "Wait for the current profile operation to finish before calibrating."
+        }
+        guard controllerConnected, sensorStatus?.motionAvailable == true else {
+            return "Connect the controller and wait for fresh motion data before calibrating."
+        }
+        guard sessionID != nil, isRunning else {
+            return "Release assigned controls to activate output before calibrating."
+        }
+        guard sensorStatus?.gyroStatus != .calibrating else {
+            return "Calibration is in progress. Keep the controller still."
+        }
+        return nil
+    }
+
+    @discardableResult
+    public func requestGyroCalibration() -> Bool {
+        guard canRecalibrateGyro else { return false }
+        return outputGate.requestGyroCalibration()
+    }
+
     public var canSaveAndApply: Bool {
         terminationState == .idle
             && !terminationDecisionInProgress
@@ -1389,7 +1429,7 @@ public final class PaddrMenuModel {
         switch event {
         case .stopped, .receiverRemoved, .receiverUnavailable, .failed:
             isSessionEnding = true
-        case .connecting, .waitingForController, .controllerConnected, .batteryUpdated,
+        case .connecting, .waitingForController, .controllerConnected, .batteryUpdated, .sensorsUpdated,
              .outputArmed, .outputReleased, .progress, .controllerLost:
             isSessionEnding = false
         }
@@ -1414,6 +1454,9 @@ public final class PaddrMenuModel {
                 if isEnabled { publishStatus(.waitingForNeutral) }
             case let .batteryUpdated(battery):
                 batteryStatus = battery
+            case let .sensorsUpdated(sensors):
+                guard controllerConnected else { break }
+                sensorStatus = sensors
             case .outputArmed:
                 guard controllerConnected, isEnabled else { break }
                 isRunning = true
@@ -1511,6 +1554,7 @@ public final class PaddrMenuModel {
     private func clearControllerPresence() {
         controllerConnected = false
         batteryStatus = nil
+        sensorStatus = nil
     }
 
     private var currentStatusGeneration: UInt64 {

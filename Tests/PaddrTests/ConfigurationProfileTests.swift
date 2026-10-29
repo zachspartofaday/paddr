@@ -58,7 +58,7 @@ final class ConfigurationProfileTests: XCTestCase {
             LegacyProfileDocumentShape.self,
             from: data
         )
-        XCTAssertEqual(oldBinaryShape.schemaVersion, 1)
+        XCTAssertEqual(oldBinaryShape.schemaVersion, 2)
         XCTAssertEqual(oldBinaryShape.activeProfileID, .default)
         XCTAssertTrue(oldBinaryShape.userProfiles.isEmpty)
     }
@@ -215,7 +215,7 @@ final class ConfigurationProfileTests: XCTestCase {
     }
 
     func testNewProfilesAndDefaultDuplicatesUseDecoupledTracking() throws {
-        XCTAssertEqual(ConfigurationProfileDocument.currentSchemaVersion, 1)
+        XCTAssertEqual(ConfigurationProfileDocument.currentSchemaVersion, 2)
         var document = ConfigurationProfileDocument.default
 
         let created = try document.createProfile(

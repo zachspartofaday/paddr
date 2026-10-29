@@ -1367,6 +1367,40 @@ final class MenuViewPresentationTests: XCTestCase {
         }
     }
 
+    func testFooterOmitsRedundantControllerAdviceButRetainsActionableMessages() async throws {
+        let store = BlockingProfileStore()
+        let session = PresentationSession()
+        let model = PaddrMenuModel(dependencies: dependencies(
+            store: store, session: session, receiver: "Fake receiver"
+        ))
+        defer { store.releaseSave() }
+        let started = await waitUntil { await session.startCount == 1 }
+        XCTAssertTrue(started)
+        for enabled in [false, true] {
+            model.isEnabled = enabled
+            XCTAssertEqual(model.readiness.nextAction, .connectController)
+            XCTAssertFalse(ApplyBarView(model: model).showsStatusMessage)
+            let host = NSHostingView(rootView: ApplyBarView(model: model)
+                .environment(\.accessibilityEnabled, true))
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 996, height: 250),
+                styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.contentView = host
+            await settle(host)
+            XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.status.next-action"))
+            let connection = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.status.details"))
+            let value = (connection as? NSObject)?.perform(NSSelectorFromString("accessibilityValue"))?.takeUnretainedValue() as? String
+            XCTAssertEqual(value, "Controller not connected")
+            window.close()
+        }
+        await session.send(.failed("Fixture output failure"))
+        let failed = await waitUntil { model.status.messageState == .failure }
+        XCTAssertTrue(failed)
+        XCTAssertTrue(ApplyBarView(model: model).showsStatusMessage,
+            "Suppressing repeated connection advice must preserve immediate failures")
+        _ = await session.stop()
+    }
+
     func testFooterPublishesBatteryWithoutOpeningConnectionDetails() async throws {
         let store = BlockingProfileStore()
         let session = PresentationSession()
@@ -1735,7 +1769,8 @@ final class MenuViewPresentationTests: XCTestCase {
         hostingView.frame.size.height = hostingView.fittingSize.height
         await settle(hostingView)
 
-        let switches = descendants(of: NSSwitch.self, in: hostingView)
+        let switches = descendants(of: PaddrTuningSwitchButton.self, in: hostingView)
+            .filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }
         let outputToggle = try XCTUnwrap(switches.first)
         XCTAssertEqual(switches.count, 1)
         XCTAssertEqual(
@@ -1751,11 +1786,15 @@ final class MenuViewPresentationTests: XCTestCase {
             String(localized: applyBar.outputToggleHelp),
             "Enable or disable output"
         )
-        XCTAssertEqual(outputToggle.accessibilityRoleDescription(), "switch")
+        XCTAssertEqual(outputToggle.accessibilitySubrole(), .switch)
+        XCTAssertEqual(outputToggle.accessibilityLabel(), "Enable output")
+        XCTAssertEqual(outputToggle.accessibilityHelp(), String(localized: applyBar.outputToggleHelp))
+        XCTAssertEqual(outputToggle.bounds.size, NSSize(width: PaddrStyle.Width.toggle, height: PaddrStyle.Control.height))
+        XCTAssertNil(outputToggle.accessibilityChildren(), "The output switch has one binary accessibility target")
         XCTAssertEqual(accessibilityIntegerValue(of: outputToggle), 0)
         XCTAssertEqual(outputToggle.isEnabled, model.canToggleOutput)
         XCTAssertEqual(
-            outputToggle.convert(outputToggle.bounds, to: hostingView).maxX,
+            outputToggle.convert(outputToggle.trackRect, to: hostingView).maxX,
             hostingView.bounds.maxX - PaddrStyle.Inset.chrome,
             accuracy: 1
         )

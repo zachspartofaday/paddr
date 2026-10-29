@@ -242,7 +242,7 @@ if ! cmp -s "$input_path" "$input_before"; then
     echo "Canonical conversion modified the legacy compatibility input." >&2
     exit 1
 fi
-if ! grep -Fq '"schemaVersion" : 1' "$profile_store" \
+if ! grep -Fq '"schemaVersion" : 2' "$profile_store" \
     || ! grep -Fq '"userProfiles"' "$profile_store"; then
     echo "--write-config did not emit the canonical profile document." >&2
     exit 1
@@ -596,4 +596,134 @@ if [ "$rear_status" -ne 2 ] || ! grep -Fq "Unknown key 'none'" "$stderr_path"; t
     exit 1
 fi
 
-printf '%s\n' "Verified strict loading, canonical profiles, UUID-name rejection, list/select, duplicate path rejection, and CLI mapping configuration."
+# Sensor mapping flags are pure configuration operations: no HID or output required.
+sensor_source="$test_dir/sensors-source.json"
+sensor_effective="$test_dir/sensors-effective.json"
+sensor_store="$test_dir/sensors-profiles.json"
+printf '%s\n' '{"left":{"mode":"scroll"},"right":{"mode":"mouse"}}' >"$sensor_source"
+cp "$sensor_source" "$sensor_source.before"
+"$cli_path" --config "$sensor_source" --show-config >"$stdout_path" 2>"$stderr_path"
+if [ "$(plutil -extract gyro.enabled raw -o - "$stdout_path")" != false ] \
+    || [ "$(plutil -extract gyro.horizontalUsesTilt raw -o - "$stdout_path")" != true ] \
+    || [ "$(plutil -extract gyro.horizontalScale raw -o - "$stdout_path")" != 2.500000 ] \
+    || [ "$(plutil -extract gyro.sensitivity raw -o - "$stdout_path")" != 10 ] \
+    || [ "$(plutil -extract gyro.verticalScale raw -o - "$stdout_path")" != 2.500000 ] \
+    || [ "$(plutil -extract gyro.holdingAngleDegrees raw -o - "$stdout_path")" != 45 ] \
+    || [ "$(plutil -extract gyro.smoothing raw -o - "$stdout_path")" != 0.250000 ] \
+    || [ "$(plutil -extract gyro.noiseThreshold raw -o - "$stdout_path")" != 1 ] \
+    || [ "$(plutil -extract gripTouch json -o - "$stdout_path")" != '{}' ]; then
+    echo "Legacy configurations did not default to gyro Off and grip None." >&2
+    exit 1
+fi
+"$cli_path" --config "$sensor_source" \
+    --gyro on --gyro-activation either-grip --gyro-sensitivity 8.5 \
+    --gyro-vertical-scale 1.5 --gyro-horizontal-scale 3.5 --gyro-holding-angle 45 --gyro-horizontal-tilt on --gyro-invert-horizontal on --gyro-invert-vertical off \
+    --gyro-smoothing 0.4 --gyro-noise-threshold 0.75 \
+    --left-grip ' F1 ' --right-grip mouse-right --show-config \
+    >"$sensor_effective" 2>"$stderr_path"
+if [ "$(plutil -extract gyro.enabled raw -o - "$sensor_effective")" != true ] \
+    || [ "$(plutil -extract gyro.activation raw -o - "$sensor_effective")" != either-grip ] \
+    || [ "$(plutil -extract gyro.sensitivity raw -o - "$sensor_effective")" != 8.500000 ] \
+    || [ "$(plutil -extract gyro.verticalScale raw -o - "$sensor_effective")" != 1.500000 ] \
+    || [ "$(plutil -extract gyro.horizontalScale raw -o - "$sensor_effective")" != 3.500000 ] \
+    || [ "$(plutil -extract gyro.holdingAngleDegrees raw -o - "$sensor_effective")" != 45 ] \
+    || [ "$(plutil -extract gyro.horizontalUsesTilt raw -o - "$sensor_effective")" != true ] \
+    || [ "$(plutil -extract gyro.invertHorizontal raw -o - "$sensor_effective")" != true ] \
+    || [ "$(plutil -extract gyro.invertVertical raw -o - "$sensor_effective")" != false ] \
+    || [ "$(plutil -extract gyro.smoothing raw -o - "$sensor_effective")" != 0.400000 ] \
+    || [ "$(plutil -extract gyro.noiseThreshold raw -o - "$sensor_effective")" != 0.750000 ] \
+    || [ "$(plutil -extract gripTouch.left raw -o - "$sensor_effective")" != f1 ] \
+    || [ "$(plutil -extract gripTouch.right raw -o - "$sensor_effective")" != mouse-right ]; then
+    echo "Gyro/grip flags did not retain independent values and normalized bindings." >&2
+    exit 1
+fi
+"$cli_path" --config "$sensor_effective" --write-config "$sensor_store" \
+    >"$stdout_path" 2>"$stderr_path"
+"$cli_path" --config "$sensor_store" --show-config >"$stdout_path" 2>"$stderr_path"
+if ! cmp -s "$sensor_effective" "$stdout_path" \
+    || [ "$(plutil -extract schemaVersion raw -o - "$sensor_store")" != 2 ]; then
+    echo "Canonical sensor export did not preserve settings in schema 2." >&2
+    exit 1
+fi
+"$cli_path" --config "$sensor_effective" --gyro off --left-grip none --right-grip NONE \
+    --show-config >"$stdout_path" 2>"$stderr_path"
+if [ "$(plutil -extract gyro.enabled raw -o - "$stdout_path")" != false ] \
+    || [ "$(plutil -extract gyro.sensitivity raw -o - "$stdout_path")" != 8.500000 ] \
+    || [ "$(plutil -extract gyro.horizontalUsesTilt raw -o - "$stdout_path")" != true ] \
+    || [ "$(plutil -extract gyro.horizontalScale raw -o - "$stdout_path")" != 3.500000 ] \
+    || [ "$(plutil -extract gripTouch json -o - "$stdout_path")" != '{}' ]; then
+    echo "Disabling sensors did not preserve gyro tuning or clear both grip bindings." >&2
+    exit 1
+fi
+"$cli_path" --config "$sensor_effective" --gyro-horizontal-tilt off --show-config >"$stdout_path" 2>"$stderr_path"
+if [ "$(plutil -extract gyro.horizontalUsesTilt raw -o - "$stdout_path")" != false ]; then
+    echo "Disabling horizontal tilt did not restore turning." >&2
+    exit 1
+fi
+# Forward schemas must fail read-only before an export can replace any destination.
+future_sensor_store="$test_dir/sensors-future.json"
+sed 's/"schemaVersion" : 2/"schemaVersion" : 3/' "$sensor_store" >"$future_sensor_store"
+cp "$future_sensor_store" "$future_sensor_store.before"
+sensor_export_sentinel="$test_dir/sensors-export-sentinel.json"
+printf '%s\n' '{"sentinel":"preserve on unsupported schema"}' >"$sensor_export_sentinel"
+cp "$sensor_export_sentinel" "$sensor_export_sentinel.before"
+set +e
+"$cli_path" --config "$future_sensor_store" --write-config "$sensor_export_sentinel" \
+    >"$stdout_path" 2>"$stderr_path"
+future_sensor_status=$?
+set -e
+if [ "$future_sensor_status" -ne 2 ] \
+    || ! grep -Fq 'Unsupported profile document schema version 3' "$stderr_path" \
+    || ! cmp -s "$future_sensor_store" "$future_sensor_store.before" \
+    || ! cmp -s "$sensor_export_sentinel" "$sensor_export_sentinel.before"; then
+    echo "Unsupported sensor document schema was not rejected without writes." >&2
+    exit 1
+fi
+for activation in right-grip left-grip either-grip either-pad always; do
+    "$cli_path" --config "$sensor_source" --gyro-activation "$activation" --show-config \
+        >"$stdout_path" 2>"$stderr_path"
+    if [ "$(plutil -extract gyro.activation raw -o - "$stdout_path")" != "$activation" ]; then
+        echo "Gyro activation '$activation' did not round trip." >&2
+        exit 1
+    fi
+done
+assert_invalid_sensor_option() {
+    set +e
+    "$cli_path" --config "$sensor_source" "$@" --show-config \
+        >"$stdout_path" 2>"$stderr_path"
+    sensor_status=$?
+    set -e
+    if [ "$sensor_status" -ne 2 ] || [ -s "$stdout_path" ] || [ ! -s "$stderr_path" ]; then
+        echo "Invalid sensor option '$*' did not fail before output/configuration publication." >&2
+        exit 1
+    fi
+}
+assert_invalid_sensor_option --gyro maybe
+assert_invalid_sensor_option --gyro-horizontal-tilt maybe
+assert_invalid_sensor_option --gyro-horizontal-scale 0
+assert_invalid_sensor_option --gyro-horizontal-scale 8.1
+assert_invalid_sensor_option --gyro-horizontal-scale nan
+assert_invalid_sensor_option --gyro-activation squeeze
+assert_invalid_sensor_option --gyro-sensitivity nan
+assert_invalid_sensor_option --gyro-sensitivity inf
+assert_invalid_sensor_option --gyro-sensitivity 0
+assert_invalid_sensor_option --gyro-sensitivity 41
+assert_invalid_sensor_option --gyro-vertical-scale 0
+assert_invalid_sensor_option --gyro-vertical-scale 5
+assert_invalid_sensor_option --gyro-holding-angle -1
+assert_invalid_sensor_option --gyro-holding-angle 91
+assert_invalid_sensor_option --gyro-holding-angle nan
+assert_invalid_sensor_option --gyro-smoothing -0.1
+assert_invalid_sensor_option --gyro-smoothing 1.1
+assert_invalid_sensor_option --gyro-noise-threshold -1
+assert_invalid_sensor_option --gyro-noise-threshold 6
+assert_invalid_sensor_option --gyro-invert-horizontal maybe
+assert_invalid_sensor_option --gyro-invert-vertical maybe
+assert_invalid_sensor_option --left-grip unknown-binding
+assert_invalid_sensor_option --right-grip ''
+if ! cmp -s "$sensor_source" "$sensor_source.before"; then
+    echo "Sensor configuration operations modified their read-only source." >&2
+    exit 1
+fi
+
+printf '%s\n' "Verified strict loading, canonical profiles, UUID-name rejection, list/select, duplicate path rejection, and pad/gyro/grip CLI configuration."

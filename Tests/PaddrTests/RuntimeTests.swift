@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 import Synchronization
 import XCTest
 @testable import PaddrCore
@@ -146,7 +147,7 @@ final class RuntimeTests: XCTestCase {
 
         XCTAssertEqual(result.termination, .stopped)
         XCTAssertEqual(result.summary, .init(reportCount: 0, actionCount: 0))
-        XCTAssertEqual(events.events, [.waitingForController("Fake receiver")])
+        XCTAssertEqual(events.lifecycleEvents, [.waitingForController("Fake receiver")])
     }
 
     func testFirstParsedReportConnectsOnceAndOutputArmsOnlyAfterNeutral() throws {
@@ -163,7 +164,7 @@ final class RuntimeTests: XCTestCase {
         let result = try run(hid: hid, clock: clock, output: output, events: events)
 
         XCTAssertEqual(result.summary.reportCount, 3)
-        XCTAssertEqual(events.events, [
+        XCTAssertEqual(events.lifecycleEvents, [
             .waitingForController("Fake receiver"),
             .controllerConnected,
             .outputArmed
@@ -185,7 +186,7 @@ final class RuntimeTests: XCTestCase {
         let result = try run(hid: hid, clock: clock, events: events)
 
         XCTAssertEqual(result.summary.reportCount, 1)
-        XCTAssertEqual(events.events, [
+        XCTAssertEqual(events.lifecycleEvents, [
             .waitingForController("Fake receiver"),
             .controllerConnected,
             .outputArmed,
@@ -208,8 +209,8 @@ final class RuntimeTests: XCTestCase {
         let result = try run(hid: hid, clock: clock, events: events)
 
         XCTAssertEqual(result.summary.reportCount, 2)
-        XCTAssertEqual(events.events.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
-        XCTAssertEqual(events.events.last, .controllerLost(.init(reportCount: 2, actionCount: 0)))
+        XCTAssertEqual(events.lifecycleEvents.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
+        XCTAssertEqual(events.lifecycleEvents.last, .controllerLost(.init(reportCount: 2, actionCount: 0)))
     }
 
     func testDelayedDrainRejectsExpiredPressBeforeMapping() throws {
@@ -276,10 +277,10 @@ final class RuntimeTests: XCTestCase {
             .key(space, isPressed: true),
             .key(space, isPressed: false)
         ])
-        XCTAssertEqual(events.events.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
-        XCTAssertTrue(events.events.contains(.controllerLost(.init(reportCount: 2, actionCount: 1))))
-        XCTAssertEqual(events.events.filter { $0 == .controllerConnected }.count, 2)
-        XCTAssertEqual(events.events.filter { $0 == .outputArmed }.count, 2)
+        XCTAssertEqual(events.lifecycleEvents.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
+        XCTAssertTrue(events.lifecycleEvents.contains(.controllerLost(.init(reportCount: 2, actionCount: 1))))
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .controllerConnected }.count, 2)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 2)
 
         let entries = timeline.entries
         let releaseIndex = try XCTUnwrap(entries.firstIndex(of: "key space up"))
@@ -367,7 +368,7 @@ final class RuntimeTests: XCTestCase {
             .key(space, isPressed: true),
             .key(space, isPressed: false)
         ])
-        XCTAssertEqual(events.events.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
+        XCTAssertEqual(events.lifecycleEvents.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
 
         let mouseClock = ManualUptimeClock()
         let mouseOutput = RecordingOutput()
@@ -418,7 +419,7 @@ final class RuntimeTests: XCTestCase {
         ) { error in
             XCTAssertTrue(String(describing: error).contains("release held outputs"))
         }
-        XCTAssertFalse(events.events.contains { if case .controllerLost = $0 { true } else { false } })
+        XCTAssertFalse(events.lifecycleEvents.contains { if case .controllerLost = $0 { true } else { false } })
         XCTAssertEqual(output.releaseAttempts.count, 5)
     }
 
@@ -497,7 +498,7 @@ final class RuntimeTests: XCTestCase {
             .key(space, isPressed: false)
         ])
         XCTAssertEqual(
-            events.events.filter { if case .controllerLost = $0 { true } else { false } }.count,
+            events.lifecycleEvents.filter { if case .controllerLost = $0 { true } else { false } }.count,
             1
         )
     }
@@ -527,7 +528,7 @@ final class RuntimeTests: XCTestCase {
             events: events
         )
 
-        XCTAssertEqual(outputReleasedEvents(in: events.events), [.outputReleased(revision: 1)])
+        XCTAssertEqual(outputReleasedEvents(in: events.lifecycleEvents), [.outputReleased(revision: 1)])
     }
 
     func testFailOnceDeviceRemovalReleasePreservesDeviceTermination() throws {
@@ -601,7 +602,7 @@ final class RuntimeTests: XCTestCase {
             events: events
         ))
 
-        XCTAssertEqual(outputReleasedEvents(in: events.events), [])
+        XCTAssertEqual(outputReleasedEvents(in: events.lifecycleEvents), [])
     }
 
     func testPartialNormalBatchPublishesNothingAndReleasesSuccessfulPrefix() throws {
@@ -675,8 +676,8 @@ final class RuntimeTests: XCTestCase {
         )
 
         XCTAssertEqual(output.actions, [])
-        XCTAssertEqual(events.events.filter { $0 == .controllerConnected }.count, 2)
-        XCTAssertEqual(events.events.filter { $0 == .outputArmed }.count, 2)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .controllerConnected }.count, 2)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 2)
     }
 
     func testGateDisabledReportsConnectControllerWithoutAnyOutput() throws {
@@ -702,11 +703,11 @@ final class RuntimeTests: XCTestCase {
             events: events
         )
 
-        XCTAssertTrue(events.events.contains(.controllerConnected))
-        XCTAssertFalse(events.events.contains(.outputArmed))
-        XCTAssertEqual(outputReleasedEvents(in: events.events).count, 1)
-        XCTAssertEqual(events.events.first, .waitingForController("Fake receiver"))
-        XCTAssertEqual(events.events.dropFirst().first, .outputReleased(revision: 0))
+        XCTAssertTrue(events.lifecycleEvents.contains(.controllerConnected))
+        XCTAssertFalse(events.lifecycleEvents.contains(.outputArmed))
+        XCTAssertEqual(outputReleasedEvents(in: events.lifecycleEvents).count, 1)
+        XCTAssertEqual(events.lifecycleEvents.first, .waitingForController("Fake receiver"))
+        XCTAssertEqual(events.lifecycleEvents.dropFirst().first, .outputReleased(revision: 0))
         XCTAssertEqual(output.actions, [])
         XCTAssertEqual(result.summary, TrackpadRunSummary(reportCount: 3, actionCount: 0))
     }
@@ -743,7 +744,7 @@ final class RuntimeTests: XCTestCase {
             .key(space, isPressed: true),
             .key(space, isPressed: false)
         ])
-        XCTAssertEqual(events.events.filter { $0 == .outputArmed }.count, 1)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 1)
     }
 
     func testGateDisableReleasesHeldOutputBeforeEmittingOutputReleased() throws {
@@ -794,11 +795,11 @@ final class RuntimeTests: XCTestCase {
             "action:\(TrackpadOutputAction.key(space, isPressed: false).description)",
             "event:outputReleased"
         ])
-        XCTAssertFalse(events.events.contains { event in
+        XCTAssertFalse(events.lifecycleEvents.contains { event in
             if case .controllerLost = event { return true }
             return false
         })
-        XCTAssertEqual(events.events.filter { $0 == .controllerConnected }.count, 1)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .controllerConnected }.count, 1)
         XCTAssertEqual(result.termination, .stopped)
     }
 
@@ -838,8 +839,8 @@ final class RuntimeTests: XCTestCase {
             .key(space, isPressed: true),
             .key(space, isPressed: false)
         ])
-        XCTAssertEqual(events.events.filter { $0 == .outputArmed }.count, 2)
-        XCTAssertEqual(outputReleasedEvents(in: events.events).count, 1)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 2)
+        XCTAssertEqual(outputReleasedEvents(in: events.lifecycleEvents).count, 1)
     }
 
     func testGateDisableWithNothingHeldStillEmitsOutputReleasedAndKeepsLiveness() throws {
@@ -864,8 +865,8 @@ final class RuntimeTests: XCTestCase {
         )
 
         XCTAssertEqual(output.actions, [])
-        XCTAssertEqual(outputReleasedEvents(in: events.events).count, 1)
-        XCTAssertEqual(events.events.filter { $0 == .controllerConnected }.count, 1)
+        XCTAssertEqual(outputReleasedEvents(in: events.lifecycleEvents).count, 1)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .controllerConnected }.count, 1)
     }
 
     func testControllerLossWhileGateDisabledPublishesLostWithoutOutput() throws {
@@ -890,13 +891,13 @@ final class RuntimeTests: XCTestCase {
 
         XCTAssertEqual(output.actions, [])
         XCTAssertEqual(
-            events.events.filter { event in
+            events.lifecycleEvents.filter { event in
                 if case .controllerLost = event { return true }
                 return false
             }.count,
             1
         )
-        XCTAssertEqual(events.events.filter { $0 == .controllerConnected }.count, 2)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .controllerConnected }.count, 2)
     }
 
     func testCoalescedEnableDisableStillAcknowledgesTheNewerDisabledRevision() throws {
@@ -924,9 +925,9 @@ final class RuntimeTests: XCTestCase {
         )
 
         XCTAssertEqual(output.actions, [])
-        XCTAssertTrue(events.events.contains(.outputReleased(revision: 0)))
-        XCTAssertTrue(events.events.contains(.outputReleased(revision: 2)))
-        XCTAssertEqual(outputReleasedEvents(in: events.events).count, 2)
+        XCTAssertTrue(events.lifecycleEvents.contains(.outputReleased(revision: 0)))
+        XCTAssertTrue(events.lifecycleEvents.contains(.outputReleased(revision: 2)))
+        XCTAssertEqual(outputReleasedEvents(in: events.lifecycleEvents).count, 2)
     }
 
     func testObserveOnlyStaysHardNoOutputEvenWithGateEnabled() throws {
@@ -987,8 +988,8 @@ final class RuntimeTests: XCTestCase {
             .key(space, isPressed: true),
             .key(space, isPressed: false)
         ])
-        XCTAssertEqual(events.events.filter { $0 == .controllerConnected }.count, 2)
-        XCTAssertEqual(events.events.filter { $0 == .outputArmed }.count, 2)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .controllerConnected }.count, 2)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 2)
     }
 
     func testWirelessConnectStatusMarksControllerLiveWithoutStateReports() throws {
@@ -1003,7 +1004,7 @@ final class RuntimeTests: XCTestCase {
         let result = try run(hid: hid, clock: clock, output: output, events: events)
 
         XCTAssertEqual(result.summary.reportCount, 0)
-        XCTAssertEqual(events.events, [
+        XCTAssertEqual(events.lifecycleEvents, [
             .waitingForController("Fake receiver"),
             .controllerConnected
         ])
@@ -1039,9 +1040,9 @@ final class RuntimeTests: XCTestCase {
             .key(space, isPressed: true),
             .key(space, isPressed: false)
         ])
-        XCTAssertEqual(events.events.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
-        XCTAssertTrue(events.events.contains(.controllerLost(.init(reportCount: 2, actionCount: 1))))
-        XCTAssertEqual(events.events.filter { $0 == .controllerConnected }.count, 2)
+        XCTAssertEqual(events.lifecycleEvents.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
+        XCTAssertTrue(events.lifecycleEvents.contains(.controllerLost(.init(reportCount: 2, actionCount: 1))))
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .controllerConnected }.count, 2)
 
         let entries = timeline.entries
         let releaseIndex = try XCTUnwrap(entries.firstIndex(of: "key space up"))
@@ -1063,9 +1064,9 @@ final class RuntimeTests: XCTestCase {
         let result = try run(hid: hid, clock: clock, events: events)
 
         XCTAssertEqual(result.summary.reportCount, 1)
-        XCTAssertEqual(events.events.filter { $0 == .controllerConnected }.count, 1)
-        XCTAssertEqual(events.events.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
-        XCTAssertEqual(events.events.last, .controllerLost(.init(reportCount: 1, actionCount: 0)))
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .controllerConnected }.count, 1)
+        XCTAssertEqual(events.lifecycleEvents.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
+        XCTAssertEqual(events.lifecycleEvents.last, .controllerLost(.init(reportCount: 1, actionCount: 0)))
     }
 
     func testWirelessDisconnectWhileNotLiveEmitsNothing() throws {
@@ -1078,7 +1079,7 @@ final class RuntimeTests: XCTestCase {
 
         _ = try run(hid: hid, clock: clock, events: events)
 
-        XCTAssertEqual(events.events, [.waitingForController("Fake receiver")])
+        XCTAssertEqual(events.lifecycleEvents, [.waitingForController("Fake receiver")])
     }
 
     func testWirelessConnectDrainedAfterDeadlineReleasesHeldOutputsFirst() throws {
@@ -1109,8 +1110,8 @@ final class RuntimeTests: XCTestCase {
             .key(space, isPressed: true),
             .key(space, isPressed: false)
         ])
-        XCTAssertEqual(events.events.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
-        XCTAssertEqual(events.events.filter { $0 == .controllerConnected }.count, 2)
+        XCTAssertEqual(events.lifecycleEvents.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .controllerConnected }.count, 2)
 
         let entries = timeline.entries
         let releaseIndex = try XCTUnwrap(entries.firstIndex(of: "key space up"))
@@ -1133,12 +1134,12 @@ final class RuntimeTests: XCTestCase {
         let result = try run(hid: hid, clock: clock, output: output, events: events)
 
         XCTAssertEqual(result.summary, .init(reportCount: 0, actionCount: 0))
-        XCTAssertEqual(events.events, [
+        XCTAssertEqual(events.lifecycleEvents, [
             .waitingForController("Fake receiver"),
             .controllerConnected,
             .batteryUpdated(.init(chargeState: .charging, percentage: 82))
         ])
-        XCTAssertFalse(events.events.contains(.outputArmed))
+        XCTAssertFalse(events.lifecycleEvents.contains(.outputArmed))
         XCTAssertEqual(output.actions, [])
     }
 
@@ -1159,7 +1160,7 @@ final class RuntimeTests: XCTestCase {
         let result = try run(hid: hid, clock: clock, output: output, events: events)
 
         XCTAssertEqual(result.summary, .init(reportCount: 0, actionCount: 0))
-        XCTAssertEqual(events.events, [
+        XCTAssertEqual(events.lifecycleEvents, [
             .waitingForController("Fake receiver"),
             .controllerConnected,
             .batteryUpdated(.init(chargeState: .discharging, percentage: 25)),
@@ -1167,7 +1168,7 @@ final class RuntimeTests: XCTestCase {
             .controllerConnected,
             .batteryUpdated(.init(chargeState: .unknown(0xFE), percentage: 75))
         ])
-        XCTAssertFalse(events.events.contains(.outputArmed))
+        XCTAssertFalse(events.lifecycleEvents.contains(.outputArmed))
         XCTAssertEqual(output.actions, [])
     }
 
@@ -1202,9 +1203,9 @@ final class RuntimeTests: XCTestCase {
             .key(space, isPressed: true),
             .key(space, isPressed: false)
         ])
-        XCTAssertEqual(events.events.filter { $0 == .controllerConnected }.count, 1)
-        XCTAssertEqual(events.events.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
-        XCTAssertEqual(events.events.last, .controllerLost(.init(reportCount: 2, actionCount: 1)))
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .controllerConnected }.count, 1)
+        XCTAssertEqual(events.lifecycleEvents.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
+        XCTAssertEqual(events.lifecycleEvents.last, .controllerLost(.init(reportCount: 2, actionCount: 1)))
     }
 
     func testControllerAdoptsNewSlotAfterLoss() throws {
@@ -1220,8 +1221,8 @@ final class RuntimeTests: XCTestCase {
         let result = try run(hid: hid, clock: clock, events: events)
 
         XCTAssertEqual(result.summary.reportCount, 2)
-        XCTAssertEqual(events.events.filter { $0 == .controllerConnected }.count, 2)
-        XCTAssertEqual(events.events.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .controllerConnected }.count, 2)
+        XCTAssertEqual(events.lifecycleEvents.filter { if case .controllerLost = $0 { true } else { false } }.count, 1)
     }
 
     func testUnpadded46ByteStateReportDrivesControllerConnection() throws {
@@ -1235,7 +1236,7 @@ final class RuntimeTests: XCTestCase {
         let result = try run(hid: hid, clock: clock, events: events)
 
         XCTAssertEqual(result.summary.reportCount, 1)
-        XCTAssertEqual(events.events, [
+        XCTAssertEqual(events.lifecycleEvents, [
             .waitingForController("Fake receiver"),
             .controllerConnected,
             .outputArmed
@@ -1583,7 +1584,7 @@ final class RuntimeTests: XCTestCase {
         let f1 = try KeyCatalog.resolve("f1")
         XCTAssertEqual(output.actions, [.key(f1, isPressed: true), .key(f1, isPressed: false),
                                         .key(f1, isPressed: true), .key(f1, isPressed: false)])
-        XCTAssertEqual(events.events.filter { $0 == .outputArmed }.count, 2)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 2)
     }
 
     func testRearHoldsReleaseOnEveryLossBoundaryAndRetryFailedRelease() throws {
@@ -1638,7 +1639,7 @@ final class RuntimeTests: XCTestCase {
         let f1 = try KeyCatalog.resolve("f1")
         XCTAssertEqual(output.actions, [.key(f1, isPressed: true), .key(f1, isPressed: false),
                                         .key(f1, isPressed: true), .key(f1, isPressed: false)])
-        XCTAssertEqual(events.events.filter { $0 == .outputArmed }.count, 2)
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 2)
     }
 
     func testRuntimeChecksStopAndDurationInsideTransportBatch() throws {
@@ -1723,6 +1724,381 @@ final class RuntimeTests: XCTestCase {
         XCTAssertEqual(result.summary.actionCount, 2)
         XCTAssertEqual(diagnostics.values, ["key f3 down", "key f3 up"])
         XCTAssertTrue(output.actions.isEmpty)
+    }
+
+    func testGripBindingsRequireNeutralAndShareCustodyWithPadAndRear() throws {
+        let clock = ManualUptimeClock()
+        let output = RecordingOutput()
+        let events = EventRecorder()
+        var config = PaddrConfiguration.default
+        config.left.mode = .dpad
+        config.left.dpadKeys.up = "space"
+        config.rearButtons.l4 = "space"
+        config.gripTouch = .init(left: "space", right: "code:49")
+        let hid = ScriptedHID(clock: clock, steps: [
+            .report(sensorRuntimeReport(grips: 0x3000_0000), at: 0),
+            .report(sensorRuntimeReport(), at: 4_000_000),
+            .report(sensorRuntimeReport(grips: 0x3000_0000), at: 8_000_000),
+            .report(sensorRuntimeReport(grips: 0x3002_0000, padHeld: true), at: 12_000_000),
+            .report(sensorRuntimeReport(grips: 0x0002_0000, padHeld: true), at: 16_000_000),
+            .report(sensorRuntimeReport(grips: 0x0002_0000), at: 20_000_000),
+            .report(sensorRuntimeReport(), at: 24_000_000)
+        ])
+        _ = try run(configuration: config, hid: hid, clock: clock, output: output, events: events)
+        let key = try KeyCatalog.resolve("space")
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 1)
+        XCTAssertEqual(output.actions, [.key(key, isPressed: true), .key(key, isPressed: false)])
+    }
+
+    func testStaleGripReleasesWhileBatteryAndLinkStayLiveAndMustReleaseToRearm() throws {
+        for binding in ["space", "mouse-left"] {
+            let clock = ManualUptimeClock()
+            let output = RecordingOutput()
+            let events = EventRecorder()
+            var config = PaddrConfiguration.default
+            config.gripTouch.left = binding
+            let hid = ScriptedHID(clock: clock, steps: [
+                .report(sensorRuntimeReport(), at: 0),
+                .report(sensorRuntimeReport(grips: 0x2000_0000), at: 4_000_000),
+                .report(batteryReport(chargeState: 1, percentage: 95), at: 104_000_000),
+                .report([0x46, 2], at: 108_000_000),
+                .report(sensorRuntimeReport(grips: 0x2000_0000), at: 112_000_000),
+                .report(sensorRuntimeReport(), at: 116_000_000),
+                .report(sensorRuntimeReport(grips: 0x2000_0000), at: 120_000_000),
+                .remove
+            ])
+            _ = try run(configuration: config, hid: hid, clock: clock, output: output, events: events)
+            let press: TrackpadOutputAction = binding == "space"
+                ? .key(try KeyCatalog.resolve("space"), isPressed: true) : .mouseButton(.left, isPressed: true)
+            let release: TrackpadOutputAction = binding == "space"
+                ? .key(try KeyCatalog.resolve("space"), isPressed: false) : .mouseButton(.left, isPressed: false)
+            XCTAssertEqual(output.actions, [press, release, press, release])
+            XCTAssertFalse(events.lifecycleEvents.contains { if case .controllerLost = $0 { true } else { false } })
+            XCTAssertTrue(events.events.contains(.sensorsUpdated(.init(grips: nil, motionAvailable: false, gyroStatus: .off))))
+        }
+    }
+
+    func testGyroRuntimeCalibrationThenRelativeMovementAndGateReset() throws {
+        let clock = ManualUptimeClock()
+        let output = RecordingOutput()
+        let events = EventRecorder()
+        let gate = OutputGate(enabled: true)
+        var config = PaddrConfiguration.default
+        config.gyro = .init(enabled: true, sensitivity: 12, horizontalScale: 2, holdingAngleDegrees: 0,
+            horizontalUsesTilt: false, smoothing: 0)
+        var steps: [ScriptedHID.Step] = [
+            .report(sensorRuntimeReport(), at: 0),
+            .perform { XCTAssertTrue(gate.requestGyroCalibration()) }, .wake(at: 0)
+        ]
+        steps += (1...130).map { index in
+            .report(sensorRuntimeReport(tick: UInt32(index * 4000)), at: UInt64(index) * 4_000_000)
+        }
+        steps += [
+            .report(sensorRuntimeReport(tick: 524_000, grips: 0x1000_0000), at: 524_000_000),
+            .report(sensorRuntimeReport(tick: 528_000, grips: 0x1000_0000, gyroY: 164), at: 528_000_000),
+            .perform { gate.setEnabled(false) }, .wake(at: 532_000_000),
+            .perform { gate.setEnabled(true) },
+            .report(sensorRuntimeReport(tick: 536_000, grips: 0x1000_0000, gyroY: 164), at: 536_000_000),
+            .report(sensorRuntimeReport(tick: 540_000, grips: 0x1000_0000, gyroY: 164), at: 540_000_000),
+            .remove
+        ]
+        let hid = ScriptedHID(clock: clock, steps: steps)
+        _ = try run(configuration: config, outputGate: gate, hid: hid, clock: clock, output: output, events: events)
+        XCTAssertEqual(output.actions.count, 1)
+        guard case let .mouseMove(dx, dy) = try XCTUnwrap(output.actions.first) else { return XCTFail("Expected gyro mouse output") }
+        XCTAssertEqual(dx, Double(164) / 32768 * 2000 * 0.004 * 12 * 2, accuracy: 1e-8)
+        XCTAssertEqual(dy, 0)
+        XCTAssertTrue(events.events.contains { if case .sensorsUpdated(let value) = $0 { value.gyroStatus == .ready } else { false } })
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 2)
+    }
+
+    func testTiltHorizontalRuntimeMatchesOperatorConfirmedWireAxis() throws {
+        let clock = ManualUptimeClock()
+        let output = RecordingOutput()
+        let events = EventRecorder()
+        let gate = OutputGate(enabled: true)
+        var configuration = PaddrConfiguration.default
+        configuration.gyro = .init(enabled: true, activation: .always, sensitivity: 12, horizontalScale: 2,
+            holdingAngleDegrees: 0, horizontalUsesTilt: true,
+            smoothing: 0, noiseThreshold: 0)
+        var steps: [ScriptedHID.Step] = [.report(sensorRuntimeReport(), at: 0),
+            .perform { XCTAssertTrue(gate.requestGyroCalibration()) }, .wake(at: 0)]
+        steps += (1...130).map { index in
+            .report(sensorRuntimeReport(tick: UInt32(index * 4000)), at: UInt64(index) * 4_000_000)
+        }
+        steps += [
+            .report(sensorRuntimeReport(tick: 524_000, gyroY: 164), at: 524_000_000),
+            .report(sensorRuntimeReport(tick: 528_000, gyroZ: 164), at: 528_000_000),
+            .perform { gate.setEnabled(false) }, .wake(at: 532_000_000), .remove
+        ]
+        _ = try run(configuration: configuration, outputGate: gate,
+            hid: ScriptedHID(clock: clock, steps: steps), clock: clock, output: output, events: events)
+        XCTAssertEqual(output.actions.count, 1, "Turning must not move the cursor in flat tilt mode")
+        guard case let .mouseMove(dx, dy) = try XCTUnwrap(output.actions.first) else {
+            return XCTFail("Expected tilt-driven mouse movement")
+        }
+        XCTAssertEqual(dx, -Double(164) / 32768 * 2000 * 0.004 * 12 * 2, accuracy: 1e-8)
+        XCTAssertEqual(dy, 0)
+        XCTAssertFalse(gate.isEnabled)
+    }
+
+    func testSensorTelemetryWorksWithOutputOffCoalescesAndExpires() throws {
+        let clock = ManualUptimeClock()
+        let output = RecordingOutput()
+        let events = EventRecorder()
+        let gate = OutputGate(enabled: false)
+        var steps: [ScriptedHID.Step] = []
+        for index in 0...100 {
+            let grips: UInt32 = index % 2 == 0 ? 0x2000_0000 : 0x1000_0000
+            let bytes = sensorRuntimeReport(tick: UInt32(index * 4000), grips: grips)
+            steps.append(.report(bytes, at: UInt64(index) * 4_000_000))
+        }
+        steps += [.wake(at: 500_000_000), .report([0x46, 2], at: 504_000_000), .stop]
+        let hid = ScriptedHID(clock: clock, steps: steps)
+        _ = try run(outputGate: gate, hid: hid, clock: clock, output: output, events: events)
+        let sensorValues = events.events.compactMap { event -> ControllerSensorStatus? in
+            if case let .sensorsUpdated(value) = event { return value }
+            return nil
+        }
+        XCTAssertFalse(sensorValues.isEmpty)
+        XCTAssertLessThanOrEqual(sensorValues.count, 7)
+        XCTAssertEqual(sensorValues.first?.grips, .init(leftTouched: true))
+        XCTAssertEqual(sensorValues.first?.motionAvailable, true)
+        XCTAssertEqual(sensorValues.last, .init())
+        XCTAssertTrue(output.actions.isEmpty)
+        XCTAssertFalse(events.lifecycleEvents.contains(.outputArmed))
+    }
+
+    func testGripGateDisableAndReconnectRequireFreshNeutralAndObserveOnlyPostsNothing() throws {
+        for observeOnly in [false, true] {
+            let clock = ManualUptimeClock()
+            let output = RecordingOutput()
+            let events = EventRecorder()
+            let gate = OutputGate(enabled: true)
+            var config = PaddrConfiguration.default
+            config.gripTouch.right = "mouse-right"
+            let hid = ScriptedHID(clock: clock, steps: [
+                .report(sensorRuntimeReport(), at: 0),
+                .report(sensorRuntimeReport(grips: 0x1000_0000), at: 4_000_000),
+                .perform { gate.setEnabled(false) }, .wake(at: 8_000_000),
+                .perform { gate.setEnabled(true) },
+                .report(sensorRuntimeReport(grips: 0x1000_0000), at: 12_000_000),
+                .report(sensorRuntimeReport(), at: 16_000_000),
+                .report(sensorRuntimeReport(grips: 0x1000_0000), at: 20_000_000),
+                .report([0x46, 1], at: 24_000_000),
+                .report(sensorRuntimeReport(grips: 0x1000_0000), at: 28_000_000),
+                .report(sensorRuntimeReport(), at: 32_000_000),
+                .report(sensorRuntimeReport(grips: 0x1000_0000), at: 36_000_000), .remove
+            ])
+            _ = try run(configuration: config, observeOnly: observeOnly, outputGate: gate,
+                        hid: hid, clock: clock, output: output, events: events)
+            XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 3)
+            let pair: [TrackpadOutputAction] = [.mouseButton(.right, isPressed: true), .mouseButton(.right, isPressed: false)]
+            XCTAssertEqual(output.actions, observeOnly ? [] : pair + pair + pair)
+        }
+    }
+
+    func testGripReleaseFailureRetainsLedgerAndBlocksNewRun() throws {
+        let token = TrackpadStopToken()
+        let clock = ManualUptimeClock()
+        let hid = ScriptedHID(clock: clock, steps: [
+            .report(sensorRuntimeReport(), at: 0),
+            .report(sensorRuntimeReport(grips: 0x2000_0000), at: 4_000_000), .stop
+        ])
+        var config = PaddrConfiguration.default
+        config.gripTouch.left = "f1"
+        XCTAssertThrowsError(try TrackpadRuntime.run(configuration: config, observeOnly: false, stopToken: token,
+            dependencies: .init(openHID: { hid }, makeOutput: { FailingReleaseOutput() }, uptimeNanoseconds: { clock.now })))
+        XCTAssertTrue(token.hasPendingOutputs)
+        let opened = Mutex(false)
+        XCTAssertThrowsError(try TrackpadRuntime.run(configuration: config, observeOnly: false, stopToken: token,
+            dependencies: .init(openHID: { opened.withLock { $0 = true }; return hid },
+                                makeOutput: { RecordingOutput() }, uptimeNanoseconds: { clock.now })))
+        XCTAssertFalse(opened.withLock { $0 })
+    }
+
+    func testCalibrationRequestRevisionIsIndependentAndDisabledRequestsAreRejected() {
+        let gate = OutputGate(enabled: false)
+        XCTAssertFalse(gate.requestGyroCalibration())
+        XCTAssertEqual(gate.snapshot, .init(isEnabled: false, revision: 0, gyroCalibrationRevision: 0))
+        XCTAssertEqual(gate.setEnabled(true), 1)
+        for _ in 0..<3 { XCTAssertTrue(gate.requestGyroCalibration()) }
+        XCTAssertEqual(gate.snapshot, .init(isEnabled: true, revision: 1, gyroCalibrationRevision: 3))
+        XCTAssertEqual(gate.setEnabled(false), 2)
+        XCTAssertFalse(gate.requestGyroCalibration())
+        XCTAssertEqual(gate.snapshot, .init(isEnabled: false, revision: 2, gyroCalibrationRevision: 3))
+    }
+
+    func testRuntimeRecalibrationStopsGyroWithoutReleasingPadRearOrGripOwners() throws {
+        let clock = ManualUptimeClock()
+        let output = RecordingOutput()
+        let events = EventRecorder()
+        let gate = OutputGate(enabled: true)
+        var configuration = PaddrConfiguration.default
+        configuration.left.mode = .dpad
+        configuration.left.dpadKeys.up = "space"
+        configuration.gripTouch.left = "f1"
+        configuration.rearButtons.l4 = "f2"
+        configuration.gyro = .init(enabled: true, sensitivity: 12, horizontalScale: 2, holdingAngleDegrees: 0,
+            horizontalUsesTilt: false, smoothing: 0)
+        var steps: [ScriptedHID.Step] = []
+        for index in 0...130 {
+            steps.append(.report(sensorRuntimeReport(tick: UInt32(index * 4000)), at: UInt64(index) * 4_000_000))
+            if index == 0 {
+                steps.append(.perform { XCTAssertTrue(gate.requestGyroCalibration()) })
+                steps.append(.wake(at: 0))
+            }
+        }
+        let held: UInt32 = 0x3002_0000
+        steps.append(.report(sensorRuntimeReport(tick: 524_000, grips: held, padHeld: true), at: 524_000_000))
+        steps.append(.report(sensorRuntimeReport(tick: 528_000, grips: held, gyroY: 164, padHeld: true), at: 528_000_000))
+        steps.append(.perform { XCTAssertTrue(gate.requestGyroCalibration()) })
+        steps.append(.wake(at: 532_000_000))
+        for index in 134...274 {
+            let bytes = sensorRuntimeReport(tick: UInt32(index * 4000), grips: held,
+                                            gyroY: index < 144 ? 164 : 0, padHeld: true)
+            steps.append(.report(bytes, at: UInt64(index) * 4_000_000))
+        }
+        steps.append(.report(sensorRuntimeReport(tick: 1_100_000, grips: 0x2002_0000, padHeld: true), at: 1_100_000_000))
+        steps.append(.report(sensorRuntimeReport(tick: 1_104_000, grips: held, gyroY: 164, padHeld: true), at: 1_104_000_000))
+        steps.append(.report(sensorRuntimeReport(tick: 1_108_000, grips: held, gyroY: 164, padHeld: true), at: 1_108_000_000))
+        steps.append(.report(sensorRuntimeReport(tick: 1_112_000), at: 1_112_000_000))
+        let hid = ScriptedHID(clock: clock, steps: steps)
+        _ = try run(configuration: configuration, outputGate: gate, hid: hid, clock: clock, output: output, events: events)
+        let movements = output.actions.filter { if case .mouseMove = $0 { true } else { false } }
+        XCTAssertEqual(movements.count, 2)
+        let heldActions = output.actions.filter { if case .key = $0 { true } else { false } }
+        let space = try KeyCatalog.resolve("space")
+        let f1 = try KeyCatalog.resolve("f1")
+        let f2 = try KeyCatalog.resolve("f2")
+        XCTAssertEqual(heldActions, [.key(space, isPressed: true), .key(f2, isPressed: true), .key(f1, isPressed: true),
+                                     .key(space, isPressed: false), .key(f2, isPressed: false), .key(f1, isPressed: false)])
+        XCTAssertEqual(gate.snapshot, .init(isEnabled: true, revision: 0, gyroCalibrationRevision: 2))
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 1)
+        XCTAssertTrue(outputReleasedEvents(in: events.events).isEmpty)
+        let calibrations = events.events.filter { event in
+            if case let .sensorsUpdated(value) = event { value.gyroStatus == .calibrating } else { false }
+        }
+        XCTAssertEqual(calibrations.count, 2)
+    }
+
+    func testCalibrationRequestsWithoutAnEpochOrAfterControllerLossCannotReviveOutput() throws {
+        let clock = ManualUptimeClock()
+        let output = RecordingOutput()
+        let events = EventRecorder()
+        let gate = OutputGate(enabled: true)
+        var configuration = PaddrConfiguration.default
+        configuration.gyro.enabled = true
+        configuration.gripTouch.left = "f1"
+        let hid = ScriptedHID(clock: clock, steps: [
+            .perform { XCTAssertTrue(gate.requestGyroCalibration()) }, .wake(at: 0),
+            .report(sensorRuntimeReport(), at: 4_000_000),
+            .report(sensorRuntimeReport(grips: 0x2000_0000), at: 8_000_000),
+            .report([0x46, 1], at: 12_000_000),
+            .perform { XCTAssertTrue(gate.requestGyroCalibration()) }, .wake(at: 16_000_000),
+            .report(sensorRuntimeReport(grips: 0x2000_0000), at: 20_000_000),
+            .report(sensorRuntimeReport(), at: 24_000_000),
+            .report(sensorRuntimeReport(grips: 0x2000_0000), at: 28_000_000), .remove
+        ])
+        _ = try run(configuration: configuration, outputGate: gate, hid: hid, clock: clock, output: output, events: events)
+        let key = try KeyCatalog.resolve("f1")
+        XCTAssertEqual(output.actions, [.key(key, isPressed: true), .key(key, isPressed: false),
+                                        .key(key, isPressed: true), .key(key, isPressed: false)])
+        XCTAssertEqual(gate.snapshot, .init(isEnabled: true, revision: 0, gyroCalibrationRevision: 2))
+        XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 2)
+        XCTAssertTrue(outputReleasedEvents(in: events.events).isEmpty)
+    }
+
+    func testSameRightGripCanHoldKeyOrMouseAndActivateGyroThroughCalibrationAndCleanup() throws {
+        for binding in ["space", "mouse-left", "mouse-right"] {
+            for ending in ["release", "disable", "disconnect", "stale"] {
+                let clock = ManualUptimeClock()
+                let events = EventRecorder()
+                let gate = OutputGate(enabled: true)
+                let posted = Mutex<[CGEventRequest]>([])
+                let output = CGEventOutput(currentMouseLocation: { CGPoint(x: 100, y: 200) },
+                    postEvent: { request in posted.withLock { $0.append(request) } })
+                var configuration = PaddrConfiguration.default
+                configuration.gyro = .init(enabled: true, activation: .rightGrip, holdingAngleDegrees: 0,
+                    horizontalUsesTilt: false, smoothing: 0)
+                configuration.gripTouch.right = binding
+                let held: UInt32 = 0x1000_0000
+                var steps: [ScriptedHID.Step] = [
+                    .report(sensorRuntimeReport(grips: held), at: 0),
+                    .perform { XCTAssertFalse(events.lifecycleEvents.contains(.outputArmed)) },
+                    .report(sensorRuntimeReport(tick: 4_000), at: 4_000_000)
+                ]
+                for index in 2...140 {
+                    steps.append(.report(sensorRuntimeReport(tick: UInt32(index * 4000)),
+                        at: UInt64(index) * 4_000_000))
+                }
+                steps += [
+                    .perform {
+                        XCTAssertTrue(posted.withLock { $0.isEmpty })
+                        XCTAssertFalse(events.events.contains {
+                            if case let .sensorsUpdated(status) = $0 {
+                                return [.calibrating, .ready, .active].contains(status.gyroStatus)
+                            }
+                            return false
+                        }, "Enabling output and holding still cannot start calibration")
+                        XCTAssertTrue(gate.requestGyroCalibration())
+                    }, .wake(at: 564_000_000)
+                ]
+                for index in 142...272 {
+                    steps.append(.report(sensorRuntimeReport(tick: UInt32(index * 4000)),
+                        at: UInt64(index) * 4_000_000))
+                }
+                steps += [
+                    .report(sensorRuntimeReport(tick: 1_092_000, grips: held), at: 1_092_000_000),
+                    .report(sensorRuntimeReport(tick: 1_096_000, grips: held, gyroY: 164), at: 1_096_000_000),
+                    .perform { XCTAssertTrue(gate.requestGyroCalibration()) }, .wake(at: 1_100_000_000)
+                ]
+                for index in 276...406 {
+                    steps.append(.report(sensorRuntimeReport(tick: UInt32(index * 4000), grips: held),
+                        at: UInt64(index) * 4_000_000))
+                }
+                steps += [
+                    // Still-held activation must not resume motion after recalibration.
+                    .report(sensorRuntimeReport(tick: 1_628_000, grips: held, gyroY: 164), at: 1_628_000_000),
+                    .report(sensorRuntimeReport(tick: 1_632_000), at: 1_632_000_000),
+                    .report(sensorRuntimeReport(tick: 1_636_000, grips: held), at: 1_636_000_000),
+                    .report(sensorRuntimeReport(tick: 1_640_000, grips: held, gyroY: 164), at: 1_640_000_000)
+                ]
+                switch ending {
+                case "release":
+                    steps.append(.report(sensorRuntimeReport(tick: 1_644_000, gyroY: 164), at: 1_644_000_000))
+                case "disable":
+                    steps += [.perform { gate.setEnabled(false) }, .wake(at: 1_644_000_000)]
+                case "disconnect":
+                    steps.append(.report([0x46, 1], at: 1_644_000_000))
+                default:
+                    steps.append(.wake(at: 1_740_000_000))
+                }
+                steps.append(.remove)
+                let hid = ScriptedHID(clock: clock, steps: steps)
+                _ = try run(configuration: configuration, outputGate: gate, hid: hid,
+                    clock: clock, output: output, events: events)
+                let trace = posted.withLock { requests in
+                    requests.map { request -> String in
+                        switch request {
+                        case let .key(_, isPressed): return isPressed ? "down" : "up"
+                        case let .mouse(kind, _, _, _, _, _):
+                            switch kind {
+                            case .leftDown, .rightDown: return "down"
+                            case .leftUp, .rightUp: return "up"
+                            case .leftDragged: return "left-drag"
+                            case .rightDragged: return "right-drag"
+                            case .moved: return "move"
+                            }
+                        case .scroll: return "unexpected-scroll"
+                        }
+                    }
+                }
+                let motion = binding == "space" ? "move" : binding == "mouse-left" ? "left-drag" : "right-drag"
+                XCTAssertEqual(trace, ["down", motion, "up", "down", motion, "up"], "\(binding), \(ending)")
+                XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 1)
+            }
+        }
     }
 
     private func run(
@@ -1837,6 +2213,11 @@ private final class EventRecorder: Sendable {
     }
 
     var events: [TrackpadSessionEvent] { storage.withLock { $0 } }
+    // Existing lifecycle tests assert their original complete event ordering; sensor
+    // telemetry is asserted separately by the sensor runtime regressions below.
+    var lifecycleEvents: [TrackpadSessionEvent] {
+        events.filter { if case .sensorsUpdated = $0 { false } else { true } }
+    }
 
     func record(_ event: TrackpadSessionEvent) {
         storage.withLock { $0.append(event) }
@@ -2002,4 +2383,15 @@ private struct UncheckedBatchHID: TrackpadHIDStreaming {
         for bytes in reports { try onReport(.init(slot: 0, bytes: bytes, timestampNanoseconds: 0)) }
         return .stopped
     }
+}
+
+private func sensorRuntimeReport(
+    tick: UInt32 = 0, grips: UInt32 = 0, gyroZ: Int16 = 0, gyroY: Int16 = 0, padHeld: Bool = false
+) -> [UInt8] {
+    var bytes = rearReport(grips, padHeld: padHeld)
+    for offset in 0..<4 { bytes[30 + offset] = UInt8(truncatingIfNeeded: tick >> (8 * offset)) }
+    write(16_384, to: &bytes, at: 38)
+    write(gyroY, to: &bytes, at: 42)
+    write(gyroZ, to: &bytes, at: 44)
+    return bytes
 }

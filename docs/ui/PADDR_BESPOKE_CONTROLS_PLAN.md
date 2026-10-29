@@ -1,5 +1,13 @@
 # Paddr bespoke controls implementation plan
 
+Current operator refinement, 2026-10-29: **Enable output** now uses the same
+squared native NSButton switch adapter as tuning controls, retaining its visible
+label, one binary accessibility target, model setter, disabled gate and
+save-before-enable explanation. This supersedes the earlier NSSwitch exception
+in the historical sections below. Redundant absent-controller advice is omitted
+from the footer; actionable permission, error and transition guidance remains.
+
+
 Status: Operator-approved on 2026-10-26; implemented candidate awaiting fresh independent review. Published 1.1.0 remains a separate immutable release; this work does not alter it.
 Date: 2026-10-26
 Implementation baseline: `d0c99d8d079e24c6ecf727b9a8d4247921ba0b06` (merged PR #95, frozen v1.1.0). Original council baseline: PR #92.

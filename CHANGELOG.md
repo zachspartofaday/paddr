@@ -2,6 +2,36 @@
 
 User-visible changes to Paddr are recorded here. Release entries describe confirmed behavior at the time of each release; later entries may supersede earlier limitations.
 
+## Unreleased
+
+- Add opt-in gyro-to-mouse aiming with touch activation, sensitivity, inversion,
+  smoothing, controller holding-angle compensation and session-local stationary
+  calibration started explicitly from a hold-still preparation prompt. Provide
+  Calibrate Again after calibration. Offer side-to-side tilt instead of turning
+  for horizontal aiming, retaining forward/back vertical aiming. Correct the
+  operator-reported reversed tilt selector and add independent horizontal gain
+  from 0.1–8×. Use the maintainer-tested starting tuning: 10 pt/°, 2.5×
+  per axis, 45° holding angle, tilt aiming, 25% smoothing and a 1°/s noise
+  cutoff. Preserve explicitly saved tuning and keep gyro opt-in.
+- Add independent left/right grip-contact key and mouse-button bindings, with
+  live contact and motion availability indicators while output is off. Align the
+  controller settings with the pad inspectors, move explanatory copy into circled
+  info buttons and make calibration state prominent.
+- Give gyro a section heading above its labeled Enable switch, grouped calibration
+  status/action and Activation. Match Enable output to the squared switch family,
+  align its visible edge with Save & Apply, and omit repeated connection advice.
+  Use quieter amber calibration guidance and an amber Off status.
+- Keep sensor output inside the existing output gate and held-action ownership;
+  reject stale motion and release grip actions when their reports expire.
+- Add native profile settings and CLI options. Read existing profile documents
+  with Off/None defaults and save schema version 2 to prevent older writers from
+  silently discarding the new settings.
+- Sensor support remains passive: no IMU setting writes, analog grip pressure,
+  virtual gamepad output, direct USB transport or tilt driving is introduced.
+
+- Refresh live light/dark workspace, pointer and gyro screenshots, and put
+  features and screenshots ahead of installation in the README.
+
 ## 2.0.1 — 2026-10-27
 
 - Soften button, selector, mode and tuning-switch outlines to 50% opacity in the

@@ -142,6 +142,8 @@ enum PaddrStyle {
     enum Width {
         /// Numeric value column, monospaced and trailing-aligned.
         static let readout: CGFloat = 40
+        /// Gyro rates include a unit (pt/° or °/s) and need a wider value column.
+        static let gyroReadout: CGFloat = 76
         static let toggle: CGFloat = 52
         /// Modes, selectors and the complete slider/readout rows.
         static let control: CGFloat = 240

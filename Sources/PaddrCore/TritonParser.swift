@@ -51,10 +51,19 @@ public struct TritonRearButtonState: Equatable, Sendable {
 public struct TritonControllerState: Equatable, Sendable {
     public var pads: TrackpadPair
     public var rearButtons: TritonRearButtonState
+    public var grips: TritonGripState
+    public var motion: TritonMotionSample?
 
-    public init(pads: TrackpadPair, rearButtons: TritonRearButtonState) {
+    public init(
+        pads: TrackpadPair,
+        rearButtons: TritonRearButtonState,
+        grips: TritonGripState = .init(),
+        motion: TritonMotionSample? = nil
+    ) {
         self.pads = pads
         self.rearButtons = rearButtons
+        self.grips = grips
+        self.motion = motion
     }
 }
 
@@ -178,7 +187,39 @@ public enum TritonParser {
                 l5: buttons & 0x0004_0000 != 0,
                 r4: buttons & 0x0000_0080 != 0,
                 r5: buttons & 0x0000_0100 != 0
-            )
+            ),
+            grips: TritonGripState(
+                leftTouched: buttons & 0x2000_0000 != 0,
+                rightTouched: buttons & 0x1000_0000 != 0
+            ),
+            motion: parseMotion(bytes, report: report, timestampNanoseconds: timestampNanoseconds)
+        )
+    }
+
+    private static func parseMotion(
+        _ bytes: [UInt8], report: UInt8, timestampNanoseconds: UInt64
+    ) -> TritonMotionSample? {
+        // Quaternion bytes are optional and are deliberately not needed for rate aiming.
+        guard bytes.count >= 46,
+              let ax = int16LE(bytes, at: 34), let ay = int16LE(bytes, at: 36),
+              let az = int16LE(bytes, at: 38), let gx = int16LE(bytes, at: 40),
+              let gy = int16LE(bytes, at: 42), let gz = int16LE(bytes, at: 44)
+        else { return nil }
+        let timestamp: TritonMotionTimestamp
+        if report == 0x47 {
+            guard let ticks = uint16LE(bytes, at: 32) else { return nil }
+            timestamp = .ticks32Microseconds(ticks)
+        } else {
+            guard let ticks = uint32LE(bytes, at: 30) else { return nil }
+            timestamp = .microseconds(ticks)
+        }
+        let gyroScale = 2000.0 * Double.pi / (32768.0 * 180.0)
+        let accelerationScale = 2.0 * 9.80665 / 32768.0
+        return TritonMotionSample(
+            angularVelocity: SIMD3(Double(gx), Double(gz), -Double(gy)) * gyroScale,
+            acceleration: SIMD3(Double(ax), Double(az), -Double(ay)) * accelerationScale,
+            sensorTimestamp: timestamp,
+            timestampNanoseconds: timestampNanoseconds
         )
     }
 

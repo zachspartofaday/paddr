@@ -404,6 +404,175 @@ final class MenuModelTests: XCTestCase {
         XCTAssertEqual(startCount, 1)
     }
 
+    func testGyroCalibrationRequestsStayInPlaceAndNeverSaveOrRestart() async throws {
+        var configuration = PaddrConfiguration.default
+        configuration.gyro.enabled = true
+        var document = ConfigurationProfileDocument.default
+        let profile = try document.createProfile(named: "Gyro", configuration: configuration)
+        document.activeProfileID = profile.id
+        let state = readyState(receiver: "Fake receiver")
+        state.loadedProfileDocument = document
+        let session = ManualEventSession()
+        let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
+        await waitUntil(model: model) { model.isInitialized }
+        await waitUntil(model: model) { await session.startCount == 1 }
+        XCTAssertFalse(model.canRecalibrateGyro)
+        XCTAssertFalse(model.requestGyroCalibration())
+
+        await session.send(.controllerConnected)
+        await session.send(.sensorsUpdated(.init(motionAvailable: true, gyroStatus: .off)))
+        await waitUntil(model: model) { model.sensorStatus?.motionAvailable == true }
+        XCTAssertFalse(model.canRecalibrateGyro, "An output-off observation cannot accept calibration")
+        model.isEnabled = true
+        await waitUntil(model: model) { model.outputGateSnapshotForTesting.isEnabled }
+        XCTAssertEqual(model.outputGateSnapshotForTesting.gyroCalibrationRevision, 0,
+            "Enabling output must not request calibration")
+        XCTAssertFalse(model.canRecalibrateGyro, "Output must first finish neutral admission")
+        await session.send(.outputArmed)
+        await session.send(.sensorsUpdated(.init(motionAvailable: true, gyroStatus: .calibrationNeeded)))
+        await waitUntil(model: model) { model.canRecalibrateGyro }
+
+        let before = model.outputGateSnapshotForTesting
+        let statusBefore = model.status
+        let savedBefore = model.savedConfiguration
+        let draftBefore = model.configuration
+        let startsBefore = await session.startCount
+        let stopsBefore = await session.stopCount
+        let savesBefore = state.saveCallCount
+        XCTAssertTrue(model.requestGyroCalibration())
+        let requested = model.outputGateSnapshotForTesting
+        XCTAssertEqual(requested.gyroCalibrationRevision, before.gyroCalibrationRevision + 1)
+        XCTAssertEqual(requested.revision, before.revision, "Calibration must not impersonate an output-gate transition")
+        XCTAssertTrue(requested.isEnabled)
+        XCTAssertEqual(model.status, statusBefore, "Only actual sensor events publish calibration progress")
+        XCTAssertEqual(model.sensorStatus?.gyroStatus, .calibrationNeeded)
+        XCTAssertEqual(model.configuration, draftBefore)
+        XCTAssertEqual(model.savedConfiguration, savedBefore)
+        XCTAssertEqual(state.saveCallCount, savesBefore)
+        let startsAfter = await session.startCount
+        let stopsAfter = await session.stopCount
+        XCTAssertEqual(startsAfter, startsBefore)
+        XCTAssertEqual(stopsAfter, stopsBefore)
+
+        await session.send(.sensorsUpdated(.init(motionAvailable: true, gyroStatus: .calibrating)))
+        await waitUntil(model: model) { model.sensorStatus?.gyroStatus == .calibrating }
+        XCTAssertFalse(model.canRecalibrateGyro)
+        XCTAssertFalse(model.requestGyroCalibration())
+        XCTAssertEqual(model.outputGateSnapshotForTesting.gyroCalibrationRevision, requested.gyroCalibrationRevision)
+        await session.send(.sensorsUpdated(.init(motionAvailable: false, gyroStatus: .unavailable)))
+        await waitUntil(model: model) { model.sensorStatus?.motionAvailable == false }
+        XCTAssertFalse(model.canRecalibrateGyro)
+        XCTAssertFalse(model.requestGyroCalibration())
+        await session.send(.sensorsUpdated(.init(motionAvailable: true, gyroStatus: .active)))
+        await waitUntil(model: model) { model.canRecalibrateGyro }
+        model.isEnabled = false
+        XCTAssertFalse(model.canRecalibrateGyro)
+        XCTAssertFalse(model.requestGyroCalibration())
+        XCTAssertEqual(model.outputGateSnapshotForTesting.gyroCalibrationRevision, requested.gyroCalibrationRevision)
+    }
+
+    func testGyroCalibrationIsBlockedDuringPendingProfileSaveAndWithUnsavedGyroEnable() async throws {
+        var configuration = PaddrConfiguration.default
+        configuration.gyro.enabled = true
+        var document = ConfigurationProfileDocument.default
+        let profile = try document.createProfile(named: "Gyro", configuration: configuration)
+        document.activeProfileID = profile.id
+        let state = readyState(receiver: "Fake receiver")
+        state.loadedProfileDocument = document
+        let session = ManualEventSession()
+        let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
+        await waitUntil(model: model) { model.isInitialized }
+        await waitUntil(model: model) { await session.startCount == 1 }
+        model.isEnabled = true
+        await session.connect(receiver: "Fake receiver")
+        await session.send(.sensorsUpdated(.init(motionAvailable: true, gyroStatus: .ready)))
+        await waitUntil(model: model) { model.canRecalibrateGyro }
+        let saveGate = BoundedTestGate()
+        state.saveGate = saveGate
+        defer { saveGate.signal() }
+        model.configuration.gyro.holdingAngleDegrees = 45
+        model.saveAndApply()
+        await waitUntil { state.saveCallCount == 1 }
+        let revision = model.outputGateSnapshotForTesting.gyroCalibrationRevision
+        XCTAssertFalse(model.canRecalibrateGyro)
+        XCTAssertFalse(model.requestGyroCalibration())
+        XCTAssertEqual(model.outputGateSnapshotForTesting.gyroCalibrationRevision, revision)
+        state.saveGate = nil
+        saveGate.signal()
+        await waitUntil(model: model) { model.savedConfiguration.gyro.holdingAngleDegrees == 45 }
+
+        let offState = readyState(receiver: "Fake receiver")
+        let offSession = ManualEventSession()
+        let offModel = PaddrMenuModel(dependencies: dependencies(state: offState, session: offSession))
+        await waitUntil(model: offModel) { offModel.isInitialized }
+        await waitUntil(model: offModel) { await offSession.startCount == 1 }
+        offModel.configuration.gyro.enabled = true
+        await offSession.send(.controllerConnected)
+        await offSession.send(.sensorsUpdated(.init(motionAvailable: true, gyroStatus: .ready)))
+        await waitUntil(model: offModel) { offModel.sensorStatus != nil }
+        XCTAssertFalse(offModel.savedConfiguration.gyro.enabled)
+        XCTAssertFalse(offModel.canRecalibrateGyro, "A gyro-enabled draft is not an enabled saved session")
+        XCTAssertFalse(offModel.requestGyroCalibration())
+        XCTAssertEqual(offState.saveCallCount, 0)
+    }
+
+    func testSavedGyroEnableWithOutputOffAsksForOutputRatherThanAnotherSave() async throws {
+        var document = ConfigurationProfileDocument.default
+        let profile = try document.createProfile(named: "Gyro off", configuration: .default)
+        document.activeProfileID = profile.id
+        let state = readyState(receiver: "Fake receiver")
+        state.loadedProfileDocument = document
+        let session = ManualEventSession()
+        let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
+        await waitUntil(model: model) { model.isInitialized }
+        await waitUntil(model: model) { await session.startCount == 1 }
+        model.configuration.gyro.enabled = true
+        model.saveAndApply()
+        await waitUntil(model: model) { model.savedConfiguration.gyro.enabled && model.canManageProfiles }
+        XCTAssertFalse(model.hasUnsavedChanges)
+        XCTAssertFalse(model.isEnabled)
+        XCTAssertFalse(model.canRecalibrateGyro)
+        XCTAssertFalse(model.requestGyroCalibration())
+        XCTAssertEqual(String(localized: try XCTUnwrap(model.gyroCalibrationUnavailableReason)),
+            "Enable output before calibrating gyro.")
+        let starts = await session.startCount
+        XCTAssertEqual(starts, 1, "Saving with output off retains the existing observation session")
+    }
+
+    func testSensorStatusUpdatesWhileOutputOffAndClearsOnControllerLoss() async {
+        let state = readyState(receiver: "Fake receiver")
+        let session = ManualEventSession()
+        let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
+        await waitUntil(model: model) { model.isInitialized }
+        await waitUntil(model: model) { await session.startCount == 1 }
+        let touched = ControllerSensorStatus(grips: .init(leftTouched: true, rightTouched: false),
+            motionAvailable: true, gyroStatus: .off)
+        await session.send(.sensorsUpdated(touched))
+        await session.send(.waitingForController("Fake receiver"))
+        await waitUntil(model: model) { model.receiverDescription == "Fake receiver" }
+        XCTAssertNil(model.sensorStatus, "Disconnected telemetry must not publish contact states")
+        await session.send(.controllerConnected)
+        await session.send(.sensorsUpdated(touched))
+        await waitUntil(model: model) { model.sensorStatus == touched }
+        XCTAssertFalse(model.isEnabled)
+        XCTAssertFalse(model.isRunning)
+        XCTAssertEqual(model.status, .off, "Passive sensor updates must not replace output guidance")
+        XCTAssertEqual(model.reportCount, 0)
+        XCTAssertEqual(model.actionCount, 0)
+
+        let unavailable = ControllerSensorStatus(grips: nil, motionAvailable: false, gyroStatus: .unavailable)
+        await session.send(.sensorsUpdated(unavailable))
+        await waitUntil(model: model) { model.sensorStatus == unavailable }
+        XCTAssertNil(model.sensorStatus?.grips)
+        await session.send(.controllerLost(.init(reportCount: 2, actionCount: 0)))
+        await waitUntil(model: model) { !model.controllerConnected }
+        XCTAssertNil(model.sensorStatus)
+        await session.send(.sensorsUpdated(touched))
+        await session.send(.progress(.init(reportCount: 3, actionCount: 0)))
+        await waitUntil(model: model) { model.reportCount == 3 }
+        XCTAssertNil(model.sensorStatus, "Late telemetry cannot resurrect a lost controller")
+    }
+
     func testBatteryStatusSetsUpdatesWithoutOtherStateChangesAndClearsAcrossLoss() async {
         let state = readyState(receiver: "Fake receiver")
         let session = ManualEventSession()
@@ -454,7 +623,7 @@ final class MenuModelTests: XCTestCase {
         )
     }
 
-    func testTerminalSessionEventsClearBatteryStatus() async {
+    func testTerminalSessionEventsClearBatteryAndSensorStatus() async {
         let terminalEvents: [TrackpadSessionEvent] = [
             .stopped(.init(reportCount: 1, actionCount: 0)),
             .receiverRemoved(.init(reportCount: 1, actionCount: 0)),
@@ -470,11 +639,14 @@ final class MenuModelTests: XCTestCase {
             await waitUntil(model: model) { await session.startCount == 1 }
             await session.send(.controllerConnected)
             await session.send(.batteryUpdated(.init(chargeState: .charging, percentage: 82)))
-            await waitUntil(model: model) { model.batteryStatus != nil }
+            await session.send(.sensorsUpdated(.init(grips: .init(leftTouched: false, rightTouched: true),
+                motionAvailable: true, gyroStatus: .ready)))
+            await waitUntil(model: model) { model.batteryStatus != nil && model.sensorStatus != nil }
 
             await session.send(terminalEvent)
             await waitUntil(model: model) { model.batteryStatus == nil }
             XCTAssertNil(model.batteryStatus, "Terminal event did not clear battery: \(terminalEvent)")
+            XCTAssertNil(model.sensorStatus, "Terminal event did not clear sensors: \(terminalEvent)")
             XCTAssertFalse(model.controllerConnected)
             await session.stop()
         }
@@ -3275,6 +3447,10 @@ final class MenuModelTests: XCTestCase {
             to: 0
         )
         await waitUntil(model: model) { model.status == .active && model.batteryStatus != nil }
+        let currentSensors = ControllerSensorStatus(grips: .init(leftTouched: false, rightTouched: true),
+            motionAvailable: true, gyroStatus: .active)
+        await session.send(.sensorsUpdated(currentSensors), to: 0)
+        await waitUntil(model: model) { model.sensorStatus == currentSensors }
 
         XCTAssertEqual(
             model.batteryStatus,
@@ -3294,12 +3470,14 @@ final class MenuModelTests: XCTestCase {
 
         await session.waitForTermination(of: 0)
         await session.send(.failed("stale session"), to: 0)
+        await session.send(.sensorsUpdated(currentSensors), to: 0)
         await session.send(
             .batteryUpdated(.init(chargeState: .charging, percentage: 82)),
             to: 0
         )
         XCTAssertTrue(model.isEnabled)
         XCTAssertNil(model.batteryStatus)
+        XCTAssertNil(model.sensorStatus)
         XCTAssertEqual(model.status, .releasingOutputs)
 
         saveGate.signal()
