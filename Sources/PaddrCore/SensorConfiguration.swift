@@ -30,15 +30,15 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
     public init(
         enabled: Bool = false,
         activation: GyroActivation = .rightGrip,
-        sensitivity: Double = 12,
-        verticalScale: Double = 1,
-        horizontalScale: Double = 2,
-        holdingAngleDegrees: Double = 0,
-        horizontalUsesTilt: Bool = false,
+        sensitivity: Double = 10,
+        verticalScale: Double = 2.5,
+        horizontalScale: Double = 2.5,
+        holdingAngleDegrees: Double = 45,
+        horizontalUsesTilt: Bool = true,
         invertHorizontal: Bool = false,
         invertVertical: Bool = false,
-        smoothing: Double = 0.15,
-        noiseThreshold: Double = 0.5
+        smoothing: Double = 0.25,
+        noiseThreshold: Double = 1
     ) {
         self.enabled = enabled
         self.activation = activation
@@ -60,18 +60,19 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
+        let defaults = Self()
         self.init(
-            enabled: try values.decodeIfPresent(Bool.self, forKey: .enabled) ?? false,
-            activation: try values.decodeIfPresent(GyroActivation.self, forKey: .activation) ?? .rightGrip,
-            sensitivity: try values.decodeIfPresent(Double.self, forKey: .sensitivity) ?? 12,
-            verticalScale: try values.decodeIfPresent(Double.self, forKey: .verticalScale) ?? 1,
-            horizontalScale: try values.decodeIfPresent(Double.self, forKey: .horizontalScale) ?? 2,
-            holdingAngleDegrees: try values.decodeIfPresent(Double.self, forKey: .holdingAngleDegrees) ?? 0,
-            horizontalUsesTilt: try values.decodeIfPresent(Bool.self, forKey: .horizontalUsesTilt) ?? false,
-            invertHorizontal: try values.decodeIfPresent(Bool.self, forKey: .invertHorizontal) ?? false,
-            invertVertical: try values.decodeIfPresent(Bool.self, forKey: .invertVertical) ?? false,
-            smoothing: try values.decodeIfPresent(Double.self, forKey: .smoothing) ?? 0.15,
-            noiseThreshold: try values.decodeIfPresent(Double.self, forKey: .noiseThreshold) ?? 0.5
+            enabled: try values.decodeIfPresent(Bool.self, forKey: .enabled) ?? defaults.enabled,
+            activation: try values.decodeIfPresent(GyroActivation.self, forKey: .activation) ?? defaults.activation,
+            sensitivity: try values.decodeIfPresent(Double.self, forKey: .sensitivity) ?? defaults.sensitivity,
+            verticalScale: try values.decodeIfPresent(Double.self, forKey: .verticalScale) ?? defaults.verticalScale,
+            horizontalScale: try values.decodeIfPresent(Double.self, forKey: .horizontalScale) ?? defaults.horizontalScale,
+            holdingAngleDegrees: try values.decodeIfPresent(Double.self, forKey: .holdingAngleDegrees) ?? defaults.holdingAngleDegrees,
+            horizontalUsesTilt: try values.decodeIfPresent(Bool.self, forKey: .horizontalUsesTilt) ?? defaults.horizontalUsesTilt,
+            invertHorizontal: try values.decodeIfPresent(Bool.self, forKey: .invertHorizontal) ?? defaults.invertHorizontal,
+            invertVertical: try values.decodeIfPresent(Bool.self, forKey: .invertVertical) ?? defaults.invertVertical,
+            smoothing: try values.decodeIfPresent(Double.self, forKey: .smoothing) ?? defaults.smoothing,
+            noiseThreshold: try values.decodeIfPresent(Double.self, forKey: .noiseThreshold) ?? defaults.noiseThreshold
         )
     }
 

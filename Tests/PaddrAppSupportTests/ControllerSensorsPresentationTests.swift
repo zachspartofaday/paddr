@@ -175,6 +175,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
         for direction in [LayoutDirection.leftToRight, .rightToLeft] {
             for isEditable in [true, false] {
                 let draft = ControllerSensorDraftFixture()
+                draft.gyro.horizontalUsesTilt = false
                 let before = draft.gyro
                 var writes = 0
                 var calibrationRequests = 0
@@ -193,7 +194,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 XCTAssertEqual(tilt.accessibilityLabel(), "Tilt for horizontal aiming")
                 XCTAssertEqual(tilt.accessibilitySubrole(), .switch)
                 XCTAssertNil(tilt.accessibilityChildren(), "Tilt is one native binary target")
-                XCTAssertEqual(tilt.state, .off, "Existing profile defaults retain turning for horizontal aiming")
+                XCTAssertEqual(tilt.state, .off, "The explicit saved turning setting remains off")
                 XCTAssertEqual(tilt.accessibilityHelp(),
                     "Use side-to-side tilt instead of turning for horizontal aiming. Holding angle applies to both modes; up and down aiming is unchanged.")
                 if isEditable { XCTAssertTrue(window.makeFirstResponder(tilt)) }

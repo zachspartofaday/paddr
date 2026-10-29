@@ -10,7 +10,9 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
   Calibrate Again after calibration. Offer side-to-side tilt instead of turning
   for horizontal aiming, retaining forward/back vertical aiming. Correct the
   operator-reported reversed tilt selector and add independent horizontal gain
-  from 0.1–8× with a stronger 2× default.
+  from 0.1–8×. Use the maintainer-tested starting tuning: 10 pt/°, 2.5×
+  per axis, 45° holding angle, tilt aiming, 25% smoothing and a 1°/s noise
+  cutoff. Preserve explicitly saved tuning and keep gyro opt-in.
 - Add independent left/right grip-contact key and mouse-button bindings, with
   live contact and motion availability indicators while output is off. Align the
   controller settings with the pad inspectors, move explanatory copy into circled
@@ -26,6 +28,9 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
   silently discarding the new settings.
 - Sensor support remains passive: no IMU setting writes, analog grip pressure,
   virtual gamepad output, direct USB transport or tilt driving is introduced.
+
+- Refresh live light/dark workspace, pointer and gyro screenshots, and put
+  features and screenshots ahead of installation in the README.
 
 ## 2.0.1 — 2026-10-27
 

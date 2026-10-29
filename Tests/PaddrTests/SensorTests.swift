@@ -106,6 +106,36 @@ final class SensorTests: XCTestCase {
         XCTAssertNotEqual(raw["schemaVersion"] as? Int, 1)
     }
 
+    func testMaintainerTunedGyroDefaultsAndExplicitSavedTuningPreserved() throws {
+        let expected = GyroConfiguration(enabled: false, activation: .rightGrip,
+            sensitivity: 10, verticalScale: 2.5, horizontalScale: 2.5,
+            holdingAngleDegrees: 45, horizontalUsesTilt: true,
+            invertHorizontal: false, invertVertical: false, smoothing: 0.25, noiseThreshold: 1)
+        XCTAssertEqual(GyroConfiguration(), expected)
+        XCTAssertEqual(PaddrConfiguration.default.gyro, expected)
+        for json in ["{}", #"{"gyro":{}}"#,
+                     #"{"gyro":{"sensitivity":null,"verticalScale":null,"horizontalScale":null,"holdingAngleDegrees":null,"horizontalUsesTilt":null,"smoothing":null,"noiseThreshold":null}}"#] {
+            let config = try JSONDecoder().decode(PaddrConfiguration.self, from: Data(json.utf8))
+            XCTAssertEqual(config.gyro, expected)
+            XCTAssertFalse(config.gyro.enabled)
+        }
+        // Earlier saved tuning is intentional, including false and zero values.
+        let saved = Data(#"{"gyro":{"enabled":true,"activation":"left-grip","sensitivity":12,"verticalScale":1,"horizontalScale":2,"holdingAngleDegrees":0,"horizontalUsesTilt":false,"invertHorizontal":true,"invertVertical":true,"smoothing":0.15,"noiseThreshold":0.5}}"#.utf8)
+        let config = try ConfigurationProfileStore.decodeConfigurationInput(from: saved).configuration
+        XCTAssertEqual(config.gyro, GyroConfiguration(enabled: true, activation: .leftGrip,
+            sensitivity: 12, verticalScale: 1, horizontalScale: 2,
+            holdingAngleDegrees: 0, horizontalUsesTilt: false,
+            invertHorizontal: true, invertVertical: true, smoothing: 0.15, noiseThreshold: 0.5))
+        var document = ConfigurationProfileDocument.default
+        let profile = try document.createProfile(named: "Saved tuning", configuration: config)
+        try document.activateProfile(id: profile.id)
+        let bytes = try ConfigurationProfileStore.encoded(document)
+        XCTAssertEqual(try ConfigurationProfileStore.decodeConfigurationInput(from: bytes).configuration, config)
+        let builtIn = try ConfigurationProfileStore.decodeConfigurationInput(
+            from: ConfigurationProfileStore.encoded(.default))
+        XCTAssertEqual(builtIn.configuration.gyro, expected)
+    }
+
     func testGripNeutralAdmissionIndependentRearmingAndDuplicateOwnership() throws {
         var mapper = try GripTouchMapper(configuration: .init(left: "space", right: "code:49"))
         XCTAssertFalse(mapper.isNeutral(.init(leftTouched: true)))
@@ -133,7 +163,8 @@ final class SensorTests: XCTestCase {
     }
 
     func testGyroCalibrationActivationUnitsInversionAndVerticalScale() throws {
-        var configuration = GyroConfiguration(enabled: true, sensitivity: 10, smoothing: 0, noiseThreshold: 0)
+        var configuration = GyroConfiguration(enabled: true, sensitivity: 10, horizontalScale: 2, holdingAngleDegrees: 0,
+            horizontalUsesTilt: false, smoothing: 0, noiseThreshold: 0)
         for inverted in [false, true] {
             configuration.invertHorizontal = inverted
             configuration.invertVertical = inverted
@@ -157,7 +188,7 @@ final class SensorTests: XCTestCase {
     }
 
     func testGyroHeldActivationNeedsReleaseAndCalibrationRejectsMotionAndMissingGravity() {
-        var mapper = GyroMapper(configuration: .init(enabled: true, smoothing: 0))
+        var mapper = GyroMapper(configuration: .init(enabled: true, holdingAngleDegrees: 0, horizontalUsesTilt: false, smoothing: 0))
         mapper.beginCalibration(at: 0, motionAvailable: true)
         for index in 0...130 {
             let held = state(index: index, grips: .init(rightTouched: true))
@@ -187,7 +218,7 @@ final class SensorTests: XCTestCase {
 
     func testAlwaysActivationNoiseBiasSmoothingAndStaleResetNeverJump() throws {
         let bias = SIMD3<Double>(0.002, 0.003, -0.001)
-        var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, smoothing: 0.5))
+        var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, holdingAngleDegrees: 0, horizontalUsesTilt: false, smoothing: 0.5))
         mapper.beginCalibration(at: 0, motionAvailable: true)
         for index in 0...130 { _ = mapper.process(state(index: index, rate: bias), at: UInt64(index) * 4_000_000) }
         XCTAssertEqual(mapper.status, .active)
@@ -235,7 +266,8 @@ final class SensorTests: XCTestCase {
         for sampleCase in cases {
             for inverted in [false, true] {
                 var mapper = GyroMapper(configuration: .init(
-                    enabled: true, activation: .always, sensitivity: 10, horizontalScale: 1, holdingAngleDegrees: sampleCase.angle,
+                    enabled: true, activation: .always, sensitivity: 10, verticalScale: 1, horizontalScale: 1, holdingAngleDegrees: sampleCase.angle,
+                    horizontalUsesTilt: false,
                     invertHorizontal: inverted, invertVertical: inverted, smoothing: 0, noiseThreshold: 0))
                 mapper.beginCalibration(at: 0, motionAvailable: true)
                 for index in 0...126 {
@@ -287,7 +319,7 @@ final class SensorTests: XCTestCase {
         for tilt in [false, true] {
             for gain in [1.0, 2, 8] {
                 var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always,
-                    sensitivity: 10, verticalScale: 2.5, horizontalScale: gain,
+                    sensitivity: 10, verticalScale: 2.5, horizontalScale: gain, holdingAngleDegrees: 0,
                     horizontalUsesTilt: tilt, smoothing: 0, noiseThreshold: 0))
                 mapper.beginCalibration(at: 0, motionAvailable: true)
                 for index in 0...126 { _ = mapper.process(state(index: index), at: UInt64(index) * 4_000_000) }
@@ -301,10 +333,10 @@ final class SensorTests: XCTestCase {
     }
 
     func testHorizontalGainDefaultsBoundsAndPersistence() throws {
-        XCTAssertEqual(GyroConfiguration().horizontalScale, 2)
+        XCTAssertEqual(GyroConfiguration().horizontalScale, 2.5)
         for json in ["{}", #"{"gyro":{"horizontalScale":null}}"#] {
             let config = try JSONDecoder().decode(PaddrConfiguration.self, from: Data(json.utf8))
-            XCTAssertEqual(config.gyro.horizontalScale, 2)
+            XCTAssertEqual(config.gyro.horizontalScale, 2.5)
         }
         for gain in [0.1, 1, 2, 8] {
             var config = PaddrConfiguration.default
@@ -328,7 +360,7 @@ final class SensorTests: XCTestCase {
     func testHorizontalTiltDefaultsAndRawProfileRoundTrips() throws {
         for json in ["{}", #"{"gyro":{"enabled":true}}"#, #"{"gyro":{"horizontalUsesTilt":null}}"#] {
             let decoded = try JSONDecoder().decode(PaddrConfiguration.self, from: Data(json.utf8)).validated()
-            XCTAssertFalse(decoded.gyro.horizontalUsesTilt, "Existing profiles retain turning")
+            XCTAssertTrue(decoded.gyro.horizontalUsesTilt, "New or omitted tuning defaults to tilt")
         }
         for tilt in [false, true] {
             var configuration = PaddrConfiguration.default
@@ -346,11 +378,11 @@ final class SensorTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(PaddrConfiguration.self, from: malformed))
     }
 
-    func testHoldingAngleLegacyDefaultBoundsAndSavedRoundTrip() throws {
+    func testHoldingAngleMissingDefaultBoundsAndSavedRoundTrip() throws {
         let legacy = try JSONDecoder().decode(PaddrConfiguration.self,
             from: Data(#"{"gyro":{"enabled":true,"sensitivity":9}}"#.utf8))
-        XCTAssertEqual(legacy.gyro.holdingAngleDegrees, 0)
-        XCTAssertEqual(PaddrConfiguration.default.gyro.holdingAngleDegrees, 0)
+        XCTAssertEqual(legacy.gyro.holdingAngleDegrees, 45)
+        XCTAssertEqual(PaddrConfiguration.default.gyro.holdingAngleDegrees, 45)
         for angle in [0.0, 45.0, 90.0] {
             var configuration = legacy
             configuration.gyro.holdingAngleDegrees = angle
@@ -371,7 +403,7 @@ final class SensorTests: XCTestCase {
     }
 
     func testExplicitRecalibrationImmediatelyClearsMotionAndRequiresNewStationaryBiasAndTouchRelease() {
-        var mapper = GyroMapper(configuration: .init(enabled: true, smoothing: 0))
+        var mapper = GyroMapper(configuration: .init(enabled: true, holdingAngleDegrees: 0, horizontalUsesTilt: false, smoothing: 0))
         mapper.beginCalibration(at: 0, motionAvailable: true)
         let oldBias = SIMD3<Double>(0.001, 0.002, 0.003)
         for index in 0...130 {
@@ -409,7 +441,7 @@ final class SensorTests: XCTestCase {
     }
 
     func testRepeatedRecalibrationRestartsStationaryIntervalAndAlwaysActivationNeedsNoTouch() {
-        var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, smoothing: 0))
+        var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, holdingAngleDegrees: 0, horizontalUsesTilt: false, smoothing: 0))
         mapper.beginCalibration(at: 0, motionAvailable: true)
         for index in 0...130 { _ = mapper.process(state(index: index), at: UInt64(index) * 4_000_000) }
         XCTAssertEqual(mapper.status, .active)
@@ -426,7 +458,7 @@ final class SensorTests: XCTestCase {
     }
 
     func testRecalibrationIgnoresQueuedSamplesReceivedBeforeTheRequestWasConsumed() {
-        var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, smoothing: 0))
+        var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, holdingAngleDegrees: 0, horizontalUsesTilt: false, smoothing: 0))
         mapper.beginCalibration(at: 600_000_000, motionAvailable: true)
         // These callbacks are still within the100ms freshness bound, but predate
         // the explicit request and must not count toward its stationary interval.
@@ -443,7 +475,7 @@ final class SensorTests: XCTestCase {
 
     func testRecalibrationWithoutFreshMotionKeepsWatermarkAcrossExpiryAndQueuedReports() {
         for expiresOnWake in [false, true] {
-            var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, smoothing: 0))
+            var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, holdingAngleDegrees: 0, horizontalUsesTilt: false, smoothing: 0))
             mapper.beginCalibration(at: 600_000_000, motionAvailable: false)
             if expiresOnWake { mapper.expire(at: 600_000_000) }
             // These callbacks were captured before the request was consumed.
@@ -463,7 +495,7 @@ final class SensorTests: XCTestCase {
     }
 
     func testManualCalibrationWaitsForRequestAndExpiredBiasNeedsAnotherRequest() {
-        var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, smoothing: 0))
+        var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always, holdingAngleDegrees: 0, horizontalUsesTilt: false, smoothing: 0))
         for index in 0...250 {
             XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)
         }

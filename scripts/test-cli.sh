@@ -604,8 +604,13 @@ printf '%s\n' '{"left":{"mode":"scroll"},"right":{"mode":"mouse"}}' >"$sensor_so
 cp "$sensor_source" "$sensor_source.before"
 "$cli_path" --config "$sensor_source" --show-config >"$stdout_path" 2>"$stderr_path"
 if [ "$(plutil -extract gyro.enabled raw -o - "$stdout_path")" != false ] \
-    || [ "$(plutil -extract gyro.horizontalUsesTilt raw -o - "$stdout_path")" != false ] \
-    || [ "$(plutil -extract gyro.horizontalScale raw -o - "$stdout_path")" != 2 ] \
+    || [ "$(plutil -extract gyro.horizontalUsesTilt raw -o - "$stdout_path")" != true ] \
+    || [ "$(plutil -extract gyro.horizontalScale raw -o - "$stdout_path")" != 2.500000 ] \
+    || [ "$(plutil -extract gyro.sensitivity raw -o - "$stdout_path")" != 10 ] \
+    || [ "$(plutil -extract gyro.verticalScale raw -o - "$stdout_path")" != 2.500000 ] \
+    || [ "$(plutil -extract gyro.holdingAngleDegrees raw -o - "$stdout_path")" != 45 ] \
+    || [ "$(plutil -extract gyro.smoothing raw -o - "$stdout_path")" != 0.250000 ] \
+    || [ "$(plutil -extract gyro.noiseThreshold raw -o - "$stdout_path")" != 1 ] \
     || [ "$(plutil -extract gripTouch json -o - "$stdout_path")" != '{}' ]; then
     echo "Legacy configurations did not default to gyro Off and grip None." >&2
     exit 1

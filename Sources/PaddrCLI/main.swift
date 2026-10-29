@@ -69,7 +69,7 @@ private func help() -> String {
       --gyro-activation MODE        right-grip, left-grip, either-grip, either-pad, or always.
       --gyro-sensitivity N          Mouse points per degree, 0.1...40.
       --gyro-vertical-scale N       Vertical sensitivity multiplier, 0.1...4.
-      --gyro-horizontal-scale N     Horizontal sensitivity multiplier, 0.1...8 (default 2).
+      --gyro-horizontal-scale N     Horizontal sensitivity multiplier, 0.1...8 (default 2.5).
       --gyro-holding-angle N        Controller pitch: 0° flat through 90° upright.
       --gyro-horizontal-tilt on|off Use side-to-side tilt instead of turning for horizontal aiming.
       --gyro-invert-horizontal on|off

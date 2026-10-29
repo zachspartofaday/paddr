@@ -300,3 +300,40 @@ Localization, arm64 release app/CLI builds, CLI checks, and release
 identity/production fixtures passed. These checks use injected input and event
 sinks; they do not establish physical direction, comfortable gain, live games or
 complete assistive-technology behavior.
+
+
+## Maintainer-tested defaults and live showcase — 2026-10-29
+
+After trying the corrected preview, the maintainer reported that it works well
+and selected the saved screenshot's gyro tuning as the new defaults: sensitivity
+10 pt/°, horizontal and vertical scale 2.5×, holding angle 45°, tilt aiming On,
+smoothing 0.25 and noise threshold 1°/s. Activation remains right grip, inversion
+Off and gyro disabled by default. Initializer and absent/null decode defaults
+share one source; explicit saved settings, including zero/false and the earlier
+starting tuning, remain intact. No mapper, activation or calibration algorithm
+changed. Exact-projection fixtures now name their angle/mode/gain rather than
+implicitly relying on product defaults.
+
+The new literal-value regression covers fresh and missing/null configurations,
+old explicit tuning and profile round-trips. Replacing the new defaults with the
+previous implementation compiles and fails that regression. The initial test
+incorrectly passed an empty object to the raw/profile format sniffer, which
+intentionally rejects unidentified configuration; it now uses the configuration
+decoder for that missing-field case. The corrected focused run passed.
+
+Live captures use the existing calibrated preview, not a relaunched build.
+Saved mappings and output were left unchanged; a temporary unsaved Pointer
+example was restored to Scroll, returning Configuration saved. Dark appearance
+and expanded gyro tuning were restored. Capture identity, image dimensions and
+the uniform title-bar crop are recorded in ../images/README.md. The maintainer's
+positive report is attended feedback, not a full holding-angle/game/AT sweep.
+
+
+Final validation: 602 tests, 601 passed and one existing key-window/map-focus
+skip, with all three exporters enabled. Localization, arm64 release app/CLI
+builds, CLI default/retention checks, and release identity/production fixtures
+passed. The README, mapping guide, CLI reference and capture notes have resolving
+local links. All four product images are PNG with the documented dimensions and
+were visually inspected. Full keyboard/AT, cold-start/reconnect/sleep and macOS
+26 acceptance remain open; the maintainer's favorable aiming report does not
+close those broader checks.

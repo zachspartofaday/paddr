@@ -244,7 +244,7 @@ struct ControllerSensorsConfigurationView: View {
                 sensorSlider("Horizontal sensitivity", value: $gyro.horizontalScale,
                     range: ConfigurationLimits.gyroHorizontalScale, step: 0.1,
                     valueText: gyro.horizontalScale.formatted(.number.precision(.fractionLength(1)).locale(locale)) + "×")
-                    .help("Adjusts left and right aiming without changing up and down aiming. Defaults to 2×.")
+                    .help("Adjusts left and right aiming without changing up and down aiming. Defaults to 2.5×.")
             } trailing: {
                 sensorSlider("Vertical sensitivity", value: $gyro.verticalScale,
                     range: ConfigurationLimits.gyroVerticalScale, step: 0.1,

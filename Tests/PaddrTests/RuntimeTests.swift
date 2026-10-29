@@ -1784,7 +1784,8 @@ final class RuntimeTests: XCTestCase {
         let events = EventRecorder()
         let gate = OutputGate(enabled: true)
         var config = PaddrConfiguration.default
-        config.gyro = .init(enabled: true, smoothing: 0)
+        config.gyro = .init(enabled: true, sensitivity: 12, horizontalScale: 2, holdingAngleDegrees: 0,
+            horizontalUsesTilt: false, smoothing: 0)
         var steps: [ScriptedHID.Step] = [
             .report(sensorRuntimeReport(), at: 0),
             .perform { XCTAssertTrue(gate.requestGyroCalibration()) }, .wake(at: 0)
@@ -1817,7 +1818,8 @@ final class RuntimeTests: XCTestCase {
         let events = EventRecorder()
         let gate = OutputGate(enabled: true)
         var configuration = PaddrConfiguration.default
-        configuration.gyro = .init(enabled: true, activation: .always, horizontalUsesTilt: true,
+        configuration.gyro = .init(enabled: true, activation: .always, sensitivity: 12, horizontalScale: 2,
+            holdingAngleDegrees: 0, horizontalUsesTilt: true,
             smoothing: 0, noiseThreshold: 0)
         var steps: [ScriptedHID.Step] = [.report(sensorRuntimeReport(), at: 0),
             .perform { XCTAssertTrue(gate.requestGyroCalibration()) }, .wake(at: 0)]
@@ -1937,7 +1939,8 @@ final class RuntimeTests: XCTestCase {
         configuration.left.dpadKeys.up = "space"
         configuration.gripTouch.left = "f1"
         configuration.rearButtons.l4 = "f2"
-        configuration.gyro = .init(enabled: true, smoothing: 0)
+        configuration.gyro = .init(enabled: true, sensitivity: 12, horizontalScale: 2, holdingAngleDegrees: 0,
+            horizontalUsesTilt: false, smoothing: 0)
         var steps: [ScriptedHID.Step] = []
         for index in 0...130 {
             steps.append(.report(sensorRuntimeReport(tick: UInt32(index * 4000)), at: UInt64(index) * 4_000_000))
@@ -2016,7 +2019,8 @@ final class RuntimeTests: XCTestCase {
                 let output = CGEventOutput(currentMouseLocation: { CGPoint(x: 100, y: 200) },
                     postEvent: { request in posted.withLock { $0.append(request) } })
                 var configuration = PaddrConfiguration.default
-                configuration.gyro = .init(enabled: true, activation: .rightGrip, smoothing: 0)
+                configuration.gyro = .init(enabled: true, activation: .rightGrip, holdingAngleDegrees: 0,
+                    horizontalUsesTilt: false, smoothing: 0)
                 configuration.gripTouch.right = binding
                 let held: UInt32 = 0x1000_0000
                 var steps: [ScriptedHID.Step] = [

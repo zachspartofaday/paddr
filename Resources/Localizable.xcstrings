@@ -2527,7 +2527,7 @@
       "comment": "Independent horizontal gyro gain; does not change the vertical or base sensitivity.",
       "extractionState": "manual"
     },
-    "Adjusts left and right aiming without changing up and down aiming. Defaults to 2×.": {
+    "Adjusts left and right aiming without changing up and down aiming. Defaults to 2.5×.": {
       "comment": "Independent horizontal gyro gain; does not change the vertical or base sensitivity.",
       "extractionState": "manual"
     }

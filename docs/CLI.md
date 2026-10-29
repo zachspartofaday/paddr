@@ -60,7 +60,7 @@ scripts/paddr.sh --gyro on --gyro-activation right-grip \
 | `--gyro on\|off` | Enable gyro mouse output; retains tuning when off |
 | `--gyro-sensitivity` | 0.1–40 mouse points per degree |
 | `--gyro-vertical-scale` | 0.1–4 times the base sensitivity, vertical only |
-| `--gyro-horizontal-scale` | 0.1–8 times the base sensitivity, horizontal only; defaults to 2× |
+| `--gyro-horizontal-scale` | 0.1–8 times the base sensitivity, horizontal only; defaults to 2.5× |
 | `--gyro-holding-angle` | 0–90°: controller held flat through upright |
 | `--gyro-horizontal-tilt on\|off` | Side-to-side tilt for horizontal aiming; Off retains turning |
 | `--gyro-invert-horizontal on\|off` | Reverse horizontal movement |
@@ -76,19 +76,19 @@ In raw configuration files the equivalent fields are:
 "gyro": {
   "enabled": true,
   "activation": "right-grip",
-  "sensitivity": 12,
-  "verticalScale": 1,
-  "horizontalScale": 2,
-  "holdingAngleDegrees": 0,
-  "horizontalUsesTilt": false,
+  "sensitivity": 10,
+  "verticalScale": 2.5,
+  "horizontalScale": 2.5,
+  "holdingAngleDegrees": 45,
+  "horizontalUsesTilt": true,
   "invertHorizontal": false,
   "invertVertical": false,
-  "smoothing": 0.15,
-  "noiseThreshold": 0.5
+  "smoothing": 0.25,
+  "noiseThreshold": 1
 },
 "gripTouch": { "left": "mouse-right", "right": null }
 ```
 
-The holding angle mixes the controller’s yaw and roll so horizontal aiming follows your normal grip position. With horizontal tilt Off, aiming follows turning; On selects side-to-side tilt. The assignments follow the maintainer’s observed controller behavior, correcting the earlier reversed selection. Forward/back aiming is unchanged. It does not rotate the desktop mouse axes. It defaults to 0° in existing profiles. The app requires its guided **Calibrate** action before aiming. The headless CLI explicitly retains stationary calibration at runtime startup and after stale motion, so put the controller down or hold it still when starting it. Calibration never saves sensor bias or restarts pad/grip output.
+The holding angle mixes the controller’s yaw and roll so horizontal aiming follows your normal grip position. With horizontal tilt Off, aiming follows turning; On selects side-to-side tilt. The assignments follow the maintainer’s observed controller behavior, correcting the earlier reversed selection. Forward/back aiming is unchanged. It does not rotate the desktop mouse axes. New or omitted tuning defaults to a 45° holding angle and tilt aiming; explicitly saved values are retained. The app requires its guided **Calibrate** action before aiming. The headless CLI explicitly retains stationary calibration at runtime startup and after stale motion, so put the controller down or hold it still when starting it. Calibration never saves sensor bias or restarts pad/grip output.
 
 See the [mapping guide](USING.md#gyro-mouse-and-grip-touch) for calibration, safe activation and the passive sensor-availability boundary.
