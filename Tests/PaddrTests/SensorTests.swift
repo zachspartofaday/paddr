@@ -253,6 +253,57 @@ final class SensorTests: XCTestCase {
         }
     }
 
+    func testHorizontalTiltUsesSideToSideAxisAndPreservesPitchAtEachHoldingAngle() throws {
+        // Independent world-axis cases: roll at flat, yaw at upright, and
+        // equal/opposite yaw+roll cancel halfway between the endpoints.
+        let cases: [(angle: Double, yaw: Double, roll: Double, projected: Double)] = [
+            (0, 0, 2, 2), (0, 3, 0, 0), (0, 1, -2, -2),
+            (45, 1, -1, 0), (45, 1, 1, 1.4142135623730951),
+            (90, 2, 0, 2), (90, 0, 3, 0), (90, -2, 1, -2)
+        ]
+        for sampleCase in cases {
+            for inverted in [false, true] {
+                var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always,
+                    sensitivity: 10, verticalScale: 1.5, holdingAngleDegrees: sampleCase.angle,
+                    horizontalUsesTilt: true, invertHorizontal: inverted, smoothing: 0, noiseThreshold: 0))
+                for index in 0...130 {
+                    XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)
+                }
+                XCTAssertEqual(mapper.status, .calibrationNeeded, "Choosing tilt must not authorize calibration")
+                mapper.beginCalibration(at: 524_000_000, motionAvailable: true)
+                for index in 131...257 {
+                    XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)
+                }
+                let rate = SIMD3<Double>(1, sampleCase.yaw, sampleCase.roll) * (.pi / 180)
+                let action = try XCTUnwrap(mapper.process(state(index: 258, rate: rate), at: 1_032_000_000).first)
+                guard case let .mouseMove(dx, dy) = action else { return XCTFail("Expected gyro mouse movement") }
+                XCTAssertEqual(dx, (inverted ? 1 : -1) * sampleCase.projected * 0.004 * 10, accuracy: 1e-10)
+                XCTAssertEqual(dy, -0.06, accuracy: 1e-10, "Horizontal mode must not change forward/back aiming")
+            }
+        }
+    }
+
+    func testHorizontalTiltDefaultsAndRawProfileRoundTrips() throws {
+        for json in ["{}", #"{"gyro":{"enabled":true}}"#, #"{"gyro":{"horizontalUsesTilt":null}}"#] {
+            let decoded = try JSONDecoder().decode(PaddrConfiguration.self, from: Data(json.utf8)).validated()
+            XCTAssertFalse(decoded.gyro.horizontalUsesTilt, "Existing profiles retain turning")
+        }
+        for tilt in [false, true] {
+            var configuration = PaddrConfiguration.default
+            configuration.gyro.horizontalUsesTilt = tilt
+            configuration.gyro.holdingAngleDegrees = 45
+            let raw = try ConfigurationStore.encoded(configuration)
+            XCTAssertEqual(try JSONDecoder().decode(PaddrConfiguration.self, from: raw), configuration)
+            var document = ConfigurationProfileDocument.default
+            let profile = try document.createProfile(named: "Tilt", configuration: configuration)
+            try document.activateProfile(id: profile.id)
+            let saved = try ConfigurationProfileStore.encoded(document)
+            XCTAssertEqual(try ConfigurationProfileStore.decodeConfigurationInput(from: saved).configuration, configuration)
+        }
+        let malformed = Data(#"{"gyro":{"horizontalUsesTilt":"true"}}"#.utf8)
+        XCTAssertThrowsError(try JSONDecoder().decode(PaddrConfiguration.self, from: malformed))
+    }
+
     func testHoldingAngleLegacyDefaultBoundsAndSavedRoundTrip() throws {
         let legacy = try JSONDecoder().decode(PaddrConfiguration.self,
             from: Data(#"{"gyro":{"enabled":true,"sensitivity":9}}"#.utf8))

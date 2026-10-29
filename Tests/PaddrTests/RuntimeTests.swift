@@ -1811,6 +1811,35 @@ final class RuntimeTests: XCTestCase {
         XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 2)
     }
 
+    func testTiltHorizontalRuntimeUsesRollReportInsteadOfTurnReport() throws {
+        let clock = ManualUptimeClock()
+        let output = RecordingOutput()
+        let events = EventRecorder()
+        let gate = OutputGate(enabled: true)
+        var configuration = PaddrConfiguration.default
+        configuration.gyro = .init(enabled: true, activation: .always, horizontalUsesTilt: true,
+            smoothing: 0, noiseThreshold: 0)
+        var steps: [ScriptedHID.Step] = [.report(sensorRuntimeReport(), at: 0),
+            .perform { XCTAssertTrue(gate.requestGyroCalibration()) }, .wake(at: 0)]
+        steps += (1...130).map { index in
+            .report(sensorRuntimeReport(tick: UInt32(index * 4000)), at: UInt64(index) * 4_000_000)
+        }
+        steps += [
+            .report(sensorRuntimeReport(tick: 524_000, gyroZ: 164), at: 524_000_000),
+            .report(sensorRuntimeReport(tick: 528_000, gyroY: 164), at: 528_000_000),
+            .perform { gate.setEnabled(false) }, .wake(at: 532_000_000), .remove
+        ]
+        _ = try run(configuration: configuration, outputGate: gate,
+            hid: ScriptedHID(clock: clock, steps: steps), clock: clock, output: output, events: events)
+        XCTAssertEqual(output.actions.count, 1, "Turning must not move the cursor in flat tilt mode")
+        guard case let .mouseMove(dx, dy) = try XCTUnwrap(output.actions.first) else {
+            return XCTFail("Expected roll-driven mouse movement")
+        }
+        XCTAssertEqual(dx, Double(164) / 32768 * 2000 * 0.004 * 12, accuracy: 1e-8)
+        XCTAssertEqual(dy, 0)
+        XCTAssertFalse(gate.isEnabled)
+    }
+
     func testSensorTelemetryWorksWithOutputOffCoalescesAndExpires() throws {
         let clock = ManualUptimeClock()
         let output = RecordingOutput()
@@ -2353,11 +2382,12 @@ private struct UncheckedBatchHID: TrackpadHIDStreaming {
 }
 
 private func sensorRuntimeReport(
-    tick: UInt32 = 0, grips: UInt32 = 0, gyroZ: Int16 = 0, padHeld: Bool = false
+    tick: UInt32 = 0, grips: UInt32 = 0, gyroZ: Int16 = 0, gyroY: Int16 = 0, padHeld: Bool = false
 ) -> [UInt8] {
     var bytes = rearReport(grips, padHeld: padHeld)
     for offset in 0..<4 { bytes[30 + offset] = UInt8(truncatingIfNeeded: tick >> (8 * offset)) }
     write(16_384, to: &bytes, at: 38)
+    write(gyroY, to: &bytes, at: 42)
     write(gyroZ, to: &bytes, at: 44)
     return bytes
 }

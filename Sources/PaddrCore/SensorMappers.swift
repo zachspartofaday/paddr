@@ -198,9 +198,13 @@ struct GyroMapper: Sendable {
         let degreesPerRadian = 180 / Double.pi
         // SDL axes: positive yaw turns left; positive pitch lifts the nose.
         // Pitching the controller toward upright rotates world yaw between its
-        // yaw and roll axes. macOS coordinates increase rightward and downward.
+        // yaw and roll axes. The orthogonal projection follows side-to-side
+        // tilt instead. Both positive world yaw and roll point left; macOS
+        // coordinates increase rightward and downward.
         let holdingAngle = configuration.holdingAngleDegrees * Double.pi / 180
-        let horizontalRate = rate.y * cos(holdingAngle) - rate.z * sin(holdingAngle)
+        let horizontalRate = configuration.horizontalUsesTilt
+            ? rate.y * sin(holdingAngle) + rate.z * cos(holdingAngle)
+            : rate.y * cos(holdingAngle) - rate.z * sin(holdingAngle)
         var aim = SIMD2(-horizontalRate, -rate.x) * degreesPerRadian
         if abs(aim.x) < configuration.noiseThreshold { aim.x = 0 }
         if abs(aim.y) < configuration.noiseThreshold { aim.y = 0 }

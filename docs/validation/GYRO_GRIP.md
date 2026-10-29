@@ -137,7 +137,7 @@ rotation. This does not establish exhaustive game, drift or output-loss acceptan
 
 The follow-up preserves default 0° aiming and adds a separate calibration request
 channel to the same runtime. Generic explanation lives in native help/popovers;
-current calibration state stays in a row below the Gyro to mouse heading; its immediate instruction remains available through status help. The summary row also holds Calibrate or Calibrate Again, aligned to the left selector edge, with ready state labeled Calibrated, Ready. Activation shares the calibration row and aligns with Right grip. Tuning holds the remaining seven controls across two columns and four logical rows, including sensitivity. Contact labels are hidden when that grip action is None, without changing sensor observation or gyro activation. Verification
+current calibration state stays in a row below the Gyro to mouse heading; its immediate instruction remains available through status help. The summary row also holds Calibrate or Calibrate Again, aligned to the left selector edge, with ready state labeled Calibrated, Ready. Activation shares the calibration row and aligns with Right grip. Tuning holds the eight tuning controls across two columns and four logical rows, including sensitivity and horizontal tilt selection. Contact labels are hidden when that grip action is None, without changing sensor observation or gyro activation. Verification
 of the refinement and its exact candidate is recorded with the PR evidence.
 
 
@@ -235,3 +235,31 @@ request. Both editable and read-only cases pass in both directions. Localization
 arm64 release app/CLI builds, CLI checks and release identity/production fixtures
 passed. These are fixture/source checks; hardware and full assistive-technology
 acceptance remain pending.
+
+
+## Horizontal tilt selection — 2026-10-29
+
+Gyro tuning adds **Tilt for horizontal aiming** in the previously empty fourth
+left cell, retaining two columns and four rows. The profile boolean
+`gyro.horizontalUsesTilt` defaults false for omitted/null values, so existing
+profiles retain turning. It participates in normal draft, save/apply, raw export
+and profile encoding. CLI parity is `--gyro-horizontal-tilt on|off`.
+
+Turning retains the yaw projection `yaw*cos(angle) - roll*sin(angle)`. Tilt
+selects the perpendicular projection `yaw*sin(angle) + roll*cos(angle)`. Both
+feed the existing negative horizontal mouse convention; forward/back pitch,
+scaling, inversion, noise cutoff, smoothing, activation and manual calibration
+remain unchanged. At 0° tilt uses roll and ignores yaw; at 90° it uses yaw and
+ignores roll. Independent endpoint/45° cancellation oracles and a wire-report
+runtime test cover the selection. Physical tilt direction and ergonomic gain
+remain attended checks; automated axes do not establish live game acceptance.
+
+Tilt validation completed 598 tests: 597 passed and the existing map-focus skip,
+with all exporters enabled. Targeted sensor/runtime/UI checks passed. Replacing
+the new axis selection with the previous turn-only projection fails the new
+independent axis and wire-report regressions; restoring the feature passes the
+full suite. Raw/profile round-trips, omitted/null defaults, malformed types,
+UI draft isolation/read-only semantics, and CLI on/off/retention/error paths
+passed. Localization, arm64 release app/CLI and release identity/production
+checks passed. Physical direction, comfort/gain and live game acceptance remain
+pending; no live output was posted by these fixtures.

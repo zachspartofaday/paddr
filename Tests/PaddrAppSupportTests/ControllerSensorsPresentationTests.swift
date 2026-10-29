@@ -72,7 +72,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                         assertFits(menu, in: host)
                     }
                     let switches = descendants(PaddrTuningSwitchButton.self, in: host)
-                    XCTAssertEqual(switches.count, 3)
+                    XCTAssertEqual(switches.count, 4)
                     for control in switches {
                         XCTAssertFalse(control.isEnabled)
                         XCTAssertEqual(control.accessibilitySubrole(), .switch)
@@ -167,6 +167,58 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 XCTAssertFalse(draft.gyro.enabled)
                 XCTAssertEqual(writes, isEditable ? 2 : 0)
                 XCTAssertEqual(calibrationRequests, 0, "Neither label nor switch requests calibration")
+            }
+        }
+    }
+
+    func testHorizontalTiltEditsOnlyItsDraftSettingAndKeepsNativeIdentityThroughReflow() async throws {
+        for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+            for isEditable in [true, false] {
+                let draft = ControllerSensorDraftFixture()
+                let before = draft.gyro
+                var writes = 0
+                var calibrationRequests = 0
+                let host = NSHostingView(rootView: ControllerSensorsConfigurationView(
+                    gyro: Binding(get: { draft.gyro }, set: { draft.gyro = $0; writes += 1 }),
+                    gripTouch: .constant(.unassigned), sensorStatus: nil, isEditable: isEditable,
+                    initialTuningExpanded: true, recalibrate: { calibrationRequests += 1 })
+                    .environment(\.layoutDirection, direction)
+                    .environment(\.accessibilityEnabled, true))
+                let window = makeWindow(host, width: 916, height: 1000)
+                defer { window.close() }
+                await settle(host)
+                let tilt = try XCTUnwrap(descendants(PaddrTuningSwitchButton.self, in: host).first {
+                    $0.accessibilityIdentifier() == "paddr.gyro.horizontal-tilt"
+                })
+                XCTAssertEqual(tilt.accessibilityLabel(), "Tilt for horizontal aiming")
+                XCTAssertEqual(tilt.accessibilitySubrole(), .switch)
+                XCTAssertNil(tilt.accessibilityChildren(), "Tilt is one native binary target")
+                XCTAssertEqual(tilt.state, .off, "Existing profile defaults retain turning for horizontal aiming")
+                XCTAssertEqual(tilt.accessibilityHelp(),
+                    "Use side-to-side tilt instead of turning for horizontal aiming. Holding angle applies to both modes; up and down aiming is unchanged.")
+                if isEditable { XCTAssertTrue(window.makeFirstResponder(tilt)) }
+                XCTAssertEqual(tilt.accessibilityPerformPress(), isEditable)
+                await settle(host)
+                var expected = before
+                expected.horizontalUsesTilt = isEditable
+                XCTAssertEqual(draft.gyro, expected, "The switch changes only the horizontal tilt draft")
+                XCTAssertEqual(writes, isEditable ? 1 : 0)
+                XCTAssertEqual(tilt.state, isEditable ? .on : .off)
+                for width in [CGFloat(560), 1080, 916] {
+                    window.setContentSize(NSSize(width: width, height: 1000))
+                    await settle(host)
+                    XCTAssertTrue(tilt === descendants(PaddrTuningSwitchButton.self, in: host).first {
+                        $0.accessibilityIdentifier() == "paddr.gyro.horizontal-tilt"
+                    })
+                    if isEditable { XCTAssertTrue(window.firstResponder === tilt) }
+                    assertFits(tilt, in: host)
+                    XCTAssertEqual(writes, isEditable ? 1 : 0, "Reflow must not change the draft")
+                }
+                XCTAssertEqual(tilt.accessibilityPerformPress(), isEditable)
+                await settle(host)
+                XCTAssertEqual(draft.gyro, before)
+                XCTAssertEqual(writes, isEditable ? 2 : 0)
+                XCTAssertEqual(calibrationRequests, 0, "Changing horizontal aiming never starts calibration")
             }
         }
     }
@@ -514,7 +566,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
         }
     }
 
-    func testExpandedTuningKeepsSevenControlsOnSharedInspectorEdges() async throws {
+    func testExpandedTuningKeepsEightControlsOnSharedInspectorEdges() async throws {
         for width in [CGFloat(916), 1080] {
             let edges = try XCTUnwrap(PaddrPadColumns.workspaceInspectorTrailingEdges(in: width))
             for direction in [LayoutDirection.leftToRight, .rightToLeft] {
@@ -553,13 +605,14 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 }
                 let switches = descendants(PaddrTuningSwitchButton.self, in: host)
                     .filter { $0.accessibilityLabel() != "Gyro to mouse" }
-                XCTAssertEqual(switches.count, 2, "Five sliders and two inversion switches are the seven tuning controls")
+                XCTAssertEqual(switches.count, 3, "Five sliders, horizontal tilt and two inversion switches are the eight tuning controls")
                 for control in switches {
                     let frame = control.convert(control.bounds, to: host)
+                    let end = control.accessibilityLabel() == "Tilt for horizontal aiming" ? edges.left : edges.right
                     if direction == .leftToRight {
-                        XCTAssertEqual(frame.maxX, edges.right, accuracy: 0.5)
+                        XCTAssertEqual(frame.maxX, end, accuracy: 0.5)
                     } else {
-                        XCTAssertEqual(frame.minX, width - edges.right, accuracy: 0.5)
+                        XCTAssertEqual(frame.minX, width - end, accuracy: 0.5)
                     }
                 }
                 let sensitivityY = try XCTUnwrap(elements["Gyro sensitivity"]?.accessibilityFrame?()).midY
@@ -568,6 +621,9 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 let verticalY = try XCTUnwrap(elements["Vertical sensitivity"]?.accessibilityFrame?()).midY
                 let horizontalSwitch = try XCTUnwrap(switches.first { $0.accessibilityLabel() == "Invert horizontal" })
                 XCTAssertEqual(verticalY, horizontalSwitch.accessibilityFrame().midY, accuracy: 0.5)
+                let tilt = try XCTUnwrap(switches.first { $0.accessibilityLabel() == "Tilt for horizontal aiming" })
+                let verticalSwitch = try XCTUnwrap(switches.first { $0.accessibilityLabel() == "Invert vertical" })
+                XCTAssertEqual(tilt.accessibilityFrame().midY, verticalSwitch.accessibilityFrame().midY, accuracy: 0.5)
             }
         }
     }
@@ -614,7 +670,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
         defer { window.close() }
         window.makeKeyAndOrderFront(nil)
         await settle(host)
-        for expectedSwitchCount in [3, 1] {
+        for expectedSwitchCount in [4, 1] {
             let disclosure = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro.tuning"), accessibilityTree(host))
             let frame = try XCTUnwrap(disclosure.accessibilityFrame?())
             let location = window.convertPoint(fromScreen: CGPoint(x: frame.minX + 65, y: frame.maxY - 8))
@@ -627,6 +683,8 @@ final class ControllerSensorsPresentationTests: XCTestCase {
             await settle(host)
             let switches = descendants(PaddrTuningSwitchButton.self, in: host)
             XCTAssertEqual(switches.count, expectedSwitchCount)
+            XCTAssertEqual(switches.contains { $0.accessibilityIdentifier() == "paddr.gyro.horizontal-tilt" },
+                expectedSwitchCount == 4, "Horizontal tilt belongs inside the tuning disclosure")
             XCTAssertTrue(switches.allSatisfy { !$0.isEnabled })
             XCTAssertEqual(writes, 0)
         }
@@ -640,6 +698,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var gyro = GyroConfiguration()
         gyro.enabled = true
+        gyro.horizontalUsesTilt = true
         let status = ControllerSensorStatus(grips: .init(leftTouched: false, rightTouched: true),
             motionAvailable: true, gyroStatus: .active)
         for (name, scheme, appearance) in [("light", ColorScheme.light, NSAppearance.Name.aqua),

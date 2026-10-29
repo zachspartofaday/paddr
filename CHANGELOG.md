@@ -7,7 +7,8 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
 - Add opt-in gyro-to-mouse aiming with touch activation, sensitivity, inversion,
   smoothing, controller holding-angle compensation and session-local stationary
   calibration started explicitly from a hold-still preparation prompt. Provide
-  Calibrate Again after calibration.
+  Calibrate Again after calibration. Offer side-to-side tilt instead of turning
+  for horizontal aiming, retaining forward/back vertical aiming.
 - Add independent left/right grip-contact key and mouse-button bindings, with
   live contact and motion availability indicators while output is off. Align the
   controller settings with the pad inspectors, move explanatory copy into circled

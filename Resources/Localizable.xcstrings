@@ -2516,6 +2516,12 @@
     "Gyro aiming turns controller rotation into mouse movement. Choose a touch for Activation, or Always. Save & Apply changes and enable output, then choose Calibrate. Put the controller down on a stable surface, or hold it still, before starting calibration. With touch activation, release the control after calibration, then touch again to aim. Calibration resets sensor bias without changing your mappings; it requires active output, fresh motion data and no profile operation in progress.": {
       "comment": "Controller sensor settings and explicit gyro calibration guidance.",
       "extractionState": "manual"
+    },
+    "Tilt for horizontal aiming": {
+      "comment": "Gyro tuning switch: use side-to-side tilt instead of turning to control horizontal mouse movement."
+    },
+    "Use side-to-side tilt instead of turning for horizontal aiming. Holding angle applies to both modes; up and down aiming is unchanged.": {
+      "comment": "Help for the horizontal gyro tilt setting; vertical aiming is unaffected and holding-angle compensation still applies."
     }
   },
   "version": "1.0"

@@ -17,6 +17,8 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
     public var verticalScale: Double
     /// Controller pitch from flat (0°) toward upright (90°), used for horizontal aiming.
     public var holdingAngleDegrees: Double
+    /// Use side-to-side roll instead of turning yaw for horizontal aiming.
+    public var horizontalUsesTilt: Bool
     public var invertHorizontal: Bool
     public var invertVertical: Bool
     public var smoothing: Double
@@ -29,6 +31,7 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
         sensitivity: Double = 12,
         verticalScale: Double = 1,
         holdingAngleDegrees: Double = 0,
+        horizontalUsesTilt: Bool = false,
         invertHorizontal: Bool = false,
         invertVertical: Bool = false,
         smoothing: Double = 0.15,
@@ -39,6 +42,7 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
         self.sensitivity = sensitivity
         self.verticalScale = verticalScale
         self.holdingAngleDegrees = holdingAngleDegrees
+        self.horizontalUsesTilt = horizontalUsesTilt
         self.invertHorizontal = invertHorizontal
         self.invertVertical = invertVertical
         self.smoothing = smoothing
@@ -46,7 +50,7 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case enabled, activation, sensitivity, verticalScale, holdingAngleDegrees
+        case enabled, activation, sensitivity, verticalScale, holdingAngleDegrees, horizontalUsesTilt
         case invertHorizontal, invertVertical, smoothing, noiseThreshold
     }
 
@@ -58,6 +62,7 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
             sensitivity: try values.decodeIfPresent(Double.self, forKey: .sensitivity) ?? 12,
             verticalScale: try values.decodeIfPresent(Double.self, forKey: .verticalScale) ?? 1,
             holdingAngleDegrees: try values.decodeIfPresent(Double.self, forKey: .holdingAngleDegrees) ?? 0,
+            horizontalUsesTilt: try values.decodeIfPresent(Bool.self, forKey: .horizontalUsesTilt) ?? false,
             invertHorizontal: try values.decodeIfPresent(Bool.self, forKey: .invertHorizontal) ?? false,
             invertVertical: try values.decodeIfPresent(Bool.self, forKey: .invertVertical) ?? false,
             smoothing: try values.decodeIfPresent(Double.self, forKey: .smoothing) ?? 0.15,

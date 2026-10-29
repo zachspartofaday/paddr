@@ -245,13 +245,13 @@ struct ControllerSensorsConfigurationView: View {
                     range: ConfigurationLimits.gyroVerticalScale, step: 0.1,
                     valueText: gyro.verticalScale.formatted(.number.precision(.fractionLength(1)).locale(locale)) + "×")
             } trailing: {
-                inversionRow("Invert horizontal", value: $gyro.invertHorizontal, identifier: "invert-horizontal")
+                toggleRow("Invert horizontal", value: $gyro.invertHorizontal, identifier: "invert-horizontal")
             }
             tuningPair {
-                // The fourth left cell is intentionally empty: there are seven settings.
-                Color.clear.frame(height: 0).accessibilityHidden(true).allowsHitTesting(false)
+                toggleRow("Tilt for horizontal aiming", value: $gyro.horizontalUsesTilt, identifier: "horizontal-tilt",
+                    help: "Use side-to-side tilt instead of turning for horizontal aiming. Holding angle applies to both modes; up and down aiming is unchanged.")
             } trailing: {
-                inversionRow("Invert vertical", value: $gyro.invertVertical, identifier: "invert-vertical")
+                toggleRow("Invert vertical", value: $gyro.invertVertical, identifier: "invert-vertical")
             }
         }
     }
@@ -268,9 +268,12 @@ struct ControllerSensorsConfigurationView: View {
         }
     }
 
-    private func inversionRow(_ title: LocalizedStringResource, value: Binding<Bool>, identifier: String) -> some View {
+    private func toggleRow(
+        _ title: LocalizedStringResource, value: Binding<Bool>, identifier: String,
+        help: LocalizedStringResource? = nil
+    ) -> some View {
         settingRow(title) {
-            PaddrTuningSwitch(title: title, isOn: value, accessibilityIdentifier: "paddr.gyro." + identifier)
+            PaddrTuningSwitch(title: title, isOn: value, accessibilityIdentifier: "paddr.gyro." + identifier, help: help)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
