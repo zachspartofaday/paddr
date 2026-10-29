@@ -105,34 +105,45 @@ struct ControllerSensorsConfigurationView: View {
 
     private var gyroSection: some View {
         VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
-            HStack(spacing: PaddrStyle.Spacing.s2) {
-                sectionHeading("Gyro to mouse", infoTitle: "About gyro aiming",
-                    message: "Gyro aiming turns controller rotation into mouse movement. Choose a touch for Activation, or Always. Save & Apply changes and enable output, then choose Calibrate. Put the controller down on a stable surface, or hold it still, before starting calibration. With touch activation, release the control after calibration, then touch again to aim. Calibration resets sensor bias without changing your mappings; it requires active output, fresh motion data and no profile operation in progress.",
-                    identifier: "gyro-info", currentInstruction: gyroState.instruction)
-                PaddrTuningSwitch(title: "Gyro to mouse", isOn: $gyro.enabled,
-                    accessibilityIdentifier: "paddr.gyro.enabled")
-                    .disabled(!isEditable)
-            }
+            sectionHeading("Gyro to mouse", infoTitle: "About gyro aiming",
+                message: "Gyro aiming turns controller rotation into mouse movement. Choose a touch for Activation, or Always. Save & Apply changes and enable output, then choose Calibrate. Put the controller down on a stable surface, or hold it still, before starting calibration. With touch activation, release the control after calibration, then touch again to aim. Calibration resets sensor bias without changing your mappings; it requires active output, fresh motion data and no profile operation in progress.",
+                identifier: "gyro-info", currentInstruction: gyroState.instruction)
             ControllerSensorSummaryLayout(forceStacked: dynamicTypeSize.isAccessibilitySize) {
-                Text(gyroState.title)
-                    .paddrTypography(.sectionLabel)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(gyroState.title)
-                    .foregroundStyle(gyroState.isReady ? PaddrStyle.action : PaddrStyle.textPrimary)
-                    .help(gyroState.instruction ?? gyroState.title)
-                    .paddrAccessibilityID("gyro", "status")
-                Button {
-                    calibrationGuidePresented = true
-                } label: {
-                    Text(gyroState.calibrationTitle)
+                HStack(spacing: PaddrStyle.Spacing.s2) {
+                    // The label shares pointer activation; the native switch
+                    // remains the only named keyboard/accessibility target.
+                    Button("Enable") { gyro.enabled.toggle() }
+                        .buttonStyle(.plain)
+                        .paddrTypography(.rowLabel)
+                        .focusable(false)
+                        .accessibilityHidden(true)
+                    PaddrTuningSwitch(title: "Gyro to mouse", isOn: $gyro.enabled,
+                        accessibilityIdentifier: "paddr.gyro.enabled")
                 }
-                .paddrActionButton(.secondary)
-                .disabled(!canRecalibrate)
-                .help(calibrationUnavailableReason ?? "Put the controller down on a stable surface, or hold it still, then choose Calibrate.")
-                .paddrAccessibilityID("gyro", "calibrate")
-                .popover(isPresented: $calibrationGuidePresented, arrowEdge: .bottom) {
-                    calibrationGuide
+                .disabled(!isEditable)
+                HStack(spacing: PaddrStyle.Spacing.s2) {
+                    Text(gyroState.title)
+                        .paddrTypography(.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.trailing)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(gyroState.title)
+                        .foregroundStyle(gyroState.isReady ? PaddrStyle.action : PaddrStyle.warningText)
+                        .help(gyroState.instruction ?? gyroState.title)
+                        .paddrAccessibilityID("gyro", "status")
+                    Button {
+                        calibrationGuidePresented = true
+                    } label: {
+                        Text(gyroState.calibrationTitle)
+                    }
+                    .paddrActionButton(.secondary)
+                    .fixedSize()
+                    .disabled(!canRecalibrate)
+                    .help(calibrationUnavailableReason ?? "Put the controller down on a stable surface, or hold it still, then choose Calibrate.")
+                    .paddrAccessibilityID("gyro", "calibrate")
+                    .popover(isPresented: $calibrationGuidePresented, arrowEdge: .bottom) {
+                        calibrationGuide
+                    }
                 }
                 PaddrAdaptiveHeaderLayout(spacing: PaddrStyle.Spacing.s2,
                     alignsPadInspector: true, forceStacked: dynamicTypeSize.isAccessibilitySize) {
@@ -327,8 +338,8 @@ struct ControllerSensorsConfigurationView: View {
 }
 
 /// One mounted control family reflows as whole items. At ordinary widths the
-/// calibration/status row ends on the left pad inspector; Activation shares the
-/// right grip's label and inspector edges. The heading and enable switch sit above.
+/// Enable starts the row below the heading. The attached calibration/status group
+/// ends on the left inspector; Activation shares the right grip's inspector edges.
 private struct ControllerSensorSummaryLayout: Layout {
     let forceStacked: Bool
     private var spacing: CGFloat { PaddrStyle.Spacing.s3 }
@@ -365,15 +376,14 @@ private struct ControllerSensorSummaryLayout: Layout {
         let columnWidth = (width - PaddrPadColumns.workspaceSpacing) / 2
         sizes[2] = subviews[2].sizeThatFits(ProposedViewSize(width: columnWidth, height: nil))
         guard sizes[2].width <= columnWidth + 0.5 else { return nil }
-        let calibrationOrigin = edges.left - sizes[1].width
-        let statusWidth = calibrationOrigin - spacing
-        guard statusWidth > 0 else { return nil }
-        if sizes[0].width > statusWidth {
-            // A longer status wraps while the actual controls keep their anchors.
-            sizes[0] = subviews[0].sizeThatFits(ProposedViewSize(width: statusWidth, height: nil))
-            guard sizes[0].width <= statusWidth + 0.5 else { return nil }
+        let calibrationWidth = edges.left - sizes[0].width - spacing
+        guard calibrationWidth > 0 else { return nil }
+        if sizes[1].width > calibrationWidth {
+            // The status can wrap, but stays beside its fixed-size action.
+            sizes[1] = subviews[1].sizeThatFits(ProposedViewSize(width: calibrationWidth, height: nil))
+            guard sizes[1].width <= calibrationWidth + 0.5 else { return nil }
         }
-        return (sizes, [0, calibrationOrigin, columnWidth + PaddrPadColumns.workspaceSpacing])
+        return (sizes, [0, edges.left - sizes[1].width, columnWidth + PaddrPadColumns.workspaceSpacing])
     }
 }
 

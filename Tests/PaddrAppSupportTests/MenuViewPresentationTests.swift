@@ -1794,7 +1794,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertEqual(accessibilityIntegerValue(of: outputToggle), 0)
         XCTAssertEqual(outputToggle.isEnabled, model.canToggleOutput)
         XCTAssertEqual(
-            outputToggle.convert(outputToggle.bounds, to: hostingView).maxX,
+            outputToggle.convert(outputToggle.trackRect, to: hostingView).maxX,
             hostingView.bounds.maxX - PaddrStyle.Inset.chrome,
             accuracy: 1
         )

@@ -1152,6 +1152,45 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             "Enabling without a connected receiver must not claim active output")
     }
 
+    func testOutputSwitchVisibleTrackSharesSaveTrailingEdgeAcrossReflowAndDirection() async throws {
+        let model = try makeEditableMenuModel(hasSystemAccess: true)
+        let initialized = await waitUntil { model.isInitialized }
+        XCTAssertTrue(initialized)
+        for width in [CGFloat(680), 800, 996, 1080] {
+            for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+                for textSize in [DynamicTypeSize.medium, .accessibility5] {
+                    let host = NSHostingView(rootView: ConfigurationView(model: model)
+                        .environment(\.accessibilityEnabled, true)
+                        .environment(\.layoutDirection, direction)
+                        .environment(\.dynamicTypeSize, textSize))
+                    let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: 900),
+                        styleMask: [.titled, .closable], backing: .buffered, defer: false)
+                    window.isReleasedWhenClosed = false
+                    window.contentView = host
+                    host.frame = NSRect(x: 0, y: 0, width: width, height: 900)
+                    await settle(host, passes: 12)
+                    let save = try XCTUnwrap(accessibilityElements(in: host).first {
+                        $0.accessibilityIdentifier?() == "paddr.profile.save-apply"
+                    })
+                    let saveFrame = try XCTUnwrap(save.accessibilityFrame?())
+                    let output = try XCTUnwrap(descendants(of: PaddrTuningSwitchButton.self, in: host).first {
+                        $0.accessibilityIdentifier() == "paddr.toolbar.output"
+                    })
+                    let trackFrame = window.convertToScreen(output.convert(output.trackRect, to: nil))
+                    if direction == .leftToRight {
+                        XCTAssertEqual(trackFrame.maxX, saveFrame.maxX, accuracy: 0.5)
+                    } else {
+                        XCTAssertEqual(trackFrame.minX, saveFrame.minX, accuracy: 0.5)
+                    }
+                    XCTAssertTrue(window.frame.contains(output.accessibilityFrame()),
+                        "Visual alignment must keep the complete hit/focus reservation inside the window")
+                    window.close()
+                }
+            }
+        }
+        XCTAssertFalse(model.isEnabled, "Measuring alignment never activates output")
+    }
+
     func testSaveAndOutputControlsRemainVisibleWhileMappingDocumentScrolls() async throws {
         let model = try makeEditableMenuModel(hasSystemAccess: false)
         let initialized = await waitUntil { model.isInitialized }

@@ -137,7 +137,7 @@ rotation. This does not establish exhaustive game, drift or output-loss acceptan
 
 The follow-up preserves default 0° aiming and adds a separate calibration request
 channel to the same runtime. Generic explanation lives in native help/popovers;
-current calibration state stays in a row below the Gyro to mouse heading and enable switch; its immediate instruction remains available through status help. The summary row also holds Calibrate or Calibrate Again, aligned to the left selector edge, with ready state labeled Calibrated, Ready. Activation shares the calibration row and aligns with Right grip. Tuning holds the remaining seven controls across two columns and four logical rows, including sensitivity. Contact labels are hidden when that grip action is None, without changing sensor observation or gyro activation. Verification
+current calibration state stays in a row below the Gyro to mouse heading; its immediate instruction remains available through status help. The summary row also holds Calibrate or Calibrate Again, aligned to the left selector edge, with ready state labeled Calibrated, Ready. Activation shares the calibration row and aligns with Right grip. Tuning holds the remaining seven controls across two columns and four logical rows, including sensitivity. Contact labels are hidden when that grip action is None, without changing sensor observation or gyro activation. Verification
 of the refinement and its exact candidate is recorded with the PR evidence.
 
 
@@ -178,9 +178,9 @@ these checks did not enable live output or alter saved mappings.
 
 ## Section hierarchy and footer refinement — 2026-10-29
 
-Gyro to mouse now has its own heading row with the existing squared enable
-switch beside its information button. Calibration status, Calibrate and Activation
-are on the row below. Calibrate retains the left inspector trailing edge;
+Gyro to mouse has its own heading row with its information button. Enable and
+the existing squared switch start the row below, followed by the tightly grouped
+calibration status and Calibrate, then Activation. Calibrate retains the left inspector trailing edge;
 Activation retains the Right grip label and selector edges. Manual calibration
 and all model/runtime behavior are unchanged.
 
@@ -208,3 +208,30 @@ calibration cancellation. Native fixture checks cover role, value, identity,
 control bounds, help updates and disabled gates; they do not establish complete
 VoiceOver or alternate-input acceptance. The current personal preview had an
 unsaved draft and was left untouched.
+
+
+## Visible-edge and calibration grouping refinement — 2026-10-29
+
+The drawn output-switch track shares the Save & Apply trailing edge, excluding
+the switch's invisible focus/hit reservation. The complete control stays within
+the window, with its existing focus and activation behavior. The output group
+uses the same trailing anchor when the footer reflows. Off uses the existing
+amber warning token, matching Unsaved changes.
+
+The standalone gyro heading now has no switch beside it. The lower row begins
+with Enable and the squared switch, followed by a tightly grouped caption-size
+calibration status immediately before Calibrate. Non-ready calibration state uses
+the same amber token; Ready/Aiming retain teal. Calibration and Activation retain
+their existing inspector anchors and prompt behavior.
+
+Validation: 594 tests, 593 passed and the existing key-window/map-focus skip;
+all exporters ran. The mounted geometry check compares the drawn track directly
+with Save & Apply across four widths, LTR/RTL and standard/accessibility layouts,
+while checking the complete hit reservation stays inside the window. The initial
+label-click fixture used an unobserved captured variable, leaving its mounted
+switch stale; an observed draft fixture now verifies the same native control
+updates after the label click, writes once per action and sends no calibration
+request. Both editable and read-only cases pass in both directions. Localization,
+arm64 release app/CLI builds, CLI checks and release identity/production fixtures
+passed. These are fixture/source checks; hardware and full assistive-technology
+acceptance remain pending.

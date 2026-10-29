@@ -12,8 +12,10 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
   live contact and motion availability indicators while output is off. Align the
   controller settings with the pad inspectors, move explanatory copy into circled
   info buttons and make calibration state prominent.
-- Give gyro a section heading above calibration and Activation. Match Enable
-  output to the squared switch family and omit repeated connection advice.
+- Give gyro a section heading above its labeled Enable switch, grouped calibration
+  status/action and Activation. Match Enable output to the squared switch family,
+  align its visible edge with Save & Apply, and omit repeated connection advice.
+  Use quieter amber calibration guidance and an amber Off status.
 - Keep sensor output inside the existing output gate and held-action ownership;
   reject stale motion and release grip actions when their reports expire.
 - Add native profile settings and CLI options. Read existing profile documents

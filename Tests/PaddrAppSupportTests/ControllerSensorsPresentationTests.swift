@@ -1,4 +1,5 @@
 import AppKit
+import Observation
 import SwiftUI
 import XCTest
 import PaddrAppSupport
@@ -120,6 +121,54 @@ final class ControllerSensorsPresentationTests: XCTestCase {
         XCTAssertEqual(grips.left, TapBindingCatalog.leftMouseButton)
         XCTAssertEqual(grips.right, TapBindingCatalog.rightMouseButton)
         XCTAssertEqual(gyro.activation, .rightGrip)
+    }
+
+    func testGyroEnableLabelAndSwitchShareOneDraftActionWithoutCalibration() async throws {
+        for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+            for isEditable in [true, false] {
+                let draft = ControllerSensorDraftFixture()
+                var writes = 0
+                var calibrationRequests = 0
+                let host = NSHostingView(rootView: ControllerSensorsConfigurationView(
+                    gyro: Binding(get: { draft.gyro }, set: { draft.gyro = $0; writes += 1 }),
+                    gripTouch: .constant(.unassigned), sensorStatus: nil, isEditable: isEditable,
+                    recalibrate: { calibrationRequests += 1 })
+                    .environment(\.layoutDirection, direction)
+                    .environment(\.accessibilityEnabled, true))
+                let window = makeWindow(host, width: 916, height: 700)
+                defer { window.close() }
+                window.makeKeyAndOrderFront(nil)
+                await settle(host)
+                let switches = descendants(PaddrTuningSwitchButton.self, in: host)
+                let toggle = try XCTUnwrap(switches.first)
+                XCTAssertEqual(switches.count, 1)
+                XCTAssertEqual(toggle.accessibilityLabel(), "Gyro to mouse")
+                XCTAssertEqual(toggle.accessibilitySubrole(), .switch)
+                XCTAssertNil(toggle.accessibilityChildren())
+                let frame = toggle.convert(toggle.bounds, to: nil)
+                let labelX = direction == .leftToRight
+                    ? frame.minX - PaddrStyle.Spacing.s2 - 14
+                    : frame.maxX + PaddrStyle.Spacing.s2 + 14
+                for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                    let event = try XCTUnwrap(NSEvent.mouseEvent(with: type,
+                        location: NSPoint(x: labelX, y: frame.midY), modifierFlags: [],
+                        timestamp: 0, windowNumber: window.windowNumber, context: nil,
+                        eventNumber: 1, clickCount: 1, pressure: type == .leftMouseDown ? 1 : 0))
+                    window.sendEvent(event)
+                }
+                await settle(host)
+                XCTAssertEqual(draft.gyro.enabled, isEditable, "The visible Enable label shares the guarded draft action")
+                XCTAssertEqual(writes, isEditable ? 1 : 0)
+                XCTAssertEqual(toggle.state, isEditable ? .on : .off,
+                    "The observed draft must update the same mounted switch after a label click")
+                XCTAssertTrue(toggle === descendants(PaddrTuningSwitchButton.self, in: host).first)
+                XCTAssertEqual(toggle.accessibilityPerformPress(), isEditable)
+                await settle(host)
+                XCTAssertFalse(draft.gyro.enabled)
+                XCTAssertEqual(writes, isEditable ? 2 : 0)
+                XCTAssertEqual(calibrationRequests, 0, "Neither label nor switch requests calibration")
+            }
+        }
     }
 
     func testSensorSelectorsSharePadInspectorEdgesInLTRAndRTL() async throws {
@@ -313,7 +362,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
             "An assigned grip still distinguishes missing telemetry from release")
     }
 
-    func testCollapsedGyroHeadingAndToggleSitAboveCalibrationAndRightGripAlignedActivation() async throws {
+    func testCollapsedGyroHeadingSitsAboveEnableAndAttachedCalibrationWithRightGripActivation() async throws {
         for width in [CGFloat(916), 1080] {
             for direction in [LayoutDirection.leftToRight, .rightToLeft] {
                 let host = NSHostingView(rootView: ControllerSensorsConfigurationView(
@@ -334,16 +383,14 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 let calibration = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro.calibrate"))
                 let info = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro-info"))
                 let headingFrame = try XCTUnwrap(info.accessibilityFrame?())
-                XCTAssertEqual(headingFrame.midY, toggle.accessibilityFrame().midY, accuracy: 1,
-                    "The enable switch belongs beside the standalone section heading")
-                let frames = [try XCTUnwrap(status.accessibilityFrame?()),
+                XCTAssertGreaterThan(headingFrame.minY, toggle.accessibilityFrame().maxY,
+                    "The standalone section heading stays above the Enable row")
+                let frames = [toggle.accessibilityFrame(), try XCTUnwrap(status.accessibilityFrame?()),
                     try XCTUnwrap(calibration.accessibilityFrame?()), activation.accessibilityFrame()]
                 for frame in frames.dropFirst() {
                     XCTAssertEqual(frame.midY, frames[0].midY, accuracy: 1,
-                        "Calibration status, action and Activation stay on the row below the heading")
+                        "Enable, attached calibration status/action and Activation share the row below the heading")
                 }
-                XCTAssertGreaterThan(toggle.accessibilityFrame().minY, frames[0].maxY,
-                    "The section heading and enable switch must be above the calibration controls")
                 let activationLabel = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro.activation-label"))
                 let gripLabel = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.grip.right.label"))
                 let labelFrame = try XCTUnwrap(activationLabel.accessibilityFrame?())
@@ -406,8 +453,15 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                     XCTAssertEqual(status.accessibilityLabel?(), title)
                     let statusFrame = try XCTUnwrap(status.accessibilityFrame?())
                     let toggle = try XCTUnwrap(descendants(PaddrTuningSwitchButton.self, in: host).first)
-                    XCTAssertGreaterThan(toggle.accessibilityFrame().minY, screenFrame.maxY, title)
+                    XCTAssertEqual(toggle.accessibilityFrame().midY, screenFrame.midY, accuracy: 0.5, title)
                     XCTAssertEqual(screenFrame.midY, statusFrame.midY, accuracy: 0.5, title)
+                    if direction == .leftToRight {
+                        XCTAssertEqual(screenFrame.minX - statusFrame.maxX, PaddrStyle.Spacing.s2,
+                            accuracy: 0.5, "Status attaches immediately before its action: \(title)")
+                    } else {
+                        XCTAssertEqual(statusFrame.minX - screenFrame.maxX, PaddrStyle.Spacing.s2,
+                            accuracy: 0.5, "Status/action grouping mirrors in RTL: \(title)")
+                    }
                     let controlFrames = [screenFrame, statusFrame, toggle.accessibilityFrame(), menu.accessibilityFrame()]
                     for index in controlFrames.indices {
                         for other in controlFrames.indices where other > index {
@@ -703,4 +757,10 @@ final class ControllerSensorsPresentationTests: XCTestCase {
         }
         return find(view)
     }
+}
+
+@MainActor
+@Observable
+private final class ControllerSensorDraftFixture {
+    var gyro = GyroConfiguration()
 }
