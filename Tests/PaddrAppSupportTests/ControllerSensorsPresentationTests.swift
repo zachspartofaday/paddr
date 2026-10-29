@@ -313,7 +313,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
             "An assigned grip still distinguishes missing telemetry from release")
     }
 
-    func testCollapsedGyroKeepsSummaryBandAndRightGripAlignedActivationAboveTuningDisclosure() async throws {
+    func testCollapsedGyroHeadingAndToggleSitAboveCalibrationAndRightGripAlignedActivation() async throws {
         for width in [CGFloat(916), 1080] {
             for direction in [LayoutDirection.leftToRight, .rightToLeft] {
                 let host = NSHostingView(rootView: ControllerSensorsConfigurationView(
@@ -333,13 +333,17 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 let status = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro.status"))
                 let calibration = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro.calibrate"))
                 let info = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro-info"))
-                let frames = [toggle.accessibilityFrame(),
-                    try XCTUnwrap(status.accessibilityFrame?()), try XCTUnwrap(calibration.accessibilityFrame?()),
-                    try XCTUnwrap(info.accessibilityFrame?())]
+                let headingFrame = try XCTUnwrap(info.accessibilityFrame?())
+                XCTAssertEqual(headingFrame.midY, toggle.accessibilityFrame().midY, accuracy: 1,
+                    "The enable switch belongs beside the standalone section heading")
+                let frames = [try XCTUnwrap(status.accessibilityFrame?()),
+                    try XCTUnwrap(calibration.accessibilityFrame?()), activation.accessibilityFrame()]
                 for frame in frames.dropFirst() {
                     XCTAssertEqual(frame.midY, frames[0].midY, accuracy: 1,
-                        "Heading info, switch, state and calibration stay on one row")
+                        "Calibration status, action and Activation stay on the row below the heading")
                 }
+                XCTAssertGreaterThan(toggle.accessibilityFrame().minY, frames[0].maxY,
+                    "The section heading and enable switch must be above the calibration controls")
                 let activationLabel = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.gyro.activation-label"))
                 let gripLabel = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.grip.right.label"))
                 let labelFrame = try XCTUnwrap(activationLabel.accessibilityFrame?())
@@ -352,7 +356,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 }
                 XCTAssertEqual(labelFrame.midY, activation.accessibilityFrame().midY, accuracy: 0.5)
                 XCTAssertEqual(labelFrame.midY, frames[0].midY, accuracy: 1,
-                    "Activation shares the summary band and the Right grip column")
+                    "Activation shares the calibration row and the Right grip column")
                 XCTAssertEqual(status.accessibilityLabel?(), "Calibrated, Ready")
                 XCTAssertFalse(accessibilityTree(host).contains("Gyro sensitivity"))
                 XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.gyro.calibration-instruction"),
@@ -402,7 +406,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                     XCTAssertEqual(status.accessibilityLabel?(), title)
                     let statusFrame = try XCTUnwrap(status.accessibilityFrame?())
                     let toggle = try XCTUnwrap(descendants(PaddrTuningSwitchButton.self, in: host).first)
-                    XCTAssertEqual(screenFrame.midY, toggle.accessibilityFrame().midY, accuracy: 0.5, title)
+                    XCTAssertGreaterThan(toggle.accessibilityFrame().minY, screenFrame.maxY, title)
                     XCTAssertEqual(screenFrame.midY, statusFrame.midY, accuracy: 0.5, title)
                     let controlFrames = [screenFrame, statusFrame, toggle.accessibilityFrame(), menu.accessibilityFrame()]
                     for index in controlFrames.indices {

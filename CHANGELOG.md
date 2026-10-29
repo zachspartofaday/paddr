@@ -6,11 +6,14 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
 
 - Add opt-in gyro-to-mouse aiming with touch activation, sensitivity, inversion,
   smoothing, controller holding-angle compensation and session-local stationary
-  calibration with an explicit Calibrate again action.
+  calibration started explicitly from a hold-still preparation prompt. Provide
+  Calibrate Again after calibration.
 - Add independent left/right grip-contact key and mouse-button bindings, with
   live contact and motion availability indicators while output is off. Align the
   controller settings with the pad inspectors, move explanatory copy into circled
   info buttons and make calibration state prominent.
+- Give gyro a section heading above calibration and Activation. Match Enable
+  output to the squared switch family and omit repeated connection advice.
 - Keep sensor output inside the existing output gate and held-action ownership;
   reject stale motion and release grip actions when their reports expire.
 - Add native profile settings and CLI options. Read existing profile documents

@@ -215,6 +215,7 @@ struct PaddrNativeTuningSwitch: NSViewRepresentable {
     let title: LocalizedStringResource
     @Binding var isOn: Bool
     let accessibilityIdentifier: String
+    var help: LocalizedStringResource? = nil
 
     @MainActor
     final class Coordinator: NSObject {
@@ -249,6 +250,11 @@ struct PaddrNativeTuningSwitch: NSViewRepresentable {
         control.setAccessibilityLabel(String(localized: title))
         control.cell?.setAccessibilityLabel(String(localized: title))
         control.setAccessibilityIdentifier(accessibilityIdentifier)
+        // SwiftUI help on a representable wrapper does not become the native
+        // switch's AXHelp. Keep operational instructions on the actual target.
+        let helpText = help.map { String(localized: $0) }
+        control.setAccessibilityHelp(helpText)
+        control.toolTip = helpText
         control.identifier = NSUserInterfaceItemIdentifier(accessibilityIdentifier)
         control.needsDisplay = true
     }
@@ -437,8 +443,9 @@ struct PaddrTuningSwitch: View {
     let title: LocalizedStringResource
     @Binding var isOn: Bool
     let accessibilityIdentifier: String
+    var help: LocalizedStringResource? = nil
     var body: some View {
-        PaddrNativeTuningSwitch(title: title, isOn: $isOn, accessibilityIdentifier: accessibilityIdentifier)
+        PaddrNativeTuningSwitch(title: title, isOn: $isOn, accessibilityIdentifier: accessibilityIdentifier, help: help)
             .paddrControlMaterial(isSwitch: true)
     }
 }

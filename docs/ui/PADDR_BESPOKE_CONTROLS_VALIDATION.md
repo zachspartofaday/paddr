@@ -1,5 +1,13 @@
 # Bespoke controls verification
 
+Current operator refinement, 2026-10-29: **Enable output** now uses the same
+squared native NSButton switch adapter as tuning controls, retaining its visible
+label, one binary accessibility target, model setter, disabled gate and
+save-before-enable explanation. This supersedes the earlier NSSwitch exception
+in the historical sections below. Redundant absent-controller advice is omitted
+from the footer; actionable permission, error and transition guidance remains.
+
+
 Historical initial implementation record, 2026-10-26. The current flat-accent/compact-gutter/single-rear-row
 refinement and its verification are recorded at the end of this document.
 Initial baseline: merged PR #95,

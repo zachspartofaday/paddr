@@ -114,6 +114,7 @@ struct ApplyBarView: View {
         }
         return usesExplicitStatusMessage
             || (model.hasSystemAccess && model.readiness.nextAction != .none
+                && model.readiness.nextAction != .connectController
                 && model.readiness.nextAction != .enableOutput)
     }
 
@@ -144,14 +145,20 @@ struct ApplyBarView: View {
                             .accessibilityLabel(Text("Output status"))
                             .accessibilityValue(Text(outputValue))
                             .paddrAccessibilityID("status", "output")
-                        Toggle("Enable output", isOn: $model.isEnabled)
-                            .disabled(!model.canToggleOutput)
-                            .toggleStyle(.switch)
-                            .accessibilityLabel(Text(outputToggleAccessibilityLabel))
-                            .accessibilityValue(Text(outputToggleAccessibilityValue))
-                            .accessibilityHint(Text(outputToggleHelp))
-                            .help(Text(outputToggleHelp))
-                            .accessibilityIdentifier(outputToggleAccessibilityIdentifier)
+                        HStack(spacing: PaddrStyle.Spacing.s2) {
+                            // The visible label shares pointer activation with
+                            // the switch, which owns the single named AX target.
+                            Button("Enable output") { model.isEnabled.toggle() }
+                                .buttonStyle(.plain)
+                                .paddrTypography(.rowLabel)
+                                .focusable(false)
+                                .accessibilityHidden(true)
+                            PaddrTuningSwitch(title: outputToggleAccessibilityLabel, isOn: $model.isEnabled,
+                                accessibilityIdentifier: outputToggleAccessibilityIdentifier,
+                                help: outputToggleHelp)
+                        }
+                        .disabled(!model.canToggleOutput)
+                        .help(Text(outputToggleHelp))
                     }
                     .fixedSize(horizontal: false, vertical: true)
                     if showsPendingSaveHint {

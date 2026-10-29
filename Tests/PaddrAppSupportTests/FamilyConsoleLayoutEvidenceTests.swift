@@ -1075,7 +1075,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 await settle(host)
                 XCTAssertLessThanOrEqual(host.fittingSize.width, width + 0.5)
                 XCTAssertGreaterThan(host.fittingSize.height, 0)
-                XCTAssertEqual(descendants(of: NSSwitch.self, in: host).count, 1)
+                XCTAssertEqual(descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.count, 1)
                 for control in descendants(of: NSControl.self, in: host) {
                     let rect = frame(of: control, in: host)
                     XCTAssertGreaterThanOrEqual(rect.minX, -0.5)
@@ -1092,7 +1092,8 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             let model = try makeEditableMenuModel(hasSystemAccess: granted)
             let initialized = await waitUntil { model.isInitialized }
             XCTAssertTrue(initialized)
-            XCTAssertEqual(ApplyBarView(model: model).showsStatusMessage, granted)
+            XCTAssertEqual(ApplyBarView(model: model).showsStatusMessage, granted,
+                "Missing-puck guidance remains actionable once access is granted")
             for textSize in [DynamicTypeSize.medium, .accessibility5] {
                 let host = NSHostingView(rootView: ApplyBarView(model: model)
                     .environment(\.dynamicTypeSize, textSize)
@@ -1113,13 +1114,13 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
                 }
                 XCTAssertFalse(elements.contains { $0.accessibilityIdentifier?() == "paddr.status.battery" },
                     "Unavailable battery data belongs in connection details, not the footer")
-                XCTAssertEqual(descendants(of: NSSwitch.self, in: host).count, 1)
+                XCTAssertEqual(descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.count, 1)
                 XCTAssertLessThanOrEqual(host.fittingSize.width, 680.5)
             }
         }
     }
 
-    func testEnableOutputRemainsANativeSwitchWhenDraftHasPendingChanges() async throws {
+    func testEnableOutputUsesSquaredNativeSwitchWhenDraftHasPendingChanges() async throws {
         let model = try makeEditableMenuModel(hasSystemAccess: true)
         let initialized = await waitUntil { model.isInitialized }
         XCTAssertTrue(initialized)
@@ -1134,16 +1135,18 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         let host = NSHostingView(rootView: bar)
         host.frame = NSRect(x: 0, y: 0, width: 680, height: 350)
         await settle(host)
-        let toggle = try XCTUnwrap(descendants(of: NSSwitch.self, in: host).first)
-        XCTAssertEqual(descendants(of: NSSwitch.self, in: host).count, 1)
+        let toggle = try XCTUnwrap(descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.first)
+        XCTAssertEqual(descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.count, 1)
         XCTAssertEqual(toggle.isEnabled, model.canToggleOutput)
         XCTAssertEqual(toggle.state, .off)
+        XCTAssertTrue(toggle.accessibilityHelp()?.contains("Turning on saves your pending changes.") == true)
         toggle.performClick(nil)
         let enabled = await waitUntil { model.isEnabled && !model.hasUnsavedChanges }
         XCTAssertTrue(enabled, "The existing dirty-enable path must save before activation")
         await settle(host)
-        XCTAssertTrue(toggle === descendants(of: NSSwitch.self, in: host).first)
+        XCTAssertTrue(toggle === descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.first)
         XCTAssertEqual(toggle.state, .on)
+        XCTAssertEqual(toggle.accessibilityHelp(), "Enable or disable output")
         XCTAssertFalse(ApplyBarView(model: model).showsPendingSaveHint)
         XCTAssertNotEqual(String(localized: ApplyBarView(model: model).outputValue), "Active",
             "Enabling without a connected receiver must not claim active output")
@@ -1176,7 +1179,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             $0.accessibilityIdentifier?() == "paddr.profile.save-apply"
         })
         XCTAssertEqual(save.accessibilityRole?(), .button)
-        let output = try XCTUnwrap(descendants(of: NSSwitch.self, in: host).first)
+        let output = try XCTUnwrap(descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.first)
         XCTAssertFalse(output.isDescendant(of: document))
         let saveFrame = try XCTUnwrap(save.accessibilityFrame?())
         let outputFrame = output.accessibilityFrame()
@@ -1192,7 +1195,7 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             $0.accessibilityIdentifier?() == "paddr.profile.save-apply"
         })
         XCTAssertEqual(scrolledSave.accessibilityFrame?(), saveFrame)
-        XCTAssertTrue(output === descendants(of: NSSwitch.self, in: host).first)
+        XCTAssertTrue(output === descendants(of: PaddrTuningSwitchButton.self, in: host).filter { $0.accessibilityIdentifier() == "paddr.toolbar.output" }.first)
         XCTAssertEqual(output.accessibilityFrame(), outputFrame)
         for rect in [saveFrame, outputFrame] {
             XCTAssertTrue(window.frame.contains(rect), "Persistent actions must stay inside the window")

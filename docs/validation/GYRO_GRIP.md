@@ -137,7 +137,7 @@ rotation. This does not establish exhaustive game, drift or output-loss acceptan
 
 The follow-up preserves default 0° aiming and adds a separate calibration request
 channel to the same runtime. Generic explanation lives in native help/popovers;
-current calibration state stays in the single summary row beside the gyro toggle; its immediate instruction remains available through status help. The summary row also holds Calibrate or Calibrate Again, aligned to the left selector edge, with ready state labeled Calibrated, Ready. Activation shares the summary row and aligns with Right grip. Tuning holds the remaining seven controls across two columns and four logical rows, including sensitivity. Contact labels are hidden when that grip action is None, without changing sensor observation or gyro activation. Verification
+current calibration state stays in a row below the Gyro to mouse heading and enable switch; its immediate instruction remains available through status help. The summary row also holds Calibrate or Calibrate Again, aligned to the left selector edge, with ready state labeled Calibrated, Ready. Activation shares the calibration row and aligns with Right grip. Tuning holds the remaining seven controls across two columns and four logical rows, including sensitivity. Contact labels are hidden when that grip action is None, without changing sensor observation or gyro activation. Verification
 of the refinement and its exact candidate is recorded with the PR evidence.
 
 
@@ -174,3 +174,37 @@ arm64 release app/CLI builds, CLI checks, and release identity/production fixtur
 passed. Native fixture captures cover light/dark, RTL, narrow and calibration
 states. The running personal preview had an unsaved draft and was left untouched;
 these checks did not enable live output or alter saved mappings.
+
+
+## Section hierarchy and footer refinement — 2026-10-29
+
+Gyro to mouse now has its own heading row with the existing squared enable
+switch beside its information button. Calibration status, Calibrate and Activation
+are on the row below. Calibrate retains the left inspector trailing edge;
+Activation retains the Right grip label and selector edges. Manual calibration
+and all model/runtime behavior are unchanged.
+
+Enable output uses the same squared NSButton switch adapter as tuning controls,
+with one binary accessibility target, native Space/press activation and the
+existing model setter, disabled gate and save-before-enable flow. Its visible
+label is also clickable without becoming a second keyboard/accessibility stop.
+The footer omits the repeated Connect the controller through the puck instruction
+when the connection summary already says Controller not connected. Missing-puck,
+permission, failure and sustained-transition guidance keep their existing paths.
+
+Automated validation: 592 tests, 591 passed and one existing key-window/map-focus
+skip, with all exporters enabled. Reverting the three presentation files to the
+previous head fails the heading, output-control and redundant-guidance regressions.
+The initial focused run exposed an incorrectly changed missing-puck expectation;
+it was corrected to retain that actionable advice. A separate check exposed absent
+native AXHelp on the new switch; explicit native help propagation repaired it.
+The full suite then passed. Localization, release app/CLI, CLI configuration and
+release identity/production fixtures passed.
+
+Manual acceptance still needs Tab/Shift-Tab through the gyro and output controls,
+Space/VoiceOver press toggling once, one named Enable output switch with its
+On/Off/disabled state and current save/permission help, and correct focus after
+calibration cancellation. Native fixture checks cover role, value, identity,
+control bounds, help updates and disabled gates; they do not establish complete
+VoiceOver or alternate-input acceptance. The current personal preview had an
+unsaved draft and was left untouched.
