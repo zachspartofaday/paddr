@@ -145,13 +145,13 @@ final class SensorTests: XCTestCase {
             }
             XCTAssertEqual(mapper.status, .ready)
             XCTAssertTrue(mapper.process(state(index: 126, grips: .init(rightTouched: true)), at: 504_000_000).isEmpty)
-            let actions = mapper.process(state(index: 127, rate: SIMD3(.pi / 180, 2 * .pi / 180, 0),
+            let actions = mapper.process(state(index: 127, rate: SIMD3(.pi / 180, 0, 2 * .pi / 180),
                                                grips: .init(rightTouched: true)), at: 508_000_000)
             guard case let .mouseMove(dx, dy) = try XCTUnwrap(actions.first) else { return XCTFail("Expected mouse movement") }
-            XCTAssertEqual(dx, inverted ? 0.08 : -0.08, accuracy: 1e-10)
+            XCTAssertEqual(dx, inverted ? 0.16 : -0.16, accuracy: 1e-10)
             XCTAssertEqual(dy, inverted ? 0.08 : -0.08, accuracy: 1e-10)
             XCTAssertEqual(mapper.status, .active)
-            XCTAssertTrue(mapper.process(state(index: 128, rate: SIMD3(0, 1, 0)), at: 512_000_000).isEmpty)
+            XCTAssertTrue(mapper.process(state(index: 128, rate: SIMD3(0, 0, 1)), at: 512_000_000).isEmpty)
             XCTAssertEqual(mapper.status, .ready)
         }
     }
@@ -164,14 +164,14 @@ final class SensorTests: XCTestCase {
             XCTAssertTrue(mapper.process(held, at: UInt64(index) * 4_000_000).isEmpty)
         }
         XCTAssertEqual(mapper.status, .ready)
-        XCTAssertTrue(mapper.process(state(index: 131, rate: SIMD3(0, 1, 0), grips: .init(rightTouched: true)), at: 524_000_000).isEmpty)
+        XCTAssertTrue(mapper.process(state(index: 131, rate: SIMD3(0, 0, 1), grips: .init(rightTouched: true)), at: 524_000_000).isEmpty)
         XCTAssertTrue(mapper.process(state(index: 132), at: 528_000_000).isEmpty)
         XCTAssertTrue(mapper.process(state(index: 133, grips: .init(rightTouched: true)), at: 532_000_000).isEmpty)
-        XCTAssertFalse(mapper.process(state(index: 134, rate: SIMD3(0, 1, 0), grips: .init(rightTouched: true)), at: 536_000_000).isEmpty)
+        XCTAssertFalse(mapper.process(state(index: 134, rate: SIMD3(0, 0, 1), grips: .init(rightTouched: true)), at: 536_000_000).isEmpty)
         mapper.reset()
         mapper.beginCalibration(at: 0, motionAvailable: true)
         for index in 0...200 {
-            let moving = state(index: index, rate: index == 100 ? SIMD3(0, 1, 0) : .zero)
+            let moving = state(index: index, rate: index == 100 ? SIMD3(0, 0, 1) : .zero)
             XCTAssertTrue(mapper.process(moving, at: UInt64(index) * 4_000_000).isEmpty)
         }
         XCTAssertEqual(mapper.status, .calibrating)
@@ -192,15 +192,15 @@ final class SensorTests: XCTestCase {
         for index in 0...130 { _ = mapper.process(state(index: index, rate: bias), at: UInt64(index) * 4_000_000) }
         XCTAssertEqual(mapper.status, .active)
         XCTAssertTrue(mapper.process(state(index: 131, rate: bias), at: 524_000_000).isEmpty)
-        let action = try XCTUnwrap(mapper.process(state(index: 132, rate: bias + SIMD3(0, 1, 0)), at: 528_000_000).first)
+        let action = try XCTUnwrap(mapper.process(state(index: 132, rate: bias + SIMD3(0, 0, 1)), at: 528_000_000).first)
         guard case let .mouseMove(dx, _) = action else { return XCTFail("Expected movement") }
-        XCTAssertLessThan(abs(dx), 1 * 180 / .pi * 0.004 * 12)
-        XCTAssertTrue(mapper.process(state(index: 132, rate: bias + SIMD3(0, 100, 0)), at: 532_000_000).isEmpty)
+        XCTAssertLessThan(abs(dx), 1 * 180 / .pi * 0.004 * 12 * 2)
+        XCTAssertTrue(mapper.process(state(index: 132, rate: bias + SIMD3(0, 0, 100)), at: 532_000_000).isEmpty)
         mapper.expire(at: 628_000_000)
         XCTAssertEqual(mapper.status, .unavailable)
-        XCTAssertTrue(mapper.process(state(index: 133, rate: SIMD3(0, 10, 0)), at: 632_000_000).isEmpty)
+        XCTAssertTrue(mapper.process(state(index: 133, rate: SIMD3(0, 0, 10)), at: 632_000_000).isEmpty)
         XCTAssertEqual(mapper.status, .unavailable)
-        var fresh = state(index: 160, rate: SIMD3(0, 10, 0))
+        var fresh = state(index: 160, rate: SIMD3(0, 0, 10))
         fresh.motion?.timestampNanoseconds = 640_000_000
         XCTAssertTrue(mapper.process(fresh, at: 640_000_000).isEmpty)
         XCTAssertEqual(mapper.status, .calibrationNeeded)
@@ -223,25 +223,25 @@ final class SensorTests: XCTestCase {
         XCTAssertNil(observation.grips)
     }
 
-    func testHoldingAngleProjectsYawAndRollAtFlatDiagonalAndUpright() throws {
-        // Independent geometric cases: flat uses yaw, upright uses negative roll,
-        // and equal yaw/roll cancel halfway between them.
-        let cases: [(angle: Double, yaw: Double, roll: Double, projected: Double)] = [
-            (0, 2, 3, 2), (0, 0, 3, 0),
-            (45, 2, 2, 0), (45, 1, 0, 0.7071067811865476),
-            (45, 0, 1, -0.7071067811865476),
-            (90, 2, 3, -3), (90, 2, 0, 0)
+    func testTurnProjectionUsesOperatorConfirmedAxisAtFlatDiagonalAndUpright() throws {
+        // Operator-confirmed turning uses rate.z at flat and rate.y upright.
+        // Opposite components cancel at the halfway holding angle.
+        let cases: [(angle: Double, y: Double, z: Double, projected: Double)] = [
+            (0, 2, 3, 3), (0, 2, 0, 0),
+            (45, 2, -2, 0), (45, 1, 0, 0.7071067811865476),
+            (45, 0, 1, 0.7071067811865476),
+            (90, 2, 3, 2), (90, 0, 3, 0)
         ]
         for sampleCase in cases {
             for inverted in [false, true] {
                 var mapper = GyroMapper(configuration: .init(
-                    enabled: true, activation: .always, sensitivity: 10, holdingAngleDegrees: sampleCase.angle,
+                    enabled: true, activation: .always, sensitivity: 10, horizontalScale: 1, holdingAngleDegrees: sampleCase.angle,
                     invertHorizontal: inverted, invertVertical: inverted, smoothing: 0, noiseThreshold: 0))
                 mapper.beginCalibration(at: 0, motionAvailable: true)
                 for index in 0...126 {
                     XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)
                 }
-                let angularRate = SIMD3<Double>(1, sampleCase.yaw, sampleCase.roll) * (.pi / 180)
+                let angularRate = SIMD3<Double>(1, sampleCase.y, sampleCase.z) * (.pi / 180)
                 let actions = mapper.process(state(index: 127, rate: angularRate), at: 508_000_000)
                 guard case let .mouseMove(dx, dy) = try XCTUnwrap(actions.first) else {
                     return XCTFail("Expected projected gyro movement")
@@ -254,17 +254,17 @@ final class SensorTests: XCTestCase {
     }
 
     func testHorizontalTiltUsesSideToSideAxisAndPreservesPitchAtEachHoldingAngle() throws {
-        // Independent world-axis cases: roll at flat, yaw at upright, and
-        // equal/opposite yaw+roll cancel halfway between the endpoints.
-        let cases: [(angle: Double, yaw: Double, roll: Double, projected: Double)] = [
-            (0, 0, 2, 2), (0, 3, 0, 0), (0, 1, -2, -2),
-            (45, 1, -1, 0), (45, 1, 1, 1.4142135623730951),
-            (90, 2, 0, 2), (90, 0, 3, 0), (90, -2, 1, -2)
+        // Operator-confirmed side tilt uses rate.y at flat and negative rate.z
+        // upright; equal components cancel at the halfway holding angle.
+        let cases: [(angle: Double, y: Double, z: Double, projected: Double)] = [
+            (0, 2, 0, 2), (0, 0, 3, 0), (0, -2, 1, -2),
+            (45, 1, 1, 0), (45, 1, -1, 1.4142135623730951),
+            (90, 0, 2, -2), (90, 3, 0, 0), (90, 1, -2, 2)
         ]
         for sampleCase in cases {
             for inverted in [false, true] {
                 var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always,
-                    sensitivity: 10, verticalScale: 1.5, holdingAngleDegrees: sampleCase.angle,
+                    sensitivity: 10, verticalScale: 1.5, horizontalScale: 1, holdingAngleDegrees: sampleCase.angle,
                     horizontalUsesTilt: true, invertHorizontal: inverted, smoothing: 0, noiseThreshold: 0))
                 for index in 0...130 {
                     XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)
@@ -274,12 +274,54 @@ final class SensorTests: XCTestCase {
                 for index in 131...257 {
                     XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)
                 }
-                let rate = SIMD3<Double>(1, sampleCase.yaw, sampleCase.roll) * (.pi / 180)
+                let rate = SIMD3<Double>(1, sampleCase.y, sampleCase.z) * (.pi / 180)
                 let action = try XCTUnwrap(mapper.process(state(index: 258, rate: rate), at: 1_032_000_000).first)
                 guard case let .mouseMove(dx, dy) = action else { return XCTFail("Expected gyro mouse movement") }
                 XCTAssertEqual(dx, (inverted ? 1 : -1) * sampleCase.projected * 0.004 * 10, accuracy: 1e-10)
                 XCTAssertEqual(dy, -0.06, accuracy: 1e-10, "Horizontal mode must not change forward/back aiming")
             }
+        }
+    }
+
+    func testHorizontalGainScalesOnlyLeftRightInBothModes() throws {
+        for tilt in [false, true] {
+            for gain in [1.0, 2, 8] {
+                var mapper = GyroMapper(configuration: .init(enabled: true, activation: .always,
+                    sensitivity: 10, verticalScale: 2.5, horizontalScale: gain,
+                    horizontalUsesTilt: tilt, smoothing: 0, noiseThreshold: 0))
+                mapper.beginCalibration(at: 0, motionAvailable: true)
+                for index in 0...126 { _ = mapper.process(state(index: index), at: UInt64(index) * 4_000_000) }
+                let action = try XCTUnwrap(mapper.process(state(index: 127,
+                    rate: SIMD3<Double>(1, 2, 3) * (.pi / 180)), at: 508_000_000).first)
+                guard case let .mouseMove(dx, dy) = action else { return XCTFail("Expected mouse movement") }
+                XCTAssertEqual(dx, (tilt ? -0.08 : -0.12) * gain, accuracy: 1e-10)
+                XCTAssertEqual(dy, -0.1, accuracy: 1e-10, "Horizontal gain must not alter vertical response")
+            }
+        }
+    }
+
+    func testHorizontalGainDefaultsBoundsAndPersistence() throws {
+        XCTAssertEqual(GyroConfiguration().horizontalScale, 2)
+        for json in ["{}", #"{"gyro":{"horizontalScale":null}}"#] {
+            let config = try JSONDecoder().decode(PaddrConfiguration.self, from: Data(json.utf8))
+            XCTAssertEqual(config.gyro.horizontalScale, 2)
+        }
+        for gain in [0.1, 1, 2, 8] {
+            var config = PaddrConfiguration.default
+            config.gyro.horizontalScale = gain
+            config.gyro.verticalScale = 2.5
+            let encoded = try ConfigurationStore.encoded(config)
+            XCTAssertEqual(try JSONDecoder().decode(PaddrConfiguration.self, from: encoded), config)
+            var document = ConfigurationProfileDocument.default
+            let profile = try document.createProfile(named: "Horizontal gain", configuration: config)
+            try document.activateProfile(id: profile.id)
+            let saved = try ConfigurationProfileStore.encoded(document)
+            XCTAssertEqual(try ConfigurationProfileStore.decodeConfigurationInput(from: saved).configuration, config)
+        }
+        for invalid in [0, 8.01, Double.nan, .infinity, -.infinity] {
+            var config = PaddrConfiguration.default
+            config.gyro.horizontalScale = invalid
+            XCTAssertThrowsError(try config.validated())
         }
     }
 
@@ -336,12 +378,12 @@ final class SensorTests: XCTestCase {
             _ = mapper.process(state(index: index, rate: oldBias), at: UInt64(index) * 4_000_000)
         }
         _ = mapper.process(state(index: 131, rate: oldBias, grips: .init(rightTouched: true)), at: 524_000_000)
-        XCTAssertFalse(mapper.process(state(index: 132, rate: oldBias + SIMD3(0, 1, 0),
+        XCTAssertFalse(mapper.process(state(index: 132, rate: oldBias + SIMD3(0, 0, 1),
             grips: .init(rightTouched: true)), at: 528_000_000).isEmpty)
         mapper.beginCalibration(at: 532_000_000, motionAvailable: true)
         XCTAssertEqual(mapper.status, .calibrating)
         for index in 134...140 {
-            XCTAssertTrue(mapper.process(state(index: index, rate: SIMD3(0, 1, 0),
+            XCTAssertTrue(mapper.process(state(index: index, rate: SIMD3(0, 0, 1),
                 grips: .init(rightTouched: true)), at: UInt64(index) * 4_000_000).isEmpty)
         }
         let newBias = SIMD3<Double>(0.003, -0.004, 0.002)
@@ -357,7 +399,7 @@ final class SensorTests: XCTestCase {
             grips: .init(rightTouched: true)), at: 1_096_000_000).isEmpty)
         XCTAssertTrue(mapper.process(state(index: 275, rate: newBias,
             grips: .init(rightTouched: true)), at: 1_100_000_000).isEmpty)
-        XCTAssertFalse(mapper.process(state(index: 276, rate: newBias + SIMD3(0, 1, 0),
+        XCTAssertFalse(mapper.process(state(index: 276, rate: newBias + SIMD3(0, 0, 1),
             grips: .init(rightTouched: true)), at: 1_104_000_000).isEmpty)
         mapper.beginCalibration(at: 1_108_000_000, motionAvailable: false)
         XCTAssertEqual(mapper.status, .unavailable)
@@ -380,7 +422,7 @@ final class SensorTests: XCTestCase {
             XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)
         }
         XCTAssertEqual(mapper.status, .active)
-        XCTAssertFalse(mapper.process(state(index: 364, rate: SIMD3(0, 1, 0)), at: 1_456_000_000).isEmpty)
+        XCTAssertFalse(mapper.process(state(index: 364, rate: SIMD3(0, 0, 1)), at: 1_456_000_000).isEmpty)
     }
 
     func testRecalibrationIgnoresQueuedSamplesReceivedBeforeTheRequestWasConsumed() {
@@ -416,7 +458,7 @@ final class SensorTests: XCTestCase {
             XCTAssertEqual(mapper.status, .ready)
             XCTAssertTrue(mapper.process(state(index: 276), at: 1_104_000_000).isEmpty)
             XCTAssertEqual(mapper.status, .active)
-            XCTAssertFalse(mapper.process(state(index: 277, rate: SIMD3(0, 1, 0)), at: 1_108_000_000).isEmpty)
+            XCTAssertFalse(mapper.process(state(index: 277, rate: SIMD3(0, 0, 1)), at: 1_108_000_000).isEmpty)
         }
     }
 
@@ -432,7 +474,7 @@ final class SensorTests: XCTestCase {
             XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)
         }
         XCTAssertEqual(mapper.status, .active)
-        XCTAssertFalse(mapper.process(state(index: 378, rate: SIMD3(0, 1, 0)), at: 1_512_000_000).isEmpty)
+        XCTAssertFalse(mapper.process(state(index: 378, rate: SIMD3(0, 0, 1)), at: 1_512_000_000).isEmpty)
         mapper.expire(at: 1_612_000_000)
         for index in 404...540 {
             XCTAssertTrue(mapper.process(state(index: index), at: UInt64(index) * 4_000_000).isEmpty)

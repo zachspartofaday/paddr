@@ -8,7 +8,9 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
   smoothing, controller holding-angle compensation and session-local stationary
   calibration started explicitly from a hold-still preparation prompt. Provide
   Calibrate Again after calibration. Offer side-to-side tilt instead of turning
-  for horizontal aiming, retaining forward/back vertical aiming.
+  for horizontal aiming, retaining forward/back vertical aiming. Correct the
+  operator-reported reversed tilt selector and add independent horizontal gain
+  from 0.1–8× with a stronger 2× default.
 - Add independent left/right grip-contact key and mouse-button bindings, with
   live contact and motion availability indicators while output is off. Align the
   controller settings with the pad inspectors, move explanatory copy into circled

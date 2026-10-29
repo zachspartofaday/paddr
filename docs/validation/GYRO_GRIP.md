@@ -137,7 +137,7 @@ rotation. This does not establish exhaustive game, drift or output-loss acceptan
 
 The follow-up preserves default 0° aiming and adds a separate calibration request
 channel to the same runtime. Generic explanation lives in native help/popovers;
-current calibration state stays in a row below the Gyro to mouse heading; its immediate instruction remains available through status help. The summary row also holds Calibrate or Calibrate Again, aligned to the left selector edge, with ready state labeled Calibrated, Ready. Activation shares the calibration row and aligns with Right grip. Tuning holds the eight tuning controls across two columns and four logical rows, including sensitivity and horizontal tilt selection. Contact labels are hidden when that grip action is None, without changing sensor observation or gyro activation. Verification
+current calibration state stays in a row below the Gyro to mouse heading; its immediate instruction remains available through status help. The summary row also holds Calibrate or Calibrate Again, aligned to the left selector edge, with ready state labeled Calibrated, Ready. Activation shares the calibration row and aligns with Right grip. Tuning holds the nine tuning controls across two columns and five logical rows, including sensitivity and horizontal tilt selection. Contact labels are hidden when that grip action is None, without changing sensor observation or gyro activation. Verification
 of the refinement and its exact candidate is recorded with the PR evidence.
 
 
@@ -245,12 +245,13 @@ left cell, retaining two columns and four rows. The profile boolean
 profiles retain turning. It participates in normal draft, save/apply, raw export
 and profile encoding. CLI parity is `--gyro-horizontal-tilt on|off`.
 
-Turning retains the yaw projection `yaw*cos(angle) - roll*sin(angle)`. Tilt
-selects the perpendicular projection `yaw*sin(angle) + roll*cos(angle)`. Both
+The initial implementation assigned turning to `rate.y*cos(angle) - rate.z*sin(angle)`
+and tilt to `rate.y*sin(angle) + rate.z*cos(angle)`. The subsequent operator
+observation below corrects the reversed physical mode assignments. Both
 feed the existing negative horizontal mouse convention; forward/back pitch,
 scaling, inversion, noise cutoff, smoothing, activation and manual calibration
-remain unchanged. At 0° tilt uses roll and ignores yaw; at 90° it uses yaw and
-ignores roll. Independent endpoint/45° cancellation oracles and a wire-report
+remain unchanged. The later physical-mode correction changes which of the two projections
+the selector uses; the parser’s SI conversion stays unchanged. Independent endpoint/45° cancellation oracles and a wire-report
 runtime test cover the selection. Physical tilt direction and ergonomic gain
 remain attended checks; automated axes do not establish live game acceptance.
 
@@ -263,3 +264,39 @@ UI draft isolation/read-only semantics, and CLI on/off/retention/error paths
 passed. Localization, arm64 release app/CLI and release identity/production
 checks passed. Physical direction, comfort/gain and live game acceptance remain
 pending; no live output was posted by these fixtures.
+
+
+## Operator-reported axis reversal and horizontal gain — 2026-10-29
+
+The maintainer reported that enabling Tilt for horizontal aiming selected turning,
+and explicitly directed using that observed reversal rather than waiting for a
+new timed capture. The app’s Holding angle was 0°. The selector assignments are
+swapped: Tilt On uses `rate.y*cos(angle) - rate.z*sin(angle)`, Tilt Off uses
+`rate.y*sin(angle) + rate.z*cos(angle)`. At flat this makes Tilt follow wire Z
+and turning follow negative wire Y. The parser’s SDL-basis conversion is
+unchanged. This uses operator observation, not a new instrumented physical test.
+
+The earlier source tests established perpendicular projections and expected wire
+values, but did not independently establish which physical hand motion each
+mode name described. Regressions now pin the operator-directed assignments and
+retain holding-angle endpoint/cancellation, inversion and vertical checks.
+
+Horizontal sensitivity adds `gyro.horizontalScale` from 0.1–8, default 2 for new
+and omitted/null values. The multiplier applies only after horizontal projection
+and filtering; vertical gain and stored base sensitivity remain unchanged.
+Explicit stored multipliers are retained. UI pairs Horizontal sensitivity with
+Vertical sensitivity, making nine tuning controls across two columns/five rows.
+CLI parity is `--gyro-horizontal-scale`. The normal save/apply and manual
+calibration lifecycle remains. Physical direction/gain and game acceptance still
+need an attended check of the corrected build.
+
+
+Validation for the corrected axes and independent gain completed 601 tests:
+600 passed and the existing key-window/map-focus test skipped. All three image
+exporters ran. The targeted Core and sensor-presentation checks passed. Restoring
+the earlier reversed projections and removing horizontal gain compiled, then
+failed the new behavioral regressions; restored source passed the full suite.
+Localization, arm64 release app/CLI builds, CLI checks, and release
+identity/production fixtures passed. These checks use injected input and event
+sinks; they do not establish physical direction, comfortable gain, live games or
+complete assistive-technology behavior.

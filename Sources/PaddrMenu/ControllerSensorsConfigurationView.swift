@@ -241,15 +241,24 @@ struct ControllerSensorsConfigurationView: View {
                     .help("Ignores rotation slower than this rate after stationary calibration.")
             }
             tuningPair {
+                sensorSlider("Horizontal sensitivity", value: $gyro.horizontalScale,
+                    range: ConfigurationLimits.gyroHorizontalScale, step: 0.1,
+                    valueText: gyro.horizontalScale.formatted(.number.precision(.fractionLength(1)).locale(locale)) + "×")
+                    .help("Adjusts left and right aiming without changing up and down aiming. Defaults to 2×.")
+            } trailing: {
                 sensorSlider("Vertical sensitivity", value: $gyro.verticalScale,
                     range: ConfigurationLimits.gyroVerticalScale, step: 0.1,
                     valueText: gyro.verticalScale.formatted(.number.precision(.fractionLength(1)).locale(locale)) + "×")
-            } trailing: {
-                toggleRow("Invert horizontal", value: $gyro.invertHorizontal, identifier: "invert-horizontal")
             }
             tuningPair {
                 toggleRow("Tilt for horizontal aiming", value: $gyro.horizontalUsesTilt, identifier: "horizontal-tilt",
                     help: "Use side-to-side tilt instead of turning for horizontal aiming. Holding angle applies to both modes; up and down aiming is unchanged.")
+            } trailing: {
+                toggleRow("Invert horizontal", value: $gyro.invertHorizontal, identifier: "invert-horizontal")
+            }
+            tuningPair {
+                // Nine settings keep complete paired rows; this last left cell is empty.
+                Color.clear.frame(height: 0).accessibilityHidden(true).allowsHitTesting(false)
             } trailing: {
                 toggleRow("Invert vertical", value: $gyro.invertVertical, identifier: "invert-vertical")
             }

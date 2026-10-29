@@ -605,13 +605,14 @@ cp "$sensor_source" "$sensor_source.before"
 "$cli_path" --config "$sensor_source" --show-config >"$stdout_path" 2>"$stderr_path"
 if [ "$(plutil -extract gyro.enabled raw -o - "$stdout_path")" != false ] \
     || [ "$(plutil -extract gyro.horizontalUsesTilt raw -o - "$stdout_path")" != false ] \
+    || [ "$(plutil -extract gyro.horizontalScale raw -o - "$stdout_path")" != 2 ] \
     || [ "$(plutil -extract gripTouch json -o - "$stdout_path")" != '{}' ]; then
     echo "Legacy configurations did not default to gyro Off and grip None." >&2
     exit 1
 fi
 "$cli_path" --config "$sensor_source" \
     --gyro on --gyro-activation either-grip --gyro-sensitivity 8.5 \
-    --gyro-vertical-scale 1.5 --gyro-holding-angle 45 --gyro-horizontal-tilt on --gyro-invert-horizontal on --gyro-invert-vertical off \
+    --gyro-vertical-scale 1.5 --gyro-horizontal-scale 3.5 --gyro-holding-angle 45 --gyro-horizontal-tilt on --gyro-invert-horizontal on --gyro-invert-vertical off \
     --gyro-smoothing 0.4 --gyro-noise-threshold 0.75 \
     --left-grip ' F1 ' --right-grip mouse-right --show-config \
     >"$sensor_effective" 2>"$stderr_path"
@@ -619,6 +620,7 @@ if [ "$(plutil -extract gyro.enabled raw -o - "$sensor_effective")" != true ] \
     || [ "$(plutil -extract gyro.activation raw -o - "$sensor_effective")" != either-grip ] \
     || [ "$(plutil -extract gyro.sensitivity raw -o - "$sensor_effective")" != 8.500000 ] \
     || [ "$(plutil -extract gyro.verticalScale raw -o - "$sensor_effective")" != 1.500000 ] \
+    || [ "$(plutil -extract gyro.horizontalScale raw -o - "$sensor_effective")" != 3.500000 ] \
     || [ "$(plutil -extract gyro.holdingAngleDegrees raw -o - "$sensor_effective")" != 45 ] \
     || [ "$(plutil -extract gyro.horizontalUsesTilt raw -o - "$sensor_effective")" != true ] \
     || [ "$(plutil -extract gyro.invertHorizontal raw -o - "$sensor_effective")" != true ] \
@@ -643,6 +645,7 @@ fi
 if [ "$(plutil -extract gyro.enabled raw -o - "$stdout_path")" != false ] \
     || [ "$(plutil -extract gyro.sensitivity raw -o - "$stdout_path")" != 8.500000 ] \
     || [ "$(plutil -extract gyro.horizontalUsesTilt raw -o - "$stdout_path")" != true ] \
+    || [ "$(plutil -extract gyro.horizontalScale raw -o - "$stdout_path")" != 3.500000 ] \
     || [ "$(plutil -extract gripTouch json -o - "$stdout_path")" != '{}' ]; then
     echo "Disabling sensors did not preserve gyro tuning or clear both grip bindings." >&2
     exit 1
@@ -692,6 +695,9 @@ assert_invalid_sensor_option() {
 }
 assert_invalid_sensor_option --gyro maybe
 assert_invalid_sensor_option --gyro-horizontal-tilt maybe
+assert_invalid_sensor_option --gyro-horizontal-scale 0
+assert_invalid_sensor_option --gyro-horizontal-scale 8.1
+assert_invalid_sensor_option --gyro-horizontal-scale nan
 assert_invalid_sensor_option --gyro-activation squeeze
 assert_invalid_sensor_option --gyro-sensitivity nan
 assert_invalid_sensor_option --gyro-sensitivity inf

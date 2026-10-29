@@ -196,15 +196,14 @@ struct GyroMapper: Sendable {
         }
         let rate = sample.angularVelocity - (bias ?? .zero)
         let degreesPerRadian = 180 / Double.pi
-        // SDL axes: positive yaw turns left; positive pitch lifts the nose.
-        // Pitching the controller toward upright rotates world yaw between its
-        // yaw and roll axes. The orthogonal projection follows side-to-side
-        // tilt instead. Both positive world yaw and roll point left; macOS
-        // coordinates increase rightward and downward.
+        // Keep the parser's SDL basis, but route the horizontal modes according
+        // to the operator's physical observation: at 0°, tilt follows wire Z (rate.y)
+        // and turning follows -wire Y (rate.z). Holding angle rotates that pair.
+        // Pitch and the signed mouse convention are independent of this choice.
         let holdingAngle = configuration.holdingAngleDegrees * Double.pi / 180
         let horizontalRate = configuration.horizontalUsesTilt
-            ? rate.y * sin(holdingAngle) + rate.z * cos(holdingAngle)
-            : rate.y * cos(holdingAngle) - rate.z * sin(holdingAngle)
+            ? rate.y * cos(holdingAngle) - rate.z * sin(holdingAngle)
+            : rate.y * sin(holdingAngle) + rate.z * cos(holdingAngle)
         var aim = SIMD2(-horizontalRate, -rate.x) * degreesPerRadian
         if abs(aim.x) < configuration.noiseThreshold { aim.x = 0 }
         if abs(aim.y) < configuration.noiseThreshold { aim.y = 0 }
@@ -215,7 +214,8 @@ struct GyroMapper: Sendable {
             let alpha = interval / (timeConstant + interval)
             filteredRate += (aim - filteredRate) * alpha
         }
-        let dx = filteredRate.x * interval * configuration.sensitivity * (configuration.invertHorizontal ? -1 : 1)
+        let dx = filteredRate.x * interval * configuration.sensitivity * configuration.horizontalScale
+            * (configuration.invertHorizontal ? -1 : 1)
         let dy = filteredRate.y * interval * configuration.sensitivity * configuration.verticalScale
             * (configuration.invertVertical ? -1 : 1)
         guard dx.isFinite, dy.isFinite, dx != 0 || dy != 0 else { return [] }

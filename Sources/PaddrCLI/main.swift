@@ -69,6 +69,7 @@ private func help() -> String {
       --gyro-activation MODE        right-grip, left-grip, either-grip, either-pad, or always.
       --gyro-sensitivity N          Mouse points per degree, 0.1...40.
       --gyro-vertical-scale N       Vertical sensitivity multiplier, 0.1...4.
+      --gyro-horizontal-scale N     Horizontal sensitivity multiplier, 0.1...8 (default 2).
       --gyro-holding-angle N        Controller pitch: 0° flat through 90° upright.
       --gyro-horizontal-tilt on|off Use side-to-side tilt instead of turning for horizontal aiming.
       --gyro-invert-horizontal on|off
@@ -252,6 +253,8 @@ private func parse(_ rawArguments: [String]) throws -> CLIOptions {
             options.configuration.gyro.sensitivity = try parseDouble(nextValue(), option: argument)
         case "--gyro-vertical-scale":
             options.configuration.gyro.verticalScale = try parseDouble(nextValue(), option: argument)
+        case "--gyro-horizontal-scale":
+            options.configuration.gyro.horizontalScale = try parseDouble(nextValue(), option: argument)
         case "--gyro-holding-angle":
             options.configuration.gyro.holdingAngleDegrees = try parseDouble(nextValue(), option: argument)
         case "--gyro-horizontal-tilt":
@@ -436,6 +439,7 @@ private func run(_ options: CLIOptions) throws {
         + "activation \(options.configuration.gyro.activation.rawValue), "
         + "\(options.configuration.gyro.sensitivity) points/degree, "
         + "holding angle \(options.configuration.gyro.holdingAngleDegrees)°, "
+        + "horizontal gain \(options.configuration.gyro.horizontalScale)×, "
         + "horizontal \(options.configuration.gyro.horizontalUsesTilt ? "tilt" : "turn")")
     print("Grip touch: left=\(options.configuration.gripTouch.left ?? "none"), "
         + "right=\(options.configuration.gripTouch.right ?? "none")")

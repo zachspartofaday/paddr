@@ -1794,24 +1794,24 @@ final class RuntimeTests: XCTestCase {
         }
         steps += [
             .report(sensorRuntimeReport(tick: 524_000, grips: 0x1000_0000), at: 524_000_000),
-            .report(sensorRuntimeReport(tick: 528_000, grips: 0x1000_0000, gyroZ: 164), at: 528_000_000),
+            .report(sensorRuntimeReport(tick: 528_000, grips: 0x1000_0000, gyroY: 164), at: 528_000_000),
             .perform { gate.setEnabled(false) }, .wake(at: 532_000_000),
             .perform { gate.setEnabled(true) },
-            .report(sensorRuntimeReport(tick: 536_000, grips: 0x1000_0000, gyroZ: 164), at: 536_000_000),
-            .report(sensorRuntimeReport(tick: 540_000, grips: 0x1000_0000, gyroZ: 164), at: 540_000_000),
+            .report(sensorRuntimeReport(tick: 536_000, grips: 0x1000_0000, gyroY: 164), at: 536_000_000),
+            .report(sensorRuntimeReport(tick: 540_000, grips: 0x1000_0000, gyroY: 164), at: 540_000_000),
             .remove
         ]
         let hid = ScriptedHID(clock: clock, steps: steps)
         _ = try run(configuration: config, outputGate: gate, hid: hid, clock: clock, output: output, events: events)
         XCTAssertEqual(output.actions.count, 1)
         guard case let .mouseMove(dx, dy) = try XCTUnwrap(output.actions.first) else { return XCTFail("Expected gyro mouse output") }
-        XCTAssertEqual(dx, -Double(164) / 32768 * 2000 * 0.004 * 12, accuracy: 1e-8)
+        XCTAssertEqual(dx, Double(164) / 32768 * 2000 * 0.004 * 12 * 2, accuracy: 1e-8)
         XCTAssertEqual(dy, 0)
         XCTAssertTrue(events.events.contains { if case .sensorsUpdated(let value) = $0 { value.gyroStatus == .ready } else { false } })
         XCTAssertEqual(events.lifecycleEvents.filter { $0 == .outputArmed }.count, 2)
     }
 
-    func testTiltHorizontalRuntimeUsesRollReportInsteadOfTurnReport() throws {
+    func testTiltHorizontalRuntimeMatchesOperatorConfirmedWireAxis() throws {
         let clock = ManualUptimeClock()
         let output = RecordingOutput()
         let events = EventRecorder()
@@ -1825,17 +1825,17 @@ final class RuntimeTests: XCTestCase {
             .report(sensorRuntimeReport(tick: UInt32(index * 4000)), at: UInt64(index) * 4_000_000)
         }
         steps += [
-            .report(sensorRuntimeReport(tick: 524_000, gyroZ: 164), at: 524_000_000),
-            .report(sensorRuntimeReport(tick: 528_000, gyroY: 164), at: 528_000_000),
+            .report(sensorRuntimeReport(tick: 524_000, gyroY: 164), at: 524_000_000),
+            .report(sensorRuntimeReport(tick: 528_000, gyroZ: 164), at: 528_000_000),
             .perform { gate.setEnabled(false) }, .wake(at: 532_000_000), .remove
         ]
         _ = try run(configuration: configuration, outputGate: gate,
             hid: ScriptedHID(clock: clock, steps: steps), clock: clock, output: output, events: events)
         XCTAssertEqual(output.actions.count, 1, "Turning must not move the cursor in flat tilt mode")
         guard case let .mouseMove(dx, dy) = try XCTUnwrap(output.actions.first) else {
-            return XCTFail("Expected roll-driven mouse movement")
+            return XCTFail("Expected tilt-driven mouse movement")
         }
-        XCTAssertEqual(dx, Double(164) / 32768 * 2000 * 0.004 * 12, accuracy: 1e-8)
+        XCTAssertEqual(dx, -Double(164) / 32768 * 2000 * 0.004 * 12 * 2, accuracy: 1e-8)
         XCTAssertEqual(dy, 0)
         XCTAssertFalse(gate.isEnabled)
     }
@@ -1948,17 +1948,17 @@ final class RuntimeTests: XCTestCase {
         }
         let held: UInt32 = 0x3002_0000
         steps.append(.report(sensorRuntimeReport(tick: 524_000, grips: held, padHeld: true), at: 524_000_000))
-        steps.append(.report(sensorRuntimeReport(tick: 528_000, grips: held, gyroZ: 164, padHeld: true), at: 528_000_000))
+        steps.append(.report(sensorRuntimeReport(tick: 528_000, grips: held, gyroY: 164, padHeld: true), at: 528_000_000))
         steps.append(.perform { XCTAssertTrue(gate.requestGyroCalibration()) })
         steps.append(.wake(at: 532_000_000))
         for index in 134...274 {
             let bytes = sensorRuntimeReport(tick: UInt32(index * 4000), grips: held,
-                                            gyroZ: index < 144 ? 164 : 0, padHeld: true)
+                                            gyroY: index < 144 ? 164 : 0, padHeld: true)
             steps.append(.report(bytes, at: UInt64(index) * 4_000_000))
         }
         steps.append(.report(sensorRuntimeReport(tick: 1_100_000, grips: 0x2002_0000, padHeld: true), at: 1_100_000_000))
-        steps.append(.report(sensorRuntimeReport(tick: 1_104_000, grips: held, gyroZ: 164, padHeld: true), at: 1_104_000_000))
-        steps.append(.report(sensorRuntimeReport(tick: 1_108_000, grips: held, gyroZ: 164, padHeld: true), at: 1_108_000_000))
+        steps.append(.report(sensorRuntimeReport(tick: 1_104_000, grips: held, gyroY: 164, padHeld: true), at: 1_104_000_000))
+        steps.append(.report(sensorRuntimeReport(tick: 1_108_000, grips: held, gyroY: 164, padHeld: true), at: 1_108_000_000))
         steps.append(.report(sensorRuntimeReport(tick: 1_112_000), at: 1_112_000_000))
         let hid = ScriptedHID(clock: clock, steps: steps)
         _ = try run(configuration: configuration, outputGate: gate, hid: hid, clock: clock, output: output, events: events)
@@ -2046,7 +2046,7 @@ final class RuntimeTests: XCTestCase {
                 }
                 steps += [
                     .report(sensorRuntimeReport(tick: 1_092_000, grips: held), at: 1_092_000_000),
-                    .report(sensorRuntimeReport(tick: 1_096_000, grips: held, gyroZ: 164), at: 1_096_000_000),
+                    .report(sensorRuntimeReport(tick: 1_096_000, grips: held, gyroY: 164), at: 1_096_000_000),
                     .perform { XCTAssertTrue(gate.requestGyroCalibration()) }, .wake(at: 1_100_000_000)
                 ]
                 for index in 276...406 {
@@ -2055,14 +2055,14 @@ final class RuntimeTests: XCTestCase {
                 }
                 steps += [
                     // Still-held activation must not resume motion after recalibration.
-                    .report(sensorRuntimeReport(tick: 1_628_000, grips: held, gyroZ: 164), at: 1_628_000_000),
+                    .report(sensorRuntimeReport(tick: 1_628_000, grips: held, gyroY: 164), at: 1_628_000_000),
                     .report(sensorRuntimeReport(tick: 1_632_000), at: 1_632_000_000),
                     .report(sensorRuntimeReport(tick: 1_636_000, grips: held), at: 1_636_000_000),
-                    .report(sensorRuntimeReport(tick: 1_640_000, grips: held, gyroZ: 164), at: 1_640_000_000)
+                    .report(sensorRuntimeReport(tick: 1_640_000, grips: held, gyroY: 164), at: 1_640_000_000)
                 ]
                 switch ending {
                 case "release":
-                    steps.append(.report(sensorRuntimeReport(tick: 1_644_000, gyroZ: 164), at: 1_644_000_000))
+                    steps.append(.report(sensorRuntimeReport(tick: 1_644_000, gyroY: 164), at: 1_644_000_000))
                 case "disable":
                     steps += [.perform { gate.setEnabled(false) }, .wake(at: 1_644_000_000)]
                 case "disconnect":

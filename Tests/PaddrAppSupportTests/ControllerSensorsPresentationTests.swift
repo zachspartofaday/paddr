@@ -223,6 +223,53 @@ final class ControllerSensorsPresentationTests: XCTestCase {
         }
     }
 
+    func testHorizontalSensitivityChangesOnlyItsObservedDraftField() async throws {
+        for direction in [LayoutDirection.leftToRight, .rightToLeft] {
+            for isEditable in [true, false] {
+                let draft = ControllerSensorDraftFixture()
+                draft.gyro.sensitivity = 40
+                draft.gyro.verticalScale = 2.5
+                draft.gyro.horizontalUsesTilt = true
+                let before = draft.gyro
+                var writes = 0
+                var calibrationRequests = 0
+                let host = NSHostingView(rootView: ControllerSensorsConfigurationView(
+                    gyro: Binding(get: { draft.gyro }, set: { draft.gyro = $0; writes += 1 }),
+                    gripTouch: .constant(.unassigned), sensorStatus: nil, isEditable: isEditable,
+                    initialTuningExpanded: true, recalibrate: { calibrationRequests += 1 })
+                    .environment(\.layoutDirection, direction)
+                    .environment(\.accessibilityEnabled, true))
+                let window = makeWindow(host, width: 916, height: 1200)
+                defer { window.close() }
+                await settle(host)
+                var visited = Set<ObjectIdentifier>()
+                func findSlider(_ object: AnyObject) -> AnyObject? {
+                    guard visited.insert(ObjectIdentifier(object)).inserted else { return nil }
+                    if object.accessibilityRole?() == .slider,
+                       object.accessibilityLabel?() == "Horizontal sensitivity" { return object }
+                    for child in object.accessibilityChildren?() as? [Any] ?? [] {
+                        if let slider = findSlider(child as AnyObject) { return slider }
+                    }
+                    return nil
+                }
+                let slider = try XCTUnwrap(findSlider(host), accessibilityTree(host))
+                XCTAssertEqual(slider.accessibilityLabel?(), "Horizontal sensitivity")
+                XCTAssertEqual(slider.accessibilityPerformIncrement?() ?? false, isEditable)
+                await settle(host)
+                if isEditable {
+                    XCTAssertGreaterThan(draft.gyro.horizontalScale, before.horizontalScale)
+                    XCTAssertLessThanOrEqual(draft.gyro.horizontalScale, ConfigurationLimits.gyroHorizontalScale.upperBound)
+                }
+                var expected = before
+                if isEditable { expected.horizontalScale = draft.gyro.horizontalScale }
+                XCTAssertEqual(draft.gyro, expected,
+                    "Horizontal gain must not change base sensitivity, vertical gain, tilt selection or other settings")
+                XCTAssertEqual(writes, isEditable ? 1 : 0)
+                XCTAssertEqual(calibrationRequests, 0)
+            }
+        }
+    }
+
     func testSensorSelectorsSharePadInspectorEdgesInLTRAndRTL() async throws {
         for width in [CGFloat(916), 1080] {
             let edges = try XCTUnwrap(PaddrPadColumns.workspaceInspectorTrailingEdges(in: width))
@@ -458,6 +505,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                     "Activation shares the calibration row and the Right grip column")
                 XCTAssertEqual(status.accessibilityLabel?(), "Calibrated, Ready")
                 XCTAssertFalse(accessibilityTree(host).contains("Gyro sensitivity"))
+                XCTAssertFalse(accessibilityTree(host).contains("Horizontal sensitivity"))
                 XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.gyro.calibration-instruction"),
                     "Guidance belongs in help and the information popover, not a permanent extra row")
             }
@@ -524,6 +572,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                     XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.grip.left.state"))
                     XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.grip.right.state"))
                     XCTAssertFalse(accessibilityTree(host).contains("Gyro sensitivity"))
+                    XCTAssertFalse(accessibilityTree(host).contains("Horizontal sensitivity"))
                 }
             }
         }
@@ -566,7 +615,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
         }
     }
 
-    func testExpandedTuningKeepsEightControlsOnSharedInspectorEdges() async throws {
+    func testExpandedTuningKeepsNineControlsOnSharedInspectorEdges() async throws {
         for width in [CGFloat(916), 1080] {
             let edges = try XCTUnwrap(PaddrPadColumns.workspaceInspectorTrailingEdges(in: width))
             for direction in [LayoutDirection.leftToRight, .rightToLeft] {
@@ -589,9 +638,10 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                     for child in object.accessibilityChildren?() as? [Any] ?? [] { collect(child as AnyObject) }
                 }
                 collect(host)
-                XCTAssertEqual(elements.count, 5)
+                XCTAssertEqual(elements.count, 6)
                 for (label, end, readout) in [("Gyro sensitivity", edges.left, PaddrStyle.Width.gyroReadout),
-                                             ("Vertical sensitivity", edges.left, PaddrStyle.Width.readout),
+                                             ("Horizontal sensitivity", edges.left, PaddrStyle.Width.readout),
+                                             ("Vertical sensitivity", edges.right, PaddrStyle.Width.readout),
                                              ("Gyro smoothing", edges.right, PaddrStyle.Width.readout),
                                              ("Noise threshold", edges.right, PaddrStyle.Width.gyroReadout)] {
                     let slider = try XCTUnwrap(elements[label])
@@ -605,7 +655,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 }
                 let switches = descendants(PaddrTuningSwitchButton.self, in: host)
                     .filter { $0.accessibilityLabel() != "Gyro to mouse" }
-                XCTAssertEqual(switches.count, 3, "Five sliders, horizontal tilt and two inversion switches are the eight tuning controls")
+                XCTAssertEqual(switches.count, 3, "Six sliders, horizontal tilt and two inversion switches are the nine tuning controls")
                 for control in switches {
                     let frame = control.convert(control.bounds, to: host)
                     let end = control.accessibilityLabel() == "Tilt for horizontal aiming" ? edges.left : edges.right
@@ -619,11 +669,14 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 let smoothingY = try XCTUnwrap(elements["Gyro smoothing"]?.accessibilityFrame?()).midY
                 XCTAssertEqual(sensitivityY, smoothingY, accuracy: 0.5)
                 let verticalY = try XCTUnwrap(elements["Vertical sensitivity"]?.accessibilityFrame?()).midY
+                let horizontalY = try XCTUnwrap(elements["Horizontal sensitivity"]?.accessibilityFrame?()).midY
+                XCTAssertEqual(horizontalY, verticalY, accuracy: 0.5, "Axis sensitivity controls share a row")
                 let horizontalSwitch = try XCTUnwrap(switches.first { $0.accessibilityLabel() == "Invert horizontal" })
-                XCTAssertEqual(verticalY, horizontalSwitch.accessibilityFrame().midY, accuracy: 0.5)
                 let tilt = try XCTUnwrap(switches.first { $0.accessibilityLabel() == "Tilt for horizontal aiming" })
+                XCTAssertEqual(tilt.accessibilityFrame().midY, horizontalSwitch.accessibilityFrame().midY, accuracy: 0.5)
                 let verticalSwitch = try XCTUnwrap(switches.first { $0.accessibilityLabel() == "Invert vertical" })
-                XCTAssertEqual(tilt.accessibilityFrame().midY, verticalSwitch.accessibilityFrame().midY, accuracy: 0.5)
+                XCTAssertLessThan(verticalSwitch.accessibilityFrame().maxY, tilt.accessibilityFrame().minY,
+                    "The final inversion control remains on the fifth row")
             }
         }
     }
@@ -652,9 +705,9 @@ final class ControllerSensorsPresentationTests: XCTestCase {
             }
         }
         collect(host)
-        XCTAssertEqual(Set(sliderLabels), ["Gyro sensitivity", "Holding angle", "Vertical sensitivity", "Gyro smoothing", "Noise threshold"],
+        XCTAssertEqual(Set(sliderLabels), ["Gyro sensitivity", "Holding angle", "Horizontal sensitivity", "Vertical sensitivity", "Gyro smoothing", "Noise threshold"],
             "The disclosure's name must not replace its child controls' accessible labels")
-        XCTAssertEqual(sliderLabels.count, 5)
+        XCTAssertEqual(sliderLabels.count, 6)
         XCTAssertEqual(disclosureLabels, ["Gyro tuning"],
             "The group must keep one correctly named native disclosure control: " + accessibilityTree(host))
     }
@@ -737,6 +790,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 var extremes = gyro
                 extremes.sensitivity = 40
                 extremes.verticalScale = 4
+                extremes.horizontalScale = ConfigurationLimits.gyroHorizontalScale.upperBound
                 extremes.holdingAngleDegrees = 90
                 extremes.noiseThreshold = 5
                 extremes.smoothing = 1

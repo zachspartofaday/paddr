@@ -2522,6 +2522,14 @@
     },
     "Use side-to-side tilt instead of turning for horizontal aiming. Holding angle applies to both modes; up and down aiming is unchanged.": {
       "comment": "Help for the horizontal gyro tilt setting; vertical aiming is unaffected and holding-angle compensation still applies."
+    },
+    "Horizontal sensitivity": {
+      "comment": "Independent horizontal gyro gain; does not change the vertical or base sensitivity.",
+      "extractionState": "manual"
+    },
+    "Adjusts left and right aiming without changing up and down aiming. Defaults to 2×.": {
+      "comment": "Independent horizontal gyro gain; does not change the vertical or base sensitivity.",
+      "extractionState": "manual"
     }
   },
   "version": "1.0"
