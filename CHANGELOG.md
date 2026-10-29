@@ -2,7 +2,7 @@
 
 User-visible changes to Paddr are recorded here. Release entries describe confirmed behavior at the time of each release; later entries may supersede earlier limitations.
 
-## Unreleased
+## 2.1.0 — 2026-10-29
 
 - Add opt-in gyro-to-mouse aiming with touch activation, sensitivity, inversion,
   smoothing, controller holding-angle compensation and session-local stationary

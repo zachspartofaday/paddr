@@ -8,8 +8,6 @@ Turn the trackpads into a mouse, scroll surface, or a set of keyboard shortcuts.
 
 [Download Paddr](https://github.com/zachspartofaday/Paddr/releases/latest) · [Mapping guide](docs/USING.md) · [Release notes](CHANGELOG.md)
 
-The screenshots show the current gyro and grip preview. See the [release notes](CHANGELOG.md) for features available in a published build.
-
 ![Paddr in dark mode, with two trackpad editors, rear buttons, grip touch and calibrated gyro aiming](docs/images/paddr-profile-overview.png)
 
 ## Build a setup that feels right
