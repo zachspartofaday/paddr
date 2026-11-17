@@ -127,18 +127,50 @@ struct SetupChecklistView: View {
     @ViewBuilder
     private func outputDetail(nextAction: PaddrReadinessNextAction) -> some View {
         if !model.isEnabled {
-            caption("Turn on output, then release both trackpads so mapped input starts from neutral.")
+            if let reason = model.readiness.outputDisabledReason {
+                // The button below is unavailable, so say why instead of asking for it.
+                caption(reason.message)
+            } else {
+                caption("Turn on output, then release both trackpads so mapped input starts from neutral.")
+            }
         } else if nextAction.setupStep == .output || nextAction.setupStep == nil {
             caption(nextAction.title, isWarning: nextAction == .releaseTrackpads)
         } else {
             caption("Output is on. It starts once the steps above are done.")
         }
         if !model.isEnabled {
-            Button("Enable Output") { model.isEnabled = true }
-                .paddrActionButton(.secondary)
-                .disabled(!model.canToggleOutput)
-                .paddrAccessibilityID("setup", "enable-output")
+            // Turning on output saves the draft, as the switch in the bar says.
+            if model.hasUnsavedChanges {
+                caption("Turning on saves your pending changes.")
+                    .paddrAccessibilityID("setup", "enable-output", "save-hint")
+            }
+            enableOutputButton
         }
+    }
+
+    @ViewBuilder private var enableOutputButton: some View {
+        let button = Button("Enable Output") { model.isEnabled = true }
+            .paddrActionButton(.secondary)
+            .disabled(!model.canToggleOutput)
+            .paddrAccessibilityID("setup", "enable-output")
+        if let help = Self.enableOutputHelp(
+            disabledReason: model.readiness.outputDisabledReason,
+            savesPendingChanges: model.hasUnsavedChanges
+        ) {
+            button.help(Text(help))
+        } else {
+            button
+        }
+    }
+
+    /// Why the button is unavailable, or what it does beyond its title. `nil`
+    /// when the title says it all.
+    static func enableOutputHelp(
+        disabledReason: PaddrOutputDisabledReason?,
+        savesPendingChanges: Bool
+    ) -> LocalizedStringResource? {
+        if let disabledReason { return disabledReason.message }
+        return savesPendingChanges ? "Turning on saves your pending changes." : nil
     }
 
     private func caption(_ text: LocalizedStringResource, isWarning: Bool = false) -> some View {

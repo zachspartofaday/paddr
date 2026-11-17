@@ -2676,6 +2676,84 @@ final class MenuModelTests: XCTestCase {
         await waitUntil(model: model) { !model.hasPendingLifecycleWork }
     }
 
+    func testRevertToSavedDuringActivationStillReportsAFailedEnable() async {
+        let state = readyState(receiver: "Fake puck")
+        state.loadedConfiguration.left.sensitivity = 4
+        let session = GatedSession(blockedStops: [1])
+        let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
+        await waitUntil(model: model) { await session.startCount == 1 && model.controllerConnected }
+        XCTAssertTrue(model.restoreDefaults())
+        model.isEnabled = true
+        await session.waitForStop(1)
+
+        // The old worker is still stopping: no session and no reconnect loop yet.
+        XCTAssertTrue(model.revertToSaved())
+        XCTAssertEqual(model.status, .waitingForController)
+
+        state.accessibilityGranted = false
+        await session.releaseStop(1)
+        await waitUntil(model: model) { await session.startCount == 2 && !model.isEnabled }
+        XCTAssertEqual(model.status, .failure(.accessibilityRequired),
+                       "Output went off, so the status must say why")
+    }
+
+    func testRevertToSavedDuringActivationLetsTheNewSessionReportItsProgress() async {
+        let state = readyState(receiver: "Fake puck")
+        state.loadedConfiguration.left.sensitivity = 4
+        let session = GatedSession(blockedStops: [1])
+        let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
+        await waitUntil(model: model) { await session.startCount == 1 && model.controllerConnected }
+        XCTAssertTrue(model.restoreDefaults())
+        model.isEnabled = true
+        await session.waitForStop(1)
+        XCTAssertTrue(model.revertToSaved())
+        XCTAssertEqual(model.status, .waitingForController)
+
+        await session.releaseStop(1)
+        await waitUntil(model: model) { model.isRunning }
+        XCTAssertEqual(model.status, .active,
+                       "The status follows the session that the activation started")
+    }
+
+    func testTurningOutputOffDuringARestartReportsReleasingUntilTheOldWorkerStops() async {
+        let state = readyState(receiver: "Fake puck")
+        let session = GatedSession(blockedStops: [1])
+        let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
+        await waitUntil(model: model) { model.controllerConnected }
+        model.isEnabled = true
+        await session.armOutput()
+        await waitUntil(model: model) { model.isRunning }
+
+        model.configuration.left.sensitivity = 9
+        model.saveAndApply()
+        await session.waitForStop(1)
+        model.isEnabled = false
+
+        XCTAssertEqual(model.status, .releasingOutputs)
+        XCTAssertEqual(model.readiness.output, .releasing,
+                       "The restart cleared the session, but its worker has not stopped")
+        XCTAssertTrue(model.canToggleOutput, "Output can still be turned back on during the stop")
+
+        await session.releaseStop(1)
+        await waitUntil(model: model) { model.status == .off }
+        XCTAssertEqual(model.readiness.output, .idle)
+    }
+
+    func testLaunchDoesNotAskForAManualRefreshWhileItsOwnProbeRuns() async {
+        let state = readyState(receiver: nil)
+        let probeGate = BoundedTestGate()
+        state.probeGate = probeGate
+        let model = PaddrMenuModel(dependencies: dependencies(state: state))
+        await waitUntil { state.probeCallCount == 1 }
+
+        XCTAssertTrue(model.isInitialized)
+        XCTAssertTrue(model.isSearchingForPuck)
+        XCTAssertEqual(model.readiness.connectionAction, .connectPuck)
+        XCTAssertEqual(model.readiness.nextAction, .connectPuck)
+
+        probeGate.signal()
+    }
+
     func testPuckSearchIsAnnouncedWhileTheReconnectLoopOrARestartWillProbe() async {
         let state = readyState(receiver: nil)
         let sleeper = ManualSleeper()

@@ -923,6 +923,137 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertTrue(finished)
     }
 
+    func testSetupSaysWhyOutputCannotBeTurnedOnWhileMappedInputReleases() async throws {
+        let store = BlockingProfileStore()
+        store.releaseSave()
+        let session = PresentationSession()
+        let model = PaddrMenuModel(dependencies: dependencies(store: store, session: session, receiver: "Fake puck"))
+        let started = await waitUntil { await session.startCount == 1 }
+        XCTAssertTrue(started)
+        model.isEnabled = true
+        await session.send(.waitingForController("Fake puck"))
+        await session.send(.controllerConnected)
+        await session.send(.outputArmed)
+        let active = await waitUntil { model.isRunning }
+        XCTAssertTrue(active)
+
+        // Off, but the session has not acknowledged the release yet.
+        model.isEnabled = false
+        XCTAssertEqual(model.readiness.nextAction, .waitForOutputRelease)
+        XCTAssertFalse(model.canToggleOutput)
+
+        let host = NSHostingView(rootView: SetupChecklistView(
+            model: model, commands: ProfileCommands(), onDismiss: { _ in })
+            .environment(\.accessibilityEnabled, true))
+        host.frame = NSRect(x: 0, y: 0, width: 900, height: 1000)
+        await settle(host)
+        let reason = String(localized: PaddrOutputDisabledReason.releasingOutputs.message)
+        XCTAssertTrue(accessibilityTexts(in: host).contains(reason),
+                      "The step says why its button is unavailable")
+        XCTAssertFalse(accessibilityTexts(in: host).contains { $0.hasPrefix("Turn on output") },
+                       "It must not ask for the action it has just disabled")
+        let enable = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.setup.enable-output"))
+        XCTAssertEqual(enable.accessibilityHelp?(), reason)
+        XCTAssertEqual(enable.isAccessibilityEnabled?(), false)
+
+        _ = await session.stop()
+    }
+
+    func testSetupEnableOutputSaysThatItSavesPendingChanges() async throws {
+        let store = BlockingProfileStore()
+        store.releaseSave()
+        let (model, window) = try await makeProfileWindowFixture(saveProfiles: store.save)
+        defer { window.close() }
+
+        func hostChecklist() async -> NSView {
+            let host = NSHostingView(rootView: SetupChecklistView(
+                model: model, commands: ProfileCommands(), onDismiss: { _ in })
+                .environment(\.accessibilityEnabled, true))
+            host.frame = NSRect(x: 0, y: 0, width: 900, height: 1000)
+            await settle(host)
+            return host
+        }
+        let hint = "Turning on saves your pending changes."
+
+        // Control: with nothing to save, the button adds nothing to its title.
+        let clean = await hostChecklist()
+        let cleanButton = try XCTUnwrap(accessibilityElement(in: clean, identifier: "paddr.setup.enable-output"))
+        XCTAssertFalse(accessibilityTexts(in: clean).contains(hint))
+        XCTAssertNotEqual(cleanButton.accessibilityHelp?(), hint)
+
+        model.configuration.left.sensitivity = 9
+        XCTAssertTrue(model.hasUnsavedChanges)
+        let edited = await hostChecklist()
+        XCTAssertTrue(accessibilityTexts(in: edited).contains(hint), "The step says so in text")
+        let enable = try XCTUnwrap(accessibilityElement(in: edited, identifier: "paddr.setup.enable-output"))
+        XCTAssertEqual(enable.accessibilityHelp?(), hint, "And on the control that does it")
+
+        XCTAssertTrue(enable.accessibilityPerformPress?() == true)
+        let saved = await waitUntil { store.didStartSave && model.savedConfiguration.left.sensitivity == 9 }
+        XCTAssertTrue(saved, "Control: the button does save the draft")
+
+        XCTAssertNil(SetupChecklistView.enableOutputHelp(disabledReason: nil, savesPendingChanges: false))
+        XCTAssertEqual(
+            SetupChecklistView.enableOutputHelp(disabledReason: .profileOperation, savesPendingChanges: true)
+                .map { String(localized: $0) },
+            String(localized: PaddrOutputDisabledReason.profileOperation.message),
+            "Why it is unavailable comes first")
+    }
+
+    func testClosingTheConfigurationWindowEndsAutomaticSetup() async throws {
+        let suiteName = "MenuViewPresentationTests.window-close.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = OnboardingPreferences(defaults: defaults)
+        let setup = SetupGuidePresentation(preferences: preferences)
+        setup.present(trigger: .automatic)
+        let store = BlockingProfileStore()
+        store.releaseSave()
+        let model = PaddrMenuModel(dependencies: dependencies(store: store))
+        let didInitialize = await waitUntil { model.isInitialized }
+        XCTAssertTrue(didInitialize)
+
+        // The controller the application creates, so the window's own close is what is tested.
+        var closedWindow: NSWindow?
+        let controller = ConfigurationWindowController(model: model, setupGuide: setup) { closedWindow = $0 }
+        let window = try XCTUnwrap(controller.window)
+        controller.showWindow(nil)
+        await settle(window)
+        XCTAssertTrue(setup.isPresented)
+        XCTAssertNil(preferences.dismissal, "Control: nothing is recorded while the window is open")
+
+        window.close()
+
+        XCTAssertFalse(setup.isPresented)
+        XCTAssertEqual(preferences.dismissal, .skipped)
+        XCTAssertTrue(closedWindow === window, "The application is told, so it can leave the Dock")
+    }
+
+    func testAProfileCommandShowsItsReasonInTheMenuItemItself() async throws {
+        func texts(_ item: ProfileActionItem) async -> [String] {
+            let host = NSHostingView(rootView: VStack { ProfileActionLabel(item: item) }
+                .environment(\.accessibilityEnabled, true))
+            host.frame = NSRect(x: 0, y: 0, width: 400, height: 120)
+            await settle(host)
+            return accessibilityTexts(in: host)
+        }
+        let clean = ProfileActionsPresentation(isDefaultProfile: false, hasUnsavedChanges: false,
+                                               canEditActiveProfile: true, canRevertToSaved: false)
+        let revert = try XCTUnwrap(clean.item(.revertToSaved))
+        XCTAssertFalse(revert.isEnabled)
+        let revertTexts = await texts(revert)
+        XCTAssertTrue(revertTexts.contains("Revert to Saved"))
+        XCTAssertTrue(revertTexts.contains("There are no unsaved changes to revert"),
+                      "An unavailable command carries its reason as a second line")
+
+        let rename = try XCTUnwrap(clean.item(.rename))
+        XCTAssertTrue(rename.isEnabled)
+        let renameTexts = await texts(rename)
+        XCTAssertTrue(renameTexts.contains("Rename Profile"))
+        XCTAssertEqual(renameTexts.count, revertTexts.count - 1,
+                       "An available command shows its symbol and title and nothing more")
+    }
+
     func testSetupRecordsCompletionWhenOutputBecomesActiveAndKeepsTheChecklist() async throws {
         let suiteName = "MenuViewPresentationTests.setup-complete.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
