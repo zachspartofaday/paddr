@@ -1,5 +1,5 @@
-import XCTest
 @testable import PaddrAppSupport
+import XCTest
 
 final class OnboardingTests: XCTestCase {
     func testAbsentMarkerPresentsAutomatically() {
@@ -154,7 +154,7 @@ final class OnboardingTests: XCTestCase {
             (readiness(), nil),
             // Access comes first as the next action, yet the connection step
             // still says what is missing.
-            (readiness(controller: false, inputMonitoring: false), .connectController)
+            (readiness(controller: false, inputMonitoring: false), .connectController),
         ]
         for (input, expected) in cases {
             let resolution = PaddrReadinessResolver.resolve(input)
@@ -169,29 +169,29 @@ final class OnboardingTests: XCTestCase {
             isEnabled: false, isRunning: false, isReleasingOutput: false, canToggleOutput: false))
         XCTAssertEqual(initializing.nextAction, .waitForInitialization)
         XCTAssertEqual(initializing.connectionAction, .connectPuck,
-            "Initialization probes for the puck itself, so it never asks for a refresh")
+                       "Initialization probes for the puck itself, so it never asks for a refresh")
     }
 
     func testSetupChecklistMarksTheStepThatOwnsTheNextAction() {
         let cases: [(PaddrReadinessInput, PaddrSetupStep?, [PaddrSetupStep])] = [
             // (readiness, current step, done steps)
             (readiness(puck: false, controller: false, inputMonitoring: false, accessibility: false,
-                enabled: false, running: false), .connection, []),
+                       enabled: false, running: false), .connection, []),
             (readiness(controller: false, inputMonitoring: false, accessibility: false,
-                enabled: false, running: false), .access, []),
+                       enabled: false, running: false), .access, []),
             (readiness(controller: false, accessibility: false, enabled: false, running: false),
-                .connection, []),
+             .connection, []),
             (readiness(accessibility: false, enabled: false, running: false), .access, [.connection]),
             (readiness(enabled: false, running: false), .output, [.access, .connection]),
             (readiness(running: false), .output, [.access, .connection]),
-            (readiness(), nil, [.access, .connection, .output])
+            (readiness(), nil, [.access, .connection, .output]),
         ]
         for (input, expectedCurrent, expectedDone) in cases {
             let checklist = PaddrSetupChecklist(
                 readiness: PaddrReadinessResolver.resolve(input), editsOwnProfile: false)
             XCTAssertEqual(checklist.items.map(\.step), PaddrSetupStep.allCases)
             XCTAssertEqual(checklist.items.filter { $0.state == .current }.map(\.step),
-                expectedCurrent.map { [$0] } ?? [], "\(input)")
+                           expectedCurrent.map { [$0] } ?? [], "\(input)")
             XCTAssertEqual(checklist.items.filter { $0.state == .done }.map(\.step), expectedDone, "\(input)")
             XCTAssertEqual(checklist.nextAction.setupStep, expectedCurrent, "\(input)")
         }
@@ -206,7 +206,7 @@ final class OnboardingTests: XCTestCase {
 
         let waiting = PaddrReadinessResolver.resolve(readiness(running: false))
         XCTAssertFalse(PaddrSetupChecklist(readiness: waiting, editsOwnProfile: true).isComplete,
-            "Setup is not complete until mapped output is active")
+                       "Setup is not complete until mapped output is active")
     }
 
     func testEveryNextActionBelongsToItsSetupStepAndWaitingStatesToNone() {
@@ -221,7 +221,7 @@ final class OnboardingTests: XCTestCase {
         XCTAssertEqual(PaddrReadinessNextAction.releaseTrackpads.setupStep, .output)
         XCTAssertEqual(PaddrReadinessNextAction.enableOutput.setupStep, .output)
         XCTAssertEqual(PaddrReadinessNextAction.waitForOutputRelease.setupStep, .output,
-            "Releasing held input is the output step finishing, not a separate wait")
+                       "Releasing held input is the output step finishing, not a separate wait")
     }
 
     func testMissingPuckAsksForRefreshOnlyWhenNothingIsSearchingForIt() {
@@ -232,7 +232,7 @@ final class OnboardingTests: XCTestCase {
         let searching = PaddrReadinessResolver.resolve(readiness(puck: false, searchingForPuck: true))
         XCTAssertEqual(searching.nextAction, .connectPuck)
         XCTAssertEqual(String(localized: searching.nextAction.title), "Connect the puck",
-            "The reconnect probe finds the puck, so the instruction must not ask for a refresh")
+                       "The reconnect probe finds the puck, so the instruction must not ask for a refresh")
 
         XCTAssertEqual(
             PaddrReadinessResolver.resolve(readiness(searchingForPuck: true)).nextAction, .none,

@@ -1,6 +1,6 @@
+@testable import PaddrCore
 import Synchronization
 import XCTest
-@testable import PaddrCore
 
 final class HeldOutputLedgerTests: XCTestCase {
     func testSuccessfulTransitionsTrackOnlyHeldKeysAndButtons() throws {
@@ -12,13 +12,13 @@ final class HeldOutputLedgerTests: XCTestCase {
             .mouseMove(dx: 1, dy: 2),
             .scroll(dx: 3, dy: 4),
             .key(space, isPressed: true),
-            .mouseButton(.left, isPressed: true)
+            .mouseButton(.left, isPressed: true),
         ])
 
         XCTAssertEqual(ledger.pendingOutputs, [.key(space), .mouseButton(.left)])
         try ledger.dispatch([
             .key(space, isPressed: false),
-            .mouseButton(.left, isPressed: false)
+            .mouseButton(.left, isPressed: false),
         ])
         XCTAssertEqual(ledger.pendingOutputs, [])
     }
@@ -43,7 +43,7 @@ final class HeldOutputLedgerTests: XCTestCase {
 
         try ledger.dispatch([
             .key(namedReturn, isPressed: true),
-            .key(codedReturn, isPressed: true)
+            .key(codedReturn, isPressed: true),
         ])
 
         XCTAssertEqual(ledger.pendingOutputs, [.key(namedReturn)])
@@ -66,7 +66,7 @@ final class HeldOutputLedgerTests: XCTestCase {
         XCTAssertEqual(retry.failures, [])
         XCTAssertEqual(sink.committed, [
             .key(space, isPressed: true),
-            .key(space, isPressed: false)
+            .key(space, isPressed: false),
         ])
     }
 
@@ -77,7 +77,7 @@ final class HeldOutputLedgerTests: XCTestCase {
 
         XCTAssertThrowsError(try ledger.dispatch([
             .key(space, isPressed: true),
-            .key(space, isPressed: false)
+            .key(space, isPressed: false),
         ]))
         XCTAssertEqual(ledger.pendingOutputs, [.key(space)])
 
@@ -85,7 +85,7 @@ final class HeldOutputLedgerTests: XCTestCase {
         XCTAssertEqual(sink.attempts, [
             .key(space, isPressed: true),
             .key(space, isPressed: false),
-            .key(space, isPressed: false)
+            .key(space, isPressed: false),
         ])
     }
 
@@ -95,7 +95,7 @@ final class HeldOutputLedgerTests: XCTestCase {
         let space = try KeyCatalog.resolve("space")
         try ledger.dispatch([
             .mouseButton(.left, isPressed: true),
-            .key(space, isPressed: true)
+            .key(space, isPressed: true),
         ])
 
         let attempt = ledger.releasePending(maxPasses: 2)
@@ -104,13 +104,13 @@ final class HeldOutputLedgerTests: XCTestCase {
         XCTAssertEqual(attempt.failures.map(\.action), [
             .key(space, isPressed: false),
             .mouseButton(.left, isPressed: false),
-            .key(space, isPressed: false)
+            .key(space, isPressed: false),
         ])
         XCTAssertEqual(Array(sink.attempts.suffix(4)), [
             .key(space, isPressed: false),
             .mouseButton(.left, isPressed: false),
             .key(space, isPressed: false),
-            .mouseButton(.left, isPressed: false)
+            .mouseButton(.left, isPressed: false),
         ])
     }
 }

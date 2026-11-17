@@ -35,17 +35,17 @@ enum PaddrControlDrawing {
         paragraph.alignment = alignment
         paragraph.lineBreakMode = .byWordWrapping
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: font, .foregroundColor: NSColor(color), .paragraphStyle: paragraph
+            .font: font, .foregroundColor: NSColor(color), .paragraphStyle: paragraph,
         ]
         let height = (text as NSString).boundingRect(with: rect.size,
-            options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attributes).height
+                                                     options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attributes).height
         (text as NSString).draw(in: CGRect(x: rect.minX, y: rect.midY - ceil(height) / 2,
-            width: rect.width, height: ceil(height)), withAttributes: attributes)
+                                           width: rect.width, height: ceil(height)), withAttributes: attributes)
     }
 
     static func height(_ text: String, width: CGFloat, font: NSFont) -> CGFloat {
         ceil((text as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: [.font: font]).height)
+                                             options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: [.font: font]).height)
     }
 
     static func focus(_ view: NSView, rect: CGRect, radius: CGFloat) {
@@ -154,50 +154,55 @@ final class PaddrPopUpButton: NSPopUpButton {
     override var intrinsicContentSize: NSSize { NSSize(width: PaddrStyle.Width.control, height: height(for: PaddrStyle.Width.control)) }
     func height(for width: CGFloat) -> CGFloat {
         max(PaddrStyle.Control.height, PaddrControlDrawing.height(titleOfSelectedItem ?? "",
-            width: width - 2 * PaddrStyle.Control.sideInset - 20,
-            font: font ?? .preferredFont(forTextStyle: .body)) + 12)
+                                                                  width: width - 2 * PaddrStyle.Control.sideInset - 20,
+                                                                  font: font ?? .preferredFont(forTextStyle: .body)) + 12)
     }
+
     override func becomeFirstResponder() -> Bool { needsDisplay = true; return super.becomeFirstResponder() }
     override func resignFirstResponder() -> Bool { needsDisplay = true; return super.resignFirstResponder() }
     var valueRect: CGRect {
         CGRect(x: userInterfaceLayoutDirection == .rightToLeft ? 32 : 12, y: 4,
                width: max(0, bounds.width - 44), height: bounds.height - 8)
     }
+
     var chevronRect: CGRect {
         CGRect(x: userInterfaceLayoutDirection == .rightToLeft ? 12 : bounds.maxX - 24,
                y: bounds.midY - 7, width: 12, height: 14)
     }
+
     var valueAlignment: NSTextAlignment {
         userInterfaceLayoutDirection == .rightToLeft ? .right : .left
     }
+
     override func draw(_ dirtyRect: NSRect) {
         drawChrome()
     }
+
     private func drawChrome() {
         PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius, color: PaddrStyle.controlFill)
         if (isHovered || isHighlighted) && isEnabled {
             PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius,
-                color: isHighlighted ? PaddrStyle.controlPressed : PaddrStyle.controlHover)
+                                     color: isHighlighted ? PaddrStyle.controlPressed : PaddrStyle.controlHover)
         }
         PaddrControlDrawing.stroke(bounds, radius: PaddrStyle.Control.radius,
-            color: controlAppearance.controlStroke(enabled: isEnabled),
-            width: PaddrStyle.Control.outlineWidth)
+                                   color: controlAppearance.controlStroke(enabled: isEnabled),
+                                   width: PaddrStyle.Control.outlineWidth)
         PaddrControlDrawing.text(titleOfSelectedItem ?? "", rect: valueRect,
-            font: font ?? .preferredFont(forTextStyle: .body),
-            color: isEnabled ? PaddrStyle.textPrimary : PaddrStyle.textSecondary,
-            alignment: valueAlignment)
+                                 font: font ?? .preferredFont(forTextStyle: .body),
+                                 color: isEnabled ? PaddrStyle.textPrimary : PaddrStyle.textSecondary,
+                                 alignment: valueAlignment)
         drawSymbol("chevron.up.chevron.down", in: chevronRect)
         PaddrControlDrawing.focus(self, rect: bounds, radius: PaddrStyle.Control.radius)
     }
+
     private func drawSymbol(_ name: String, in rect: CGRect) {
         let configuration = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
             .applying(NSImage.SymbolConfiguration(paletteColors: [NSColor(PaddrStyle.textSecondary)]))
         NSImage(systemSymbolName: name, accessibilityDescription: nil)?
             .withSymbolConfiguration(configuration)?.draw(in: rect, from: .zero,
-                operation: .sourceOver, fraction: isEnabled ? 1 : 0.5,
-                respectFlipped: true, hints: nil)
+                                                          operation: .sourceOver, fraction: isEnabled ? 1 : 0.5,
+                                                          respectFlipped: true, hints: nil)
     }
-
 }
 
 /// NSButton's switch cell supplies a real binary AXCheckBox, integer state,
@@ -218,6 +223,7 @@ struct PaddrNativeTuningSwitch: NSViewRepresentable {
             NSAccessibility.post(element: sender, notification: .valueChanged)
         }
     }
+
     func makeCoordinator() -> Coordinator { Coordinator($isOn) }
     func makeNSView(context: Context) -> PaddrTuningSwitchButton {
         let control = PaddrTuningSwitchButton(frame: .zero)
@@ -232,6 +238,7 @@ struct PaddrNativeTuningSwitch: NSViewRepresentable {
         updateNSView(control, context: context)
         return control
     }
+
     func updateNSView(_ control: PaddrTuningSwitchButton, context: Context) {
         context.coordinator.binding = $isOn
         control.state = isOn ? .on : .off
@@ -249,6 +256,7 @@ struct PaddrNativeTuningSwitch: NSViewRepresentable {
         control.identifier = NSUserInterfaceItemIdentifier(accessibilityIdentifier)
         control.needsDisplay = true
     }
+
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: PaddrTuningSwitchButton, context: Context) -> CGSize? {
         CGSize(width: PaddrStyle.Width.toggle, height: PaddrStyle.Control.height)
     }
@@ -275,6 +283,7 @@ final class PaddrTuningSwitchButton: NSButton {
         performClick(nil)
         return true
     }
+
     override func keyDown(with event: NSEvent) {
         guard isEnabled else { return }
         if event.modifierFlags.intersection([.command, .control, .option]).isEmpty,
@@ -282,6 +291,7 @@ final class PaddrTuningSwitchButton: NSButton {
             if !event.isARepeat { performClick(nil) }
         } else { super.keyDown(with: event) }
     }
+
     override var intrinsicContentSize: NSSize { NSSize(width: PaddrStyle.Width.toggle, height: PaddrStyle.Control.height) }
     override func becomeFirstResponder() -> Bool { needsDisplay = true; return super.becomeFirstResponder() }
     override func resignFirstResponder() -> Bool { needsDisplay = true; return super.resignFirstResponder() }
@@ -290,32 +300,35 @@ final class PaddrTuningSwitchButton: NSButton {
         return CGRect(x: (bounds.width - size.width) / 2,
                       y: (bounds.height - size.height) / 2, width: size.width, height: size.height)
     }
+
     var thumbRect: CGRect {
         let metrics = PaddrStyle.Control.TuningSwitch.self
         let thumbAtRight = (state == .on) != (userInterfaceLayoutDirection == .rightToLeft)
         return CGRect(origin: CGPoint(x: trackRect.minX + metrics.inset + (thumbAtRight ? metrics.travel : 0),
                                       y: trackRect.minY + metrics.inset), size: metrics.thumb)
     }
+
     override func draw(_ dirtyRect: NSRect) {
         drawChrome()
         // Focus belongs outside the track and must not be clipped by it.
         PaddrControlDrawing.focus(self, rect: trackRect.insetBy(dx: -3, dy: -3), radius: PaddrStyle.Control.radius + 3)
     }
+
     private func drawChrome() {
         let context = NSGraphicsContext.current?.cgContext
         context?.saveGState()
         defer { context?.restoreGState() }
         context?.setAlpha(isEnabled ? 1 : 0.5)
         PaddrControlDrawing.fill(trackRect.insetBy(dx: 1, dy: 1), radius: 6,
-            color: state == .on ? PaddrStyle.controlTint : PaddrStyle.controlFill)
+                                 color: state == .on ? PaddrStyle.controlTint : PaddrStyle.controlFill)
         PaddrControlDrawing.stroke(trackRect, radius: PaddrStyle.Control.radius,
-            color: controlAppearance.controlStroke(enabled: isEnabled),
-            width: PaddrStyle.Control.outlineWidth)
+                                   color: controlAppearance.controlStroke(enabled: isEnabled),
+                                   width: PaddrStyle.Control.outlineWidth)
         if (isHovered || isHighlighted) && isEnabled {
             PaddrControlDrawing.fill(trackRect, radius: PaddrStyle.Control.radius, color: isHighlighted ? PaddrStyle.controlPressed : PaddrStyle.controlHover)
         }
         PaddrControlDrawing.fill(thumbRect, radius: PaddrStyle.Control.TuningSwitch.thumbRadius,
-            color: state == .on ? PaddrStyle.selectedZoneCaptionForeground : PaddrStyle.textSecondary)
+                                 color: state == .on ? PaddrStyle.selectedZoneCaptionForeground : PaddrStyle.textSecondary)
         if !isEnabled {
             PaddrControlDrawing.stroke(thumbRect, radius: PaddrStyle.Control.TuningSwitch.thumbRadius, color: controlAppearance.controlStroke(enabled: false))
         }
@@ -327,7 +340,7 @@ extension NSControl {
     func paddrUpdateHoverTracking() {
         for area in trackingAreas where area.owner === self { removeTrackingArea(area) }
         addTrackingArea(NSTrackingArea(rect: .zero,
-            options: [.mouseEnteredAndExited, .mouseMoved, .activeInKeyWindow, .inVisibleRect], owner: self))
+                                       options: [.mouseEnteredAndExited, .mouseMoved, .activeInKeyWindow, .inVisibleRect], owner: self))
     }
 }
 
@@ -342,7 +355,7 @@ struct PaddrMenuPicker<Value: Equatable>: View {
     var accessibilityValue: String?
     var body: some View {
         PaddrNativeMenuPicker(title: title, selection: $selection, options: options, width: width,
-            accessibilityIdentifier: accessibilityIdentifier, accessibilityValue: accessibilityValue)
+                              accessibilityIdentifier: accessibilityIdentifier, accessibilityValue: accessibilityValue)
     }
 }
 

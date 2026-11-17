@@ -62,7 +62,7 @@ final class HeldOutputLedger: TrackpadOutputDispatching, Sendable {
     func releasePending(maxPasses: Int) -> OutputReleaseAttempt {
         state.withLock { state in
             var failures: [OutputReleaseFailure] = []
-            for _ in 0..<max(0, maxPasses) {
+            for _ in 0 ..< max(0, maxPasses) {
                 let pending = state.pending.sorted(by: Self.isOrderedBefore)
                 guard !pending.isEmpty else { break }
                 for output in pending {

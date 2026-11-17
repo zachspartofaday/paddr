@@ -59,10 +59,10 @@ public struct BatteryStatusPresentation: Equatable, Sendable {
 
     private static func levelSystemImage(percentage: Int) -> String {
         switch percentage {
-        case 0...12: "battery.0percent"
-        case 13...37: "battery.25percent"
-        case 38...62: "battery.50percent"
-        case 63...87: "battery.75percent"
+        case 0 ... 12: "battery.0percent"
+        case 13 ... 37: "battery.25percent"
+        case 38 ... 62: "battery.50percent"
+        case 63 ... 87: "battery.75percent"
         default: "battery.100percent"
         }
     }

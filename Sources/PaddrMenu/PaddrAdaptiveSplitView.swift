@@ -85,8 +85,8 @@ struct PaddrAdaptiveSplitView<Leading: View, Trailing: View>: View {
         let layout = usesEqualHeightColumns
             ? AnyLayout(PaddrEqualHeightColumnsLayout(spacing: columnSpacing))
             : usesColumns
-                ? AnyLayout(HStackLayout(alignment: .top, spacing: resolvedSpacing))
-                : AnyLayout(VStackLayout(alignment: .leading, spacing: PaddrStyle.Spacing.s4))
+            ? AnyLayout(HStackLayout(alignment: .top, spacing: resolvedSpacing))
+            : AnyLayout(VStackLayout(alignment: .leading, spacing: PaddrStyle.Spacing.s4))
 
         layout {
             leading()
@@ -141,11 +141,13 @@ enum PaddrPadColumns {
     static func spacing(in availableWidth: CGFloat) -> CGFloat {
         guard availableWidth >= minimumInlineWidth else { return PaddrStyle.previewInspectorSpacing }
         return min(PaddrStyle.previewInspectorSpacing,
-            availableWidth - PaddrStyle.Metrics.zoneMapWidth - PaddrStyle.behaviorPickerWidth)
+                   availableWidth - PaddrStyle.Metrics.zoneMapWidth - PaddrStyle.behaviorPickerWidth)
     }
+
     static func previewWidth(in availableWidth: CGFloat) -> CGFloat {
         PaddrStyle.Metrics.zoneMapWidth
     }
+
     static func inspectorLeading(in availableWidth: CGFloat) -> CGFloat {
         previewWidth(in: availableWidth) + spacing(in: availableWidth)
     }

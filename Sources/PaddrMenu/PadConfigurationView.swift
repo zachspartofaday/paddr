@@ -1,6 +1,6 @@
 import AppKit
-import SwiftUI
 import PaddrCore
+import SwiftUI
 
 enum TapStabilizationPresentation {
     static func toleranceValue(
@@ -65,7 +65,7 @@ enum PointerTuningPresentation {
 
     /// The settings inside the Pointer tuning disclosure, in display order.
     static let explainedSettings: [PointerSetting] = [
-        .acceleration, .smoothing, .tapStabilization, .tapRadius, .pointerTracking
+        .acceleration, .smoothing, .tapStabilization, .tapRadius, .pointerTracking,
     ]
 
     /// One explanation per tuning setting, shown as the row's tooltip and in the
@@ -74,19 +74,19 @@ enum PointerTuningPresentation {
         switch setting {
         case .acceleration:
             Explanation(title: "Pointer acceleration",
-                detail: "Higher values increase fast-motion gain. Turning acceleration off keeps your strength setting.")
+                        detail: "Higher values increase fast-motion gain. Turning acceleration off keeps your strength setting.")
         case .smoothing:
             Explanation(title: "Pointer smoothing",
-                detail: "Smooths slow pointer jitter while preserving fast movement. The slider controls smoothing strength.")
+                        detail: "Smooths slow pointer jitter while preserving fast movement. The slider controls smoothing strength.")
         case .tapStabilization:
             Explanation(title: "Tap stabilization",
-                detail: "Keeps the cursor fixed during a tap. Moving beyond the tolerance cancels the tap and resumes pointer tracking.")
+                        detail: "Keeps the cursor fixed during a tap. Moving beyond the tolerance cancels the tap and resumes pointer tracking.")
         case .tapRadius:
             Explanation(title: "Center tap radius",
-                detail: "The radius starts at the pad center. Leaving it cancels the tap. At 0%, taps use the maximum-movement limit.")
+                        detail: "The radius starts at the pad center. Leaving it cancels the tap. At 0%, taps use the maximum-movement limit.")
         case .pointerTracking:
             Explanation(title: "Track pointer inside tap radius",
-                detail: "When on, pointer movement continues inside and across the center tap radius. When off, the radius also acts as a pointer dead zone.")
+                        detail: "When on, pointer movement continues inside and across the center tap radius. When off, the radius also acts as a pointer dead zone.")
         case .sensitivity, .tapAction:
             nil
         }
@@ -439,7 +439,7 @@ struct PaddrNativeModePicker: NSViewRepresentable {
         String(localized: LocalizedStringResource("Off")),
         String(localized: LocalizedStringResource("Pointer")),
         String(localized: LocalizedStringResource("Scroll")),
-        String(localized: LocalizedStringResource("Zones"))
+        String(localized: LocalizedStringResource("Zones")),
     ]
 
     @MainActor
@@ -475,7 +475,7 @@ struct PaddrNativeModePicker: NSViewRepresentable {
         control.focusRingType = .none
         control.font = .preferredFont(forTextStyle: .body)
         control.setAccessibilityLabel(String(localized: accessibilityIdentifier.hasSuffix("left")
-            ? LocalizedStringResource("Left trackpad behavior") : LocalizedStringResource("Right trackpad behavior")))
+                ? LocalizedStringResource("Left trackpad behavior") : LocalizedStringResource("Right trackpad behavior")))
         control.cell?.setAccessibilityLabel(control.accessibilityLabel())
         control.cell?.setAccessibilityIdentifier(accessibilityIdentifier)
         control.setAccessibilityIdentifier(accessibilityIdentifier)
@@ -518,13 +518,15 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
         // Reconcile stationary pointers after reflow; gaps and outer edges aren't segments.
         if let window { updateHover(at: convert(window.mouseLocationOutsideOfEventStream, from: nil)) }
     }
+
     func segment(at point: CGPoint) -> Int? {
         guard isEnabled else { return nil }
-        return (0..<segmentCount).first {
+        return (0 ..< segmentCount).first {
             isEnabled(forSegment: $0) && PaddrControlDrawing.shape(segmentRect($0),
-                radius: PaddrStyle.Control.segmentRadius).contains(point)
+                                                                   radius: PaddrStyle.Control.segmentRadius).contains(point)
         }
     }
+
     func updateHover(at point: CGPoint) { hoveredSegment = segment(at: point); needsDisplay = true }
     override func mouseEntered(with event: NSEvent) { updateHover(at: convert(event.locationInWindow, from: nil)) }
     override func mouseMoved(with event: NSEvent) { updateHover(at: convert(event.locationInWindow, from: nil)) }
@@ -540,7 +542,7 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
         // track inset and gaps. Track the actual drawn segments instead; retain
         // the native cell's select-one state, action and radio accessibility.
         while let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp],
-            until: .distantFuture, inMode: .eventTracking, dequeue: true) {
+                                          until: .distantFuture, inMode: .eventTracking, dequeue: true) {
             pressedSegment = segment(at: convert(next.locationInWindow, from: nil))
             hoveredSegment = pressedSegment
             needsDisplay = true
@@ -553,6 +555,7 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
             }
         }
     }
+
     override var alignmentRectInsets: NSEdgeInsets { NSEdgeInsetsZero }
     override func keyDown(with event: NSEvent) {
         guard isEnabled else { return }
@@ -575,47 +578,51 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
         needsDisplay = true
         _ = sendAction(action, to: target)
     }
+
     override var isFlipped: Bool { true }
     override var intrinsicContentSize: NSSize {
         let bounds = CGRect(x: 0, y: 0, width: PaddrStyle.behaviorPickerWidth, height: PaddrStyle.Control.height)
         let textWidth = PaddrModeGeometry.segmentRect(0, in: bounds, count: segmentCount).width - 4
-        let textHeight = (0..<segmentCount).map {
+        let textHeight = (0 ..< segmentCount).map {
             PaddrControlDrawing.height(label(forSegment: $0) ?? "", width: textWidth,
-                font: font ?? .preferredFont(forTextStyle: .body))
+                                       font: font ?? .preferredFont(forTextStyle: .body))
         }.max() ?? 16
         return NSSize(width: PaddrStyle.behaviorPickerWidth, height: max(PaddrStyle.Control.height, textHeight + 12))
     }
+
     func segmentRect(_ index: Int) -> CGRect {
         let physicalIndex = userInterfaceLayoutDirection == .rightToLeft ? segmentCount - 1 - index : index
         return PaddrModeGeometry.segmentRect(physicalIndex, in: bounds, count: segmentCount)
     }
+
     override func becomeFirstResponder() -> Bool { needsDisplay = true; return super.becomeFirstResponder() }
     override func resignFirstResponder() -> Bool { needsDisplay = true; return super.resignFirstResponder() }
     override func draw(_ dirtyRect: NSRect) {
         drawChrome()
     }
+
     private func drawChrome() {
         PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius, color: PaddrStyle.controlFill)
         PaddrControlDrawing.stroke(bounds, radius: PaddrStyle.Control.radius,
-            color: controlAppearance.controlStroke(enabled: isEnabled), width: PaddrStyle.Control.outlineWidth)
-        for index in 0..<segmentCount {
+                                   color: controlAppearance.controlStroke(enabled: isEnabled), width: PaddrStyle.Control.outlineWidth)
+        for index in 0 ..< segmentCount {
             let rect = segmentRect(index)
             let selected = isSelected(forSegment: index)
             let enabled = isEnabled && isEnabled(forSegment: index)
             if selected {
                 PaddrControlDrawing.fill(rect, radius: PaddrStyle.Control.segmentRadius,
-                    color: controlAppearance.accentFill(enabled: enabled))
+                                         color: controlAppearance.accentFill(enabled: enabled))
                 PaddrControlDrawing.stroke(rect, radius: PaddrStyle.Control.segmentRadius,
-                    color: controlAppearance.accentStroke(enabled: enabled), width: controlAppearance.strokeWidth)
+                                           color: controlAppearance.accentStroke(enabled: enabled), width: controlAppearance.strokeWidth)
             }
             if enabled && (hoveredSegment == index || pressedSegment == index) {
                 PaddrControlDrawing.fill(rect, radius: PaddrStyle.Control.segmentRadius,
-                    color: pressedSegment == index ? PaddrStyle.controlPressed : PaddrStyle.controlHover)
+                                         color: pressedSegment == index ? PaddrStyle.controlPressed : PaddrStyle.controlHover)
             }
             PaddrControlDrawing.text(label(forSegment: index) ?? "", rect: rect.insetBy(dx: 2, dy: 2),
-                font: font ?? .preferredFont(forTextStyle: .body),
-                color: selected ? controlAppearance.accentForeground(enabled: enabled)
-                    : (enabled ? PaddrStyle.textPrimary : PaddrStyle.textSecondary), alignment: .center)
+                                     font: font ?? .preferredFont(forTextStyle: .body),
+                                     color: selected ? controlAppearance.accentForeground(enabled: enabled)
+                                         : (enabled ? PaddrStyle.textPrimary : PaddrStyle.textSecondary), alignment: .center)
         }
         PaddrControlDrawing.focus(self, rect: bounds, radius: PaddrStyle.Control.radius)
     }
@@ -628,7 +635,7 @@ enum PaddrModeGeometry {
         let gap = PaddrStyle.Control.segmentGap
         let width = (bounds.width - 2 * inset - CGFloat(max(0, count - 1)) * gap) / CGFloat(max(1, count))
         return CGRect(x: bounds.minX + inset + CGFloat(index) * (width + gap), y: bounds.minY + inset,
-            width: width, height: bounds.height - 2 * inset)
+                      width: width, height: bounds.height - 2 * inset)
     }
 }
 

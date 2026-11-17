@@ -1,7 +1,7 @@
 import Foundation
+@testable import PaddrCore
 import Synchronization
 import XCTest
-@testable import PaddrCore
 
 final class ProfileTransactionTests: XCTestCase {
     func testStaleClientCannotEraseAnotherClientsProfileAndCanReload() throws {
@@ -32,7 +32,7 @@ final class ProfileTransactionTests: XCTestCase {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("config.json")
-        let clients = (0..<2).map { _ in ConfigurationProfileStoreClient(url: url) }
+        let clients = (0 ..< 2).map { _ in ConfigurationProfileStoreClient(url: url) }
         let documents = try clients.enumerated().map { index, client in
             var document = try client.load().document
             _ = try document.createProfile(named: "Writer \(index)")
@@ -42,7 +42,7 @@ final class ProfileTransactionTests: XCTestCase {
         let ready = DispatchSemaphore(value: 0)
         let start = DispatchSemaphore(value: 0)
         let group = DispatchGroup()
-        for index in 0..<2 {
+        for index in 0 ..< 2 {
             group.enter()
             DispatchQueue.global().async {
                 defer { group.leave() }
@@ -52,8 +52,8 @@ final class ProfileTransactionTests: XCTestCase {
                 catch { outcomes.withLock { $0.append(false) } }
             }
         }
-        for _ in 0..<2 { XCTAssertEqual(ready.wait(timeout: .now() + 5), .success) }
-        for _ in 0..<2 { start.signal() }
+        for _ in 0 ..< 2 { XCTAssertEqual(ready.wait(timeout: .now() + 5), .success) }
+        for _ in 0 ..< 2 { start.signal() }
         XCTAssertEqual(group.wait(timeout: .now() + 5), .success)
         XCTAssertEqual(outcomes.withLock { $0.sorted { !$0 && $1 } }, [false, true])
         XCTAssertEqual(try ConfigurationProfileStore.load(from: url).document.userProfiles.count, 1)
@@ -87,7 +87,7 @@ final class ProfileTransactionTests: XCTestCase {
         let destination = directory.appendingPathComponent("export.json")
         try ConfigurationProfileStore.save(.default, to: source)
         let client = ConfigurationProfileStoreClient(url: source)
-        var document = try client.loadInput().profileDocument!
+        var document = try XCTUnwrap(client.loadInput().profileDocument)
         _ = try document.createProfile(named: "Exported")
         try Data("deliberately replaced".utf8).write(to: destination)
         try client.save(document, to: destination)
@@ -125,14 +125,14 @@ final class ProfileTransactionTests: XCTestCase {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
             process.arguments = ["-c", """
-                import fcntl, os, sys
-                fd = os.open(sys.argv[1], os.O_RDWR)
-                try:
-                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                except BlockingIOError:
-                    sys.exit(73)
-                os.close(fd)
-                """, directory.appendingPathComponent(".paddr-profiles.lock").path]
+            import fcntl, os, sys
+            fd = os.open(sys.argv[1], os.O_RDWR)
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                sys.exit(73)
+            os.close(fd)
+            """, directory.appendingPathComponent(".paddr-profiles.lock").path]
             try process.run()
             process.waitUntilExit()
             return process.terminationStatus

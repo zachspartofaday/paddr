@@ -1,5 +1,5 @@
-import SwiftUI
 import PaddrCore
+import SwiftUI
 
 struct OutputBindingText: View {
     let binding: String

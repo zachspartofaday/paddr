@@ -26,9 +26,9 @@ struct ConfigurationWindowSizingView: NSViewRepresentable {
             stopObserving()
             guard let window else { return }
             NotificationCenter.default.addObserver(self, selector: #selector(screenChanged),
-                name: NSWindow.didChangeScreenNotification, object: window)
+                                                   name: NSWindow.didChangeScreenNotification, object: window)
             NotificationCenter.default.addObserver(self, selector: #selector(screenChanged),
-                name: NSApplication.didChangeScreenParametersNotification, object: nil)
+                                                   name: NSApplication.didChangeScreenParametersNotification, object: nil)
             scheduleResize()
         }
 
@@ -37,7 +37,11 @@ struct ConfigurationWindowSizingView: NSViewRepresentable {
         func stopObserving() {
             pendingResize?.cancel()
             pendingResize = nil
-            NotificationCenter.default.removeObserver(self)
+            // Remove only the two observations made above.
+            NotificationCenter.default.removeObserver(
+                self, name: NSWindow.didChangeScreenNotification, object: nil)
+            NotificationCenter.default.removeObserver(
+                self, name: NSApplication.didChangeScreenParametersNotification, object: nil)
         }
 
         func scheduleResize() {

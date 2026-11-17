@@ -84,6 +84,7 @@ public final class CGEventOutput: TrackpadOutputDispatching, Sendable {
         var heldButtons: Set<MouseButtonBinding> = []
         var deltaRemainder = SIMD2<Double>(repeating: 0)
     }
+
     private let mouseState = Mutex(MouseState())
     #if canImport(CoreGraphics)
     private let currentMouseLocation: @Sendable () -> CGPoint?

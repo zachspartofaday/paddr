@@ -254,7 +254,7 @@ private struct StationaryGyroCalibration: Sendable {
         let maximumRate = 1.5 * Double.pi / 180
         let gravityTolerance = 0.03 * 9.80665
         let rateTolerance = 0.4 * Double.pi / 180
-        guard (0.85 * 9.80665...1.15 * 9.80665).contains(gravity),
+        guard (0.85 * 9.80665 ... 1.15 * 9.80665).contains(gravity),
               Self.magnitude(sample.angularVelocity) <= maximumRate,
               referenceAcceleration.map({ Self.magnitude(sample.acceleration - $0) <= gravityTolerance }) ?? true,
               referenceRate.map({ Self.magnitude(sample.angularVelocity - $0) <= rateTolerance }) ?? true else {

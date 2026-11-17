@@ -1,9 +1,9 @@
 import Foundation
 import Observation
-import Synchronization
-import XCTest
 @testable import PaddrAppSupport
 import PaddrCore
+import Synchronization
+import XCTest
 
 @MainActor
 final class MenuModelTests: XCTestCase {
@@ -354,7 +354,7 @@ final class MenuModelTests: XCTestCase {
 
     func testProgressPressureIdleStopsCannotReleaseAFutureRun() async {
         let session = ProgressPressureSession()
-        for expectedReleases in 0..<2 {
+        for expectedReleases in 0 ..< 2 {
             await session.stop()
             await session.stop()
             let idleReleases = await session.runtimeReleaseCount
@@ -426,7 +426,7 @@ final class MenuModelTests: XCTestCase {
         model.isEnabled = true
         await waitUntil(model: model) { model.outputGateSnapshotForTesting.isEnabled }
         XCTAssertEqual(model.outputGateSnapshotForTesting.gyroCalibrationRevision, 0,
-            "Enabling output must not request calibration")
+                       "Enabling output must not request calibration")
         XCTAssertFalse(model.canRecalibrateGyro, "Output must first finish neutral admission")
         await session.send(.outputArmed)
         await session.send(.sensorsUpdated(.init(motionAvailable: true, gyroStatus: .calibrationNeeded)))
@@ -534,7 +534,7 @@ final class MenuModelTests: XCTestCase {
         XCTAssertFalse(model.canRecalibrateGyro)
         XCTAssertFalse(model.requestGyroCalibration())
         XCTAssertEqual(String(localized: try XCTUnwrap(model.gyroCalibrationUnavailableReason)),
-            "Enable output before calibrating gyro.")
+                       "Enable output before calibrating gyro.")
         let starts = await session.startCount
         XCTAssertEqual(starts, 1, "Saving with output off retains the existing observation session")
     }
@@ -546,7 +546,7 @@ final class MenuModelTests: XCTestCase {
         await waitUntil(model: model) { model.isInitialized }
         await waitUntil(model: model) { await session.startCount == 1 }
         let touched = ControllerSensorStatus(grips: .init(leftTouched: true, rightTouched: false),
-            motionAvailable: true, gyroStatus: .off)
+                                             motionAvailable: true, gyroStatus: .off)
         await session.send(.sensorsUpdated(touched))
         await session.send(.waitingForController("Fake receiver"))
         await waitUntil(model: model) { model.receiverDescription == "Fake receiver" }
@@ -628,7 +628,7 @@ final class MenuModelTests: XCTestCase {
             .stopped(.init(reportCount: 1, actionCount: 0)),
             .receiverRemoved(.init(reportCount: 1, actionCount: 0)),
             .receiverUnavailable("open failed"),
-            .failed("output failed")
+            .failed("output failed"),
         ]
 
         for terminalEvent in terminalEvents {
@@ -640,7 +640,7 @@ final class MenuModelTests: XCTestCase {
             await session.send(.controllerConnected)
             await session.send(.batteryUpdated(.init(chargeState: .charging, percentage: 82)))
             await session.send(.sensorsUpdated(.init(grips: .init(leftTouched: false, rightTouched: true),
-                motionAvailable: true, gyroStatus: .ready)))
+                                                     motionAvailable: true, gyroStatus: .ready)))
             await waitUntil(model: model) { model.batteryStatus != nil && model.sensorStatus != nil }
 
             await session.send(terminalEvent)
@@ -1030,7 +1030,7 @@ final class MenuModelTests: XCTestCase {
         let session = ScriptedSession(events: [
             .controllerConnected,
             .outputArmed,
-            .receiverRemoved(.init(reportCount: 4, actionCount: 2))
+            .receiverRemoved(.init(reportCount: 4, actionCount: 2)),
         ])
         let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
         await waitUntil(model: model) { model.isInitialized }
@@ -1840,7 +1840,7 @@ final class MenuModelTests: XCTestCase {
         XCTAssertTrue(model.hasUnsavedChanges)
     }
 
-    func testRelaunchLoadsConfigurationSavedByEnable() async {
+    func testRelaunchLoadsConfigurationSavedByEnable() async throws {
         let state = readyState(receiver: nil)
         let model = PaddrMenuModel(dependencies: dependencies(state: state))
         await waitUntil(model: model) { model.isInitialized }
@@ -1850,7 +1850,7 @@ final class MenuModelTests: XCTestCase {
 
         model.isEnabled = true
         await waitUntil(model: model) { model.status == .waitingForController }
-        state.loadedConfiguration = try! XCTUnwrap(state.savedConfiguration)
+        state.loadedConfiguration = try XCTUnwrap(state.savedConfiguration)
 
         let relaunched = PaddrMenuModel(dependencies: dependencies(state: state))
         await waitUntil(model: relaunched) { relaunched.isInitialized }
@@ -1860,7 +1860,7 @@ final class MenuModelTests: XCTestCase {
         XCTAssertFalse(relaunched.hasUnsavedChanges)
     }
 
-    func testBothPadsRemainZonesAcrossSaveAndRelaunch() async {
+    func testBothPadsRemainZonesAcrossSaveAndRelaunch() async throws {
         let state = readyState(receiver: nil)
         let model = PaddrMenuModel(dependencies: dependencies(state: state))
         await waitUntil(model: model) { model.isInitialized }
@@ -1873,7 +1873,7 @@ final class MenuModelTests: XCTestCase {
 
         model.saveAndApply()
         await waitUntil(model: model) { model.status == .configurationSaved }
-        let saved = try! XCTUnwrap(state.savedConfiguration)
+        let saved = try XCTUnwrap(state.savedConfiguration)
         XCTAssertEqual(saved.left.mode, .dpad)
         XCTAssertEqual(saved.left.zoneLayout, .horizontalTwo)
         XCTAssertEqual(saved.left.dpadKeys.left, "q")
@@ -2299,7 +2299,7 @@ final class MenuModelTests: XCTestCase {
         let state = readyState(receiver: "Fake puck")
         let session = SequencedStopSession(outcomes: [
             .failed("Injected persistent release failure."),
-            .clean
+            .clean,
         ])
         let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
         await waitUntil(model: model) { model.isInitialized }
@@ -2645,7 +2645,7 @@ final class MenuModelTests: XCTestCase {
 
         XCTAssertTrue(model.revertToSaved())
         XCTAssertEqual(model.status, statusBeforeEditing,
-            "“Your edits are still available” must not outlive the edits")
+                       "“Your edits are still available” must not outlive the edits")
     }
 
     func testRevertToSavedReturnsTheStatusToTheRunningSession() async {
@@ -2669,7 +2669,7 @@ final class MenuModelTests: XCTestCase {
         await session.send(.controllerLost(.init(reportCount: 4, actionCount: 2)))
         await waitUntil(model: model) { model.status == .waitingForController }
         XCTAssertEqual(model.status, .waitingForController,
-            "The session reports again once the draft message is gone")
+                       "The session reports again once the draft message is gone")
 
         model.isEnabled = false
         await session.stop()
@@ -3646,7 +3646,7 @@ final class MenuModelTests: XCTestCase {
         )
         await waitUntil(model: model) { model.status == .active && model.batteryStatus != nil }
         let currentSensors = ControllerSensorStatus(grips: .init(leftTouched: false, rightTouched: true),
-            motionAvailable: true, gyroStatus: .active)
+                                                    motionAvailable: true, gyroStatus: .active)
         await session.send(.sensorsUpdated(currentSensors), to: 0)
         await waitUntil(model: model) { model.sensorStatus == currentSensors }
 
@@ -4708,7 +4708,6 @@ final class MenuModelTests: XCTestCase {
             }
         )
     }
-
 }
 
 private actor ProgressPressureSession: TrackpadSessionControlling {
@@ -4766,13 +4765,13 @@ private final class MenuProgressPressureRuntime: Sendable {
         event(.waitingForController("pressure-test"))
         event(.controllerConnected)
         event(.outputArmed)
-        for reportCount in 1...40 {
+        for reportCount in 1 ... 40 {
             event(.progress(.init(reportCount: reportCount, actionCount: reportCount / 10)))
         }
         event(.controllerLost(.init(reportCount: 40, actionCount: 4)))
         event(.controllerConnected)
         event(.outputArmed)
-        for reportCount in 41...80 {
+        for reportCount in 41 ... 80 {
             event(.progress(.init(reportCount: reportCount, actionCount: reportCount / 10)))
         }
         produced.record(())
@@ -5096,96 +5095,119 @@ private final class ModelDependencyState: Sendable {
         var operationRecorder: OperationRecorder?
         var statusChangeCount = 0
     }
+
     private let state = Mutex(State())
 
     var loadedConfiguration: PaddrConfiguration {
         get { state.withLock { $0.loadedConfiguration } }
         set { state.withLock { $0.loadedConfiguration = newValue } }
     }
+
     var loadedProfileDocument: ConfigurationProfileDocument? {
         get { state.withLock { $0.loadedProfileDocument } }
         set { state.withLock { $0.loadedProfileDocument = newValue } }
     }
+
     var savedConfiguration: PaddrConfiguration? {
         get { state.withLock { $0.savedConfiguration } }
         set { state.withLock { $0.savedConfiguration = newValue } }
     }
+
     var savedProfileDocument: ConfigurationProfileDocument? {
         get { state.withLock { $0.savedProfileDocument } }
         set { state.withLock { $0.savedProfileDocument = newValue } }
     }
+
     var receiver: String? {
         get { state.withLock { $0.receiver } }
         set { state.withLock { $0.receiver = newValue } }
     }
+
     var openedPrivacySettingsAnchors: [String] {
         get { state.withLock { $0.openedPrivacySettingsAnchors } }
         set { state.withLock { $0.openedPrivacySettingsAnchors = newValue } }
     }
+
     var accessibilityGranted: Bool {
         get { state.withLock { $0.accessibilityGranted } }
         set { state.withLock { $0.accessibilityGranted = newValue } }
     }
+
     var accessibilityPromptValues: [Bool] {
         get { state.withLock { $0.accessibilityPromptValues } }
         set { state.withLock { $0.accessibilityPromptValues = newValue } }
     }
+
     var inputMonitoringAccess: InputMonitoringAccess {
         get { state.withLock { $0.inputMonitoringAccess } }
         set { state.withLock { $0.inputMonitoringAccess = newValue } }
     }
+
     var inputMonitoringAccessRequests: [Bool] {
         get { state.withLock { $0.inputMonitoringAccessRequests } }
         set { state.withLock { $0.inputMonitoringAccessRequests = newValue } }
     }
+
     var loadFailure: String? {
         get { state.withLock { $0.loadFailure } }
         set { state.withLock { $0.loadFailure = newValue } }
     }
+
     var loadDiagnostic: String? {
         get { state.withLock { $0.loadDiagnostic } }
         set { state.withLock { $0.loadDiagnostic = newValue } }
     }
+
     var loadGate: BoundedTestGate? {
         get { state.withLock { $0.loadGate } }
         set { state.withLock { $0.loadGate = newValue } }
     }
+
     var loadRanOnMainThread: Bool? {
         get { state.withLock { $0.loadRanOnMainThread } }
         set { state.withLock { $0.loadRanOnMainThread = newValue } }
     }
+
     var saveFailure: String? {
         get { state.withLock { $0.saveFailure } }
         set { state.withLock { $0.saveFailure = newValue } }
     }
+
     var saveFailuresByCall: [Int: String] {
         get { state.withLock { $0.saveFailuresByCall } }
         set { state.withLock { $0.saveFailuresByCall = newValue } }
     }
+
     var saveGate: BoundedTestGate? {
         get { state.withLock { $0.saveGate } }
         set { state.withLock { $0.saveGate = newValue } }
     }
+
     var saveCallCount: Int {
         get { state.withLock { $0.saveCallCount } }
         set { state.withLock { $0.saveCallCount = newValue } }
     }
+
     var saveCompletionCount: Int {
         get { state.withLock { $0.saveCompletionCount } }
         set { state.withLock { $0.saveCompletionCount = newValue } }
     }
+
     var probeCallCount: Int {
         get { state.withLock { $0.probeCallCount } }
         set { state.withLock { $0.probeCallCount = newValue } }
     }
+
     var probeGate: BoundedTestGate? {
         get { state.withLock { $0.probeGate } }
         set { state.withLock { $0.probeGate = newValue } }
     }
+
     var operationRecorder: OperationRecorder? {
         get { state.withLock { $0.operationRecorder } }
         set { state.withLock { $0.operationRecorder = newValue } }
     }
+
     var statusChangeCount: Int {
         get { state.withLock { $0.statusChangeCount } }
         set { state.withLock { $0.statusChangeCount = newValue } }

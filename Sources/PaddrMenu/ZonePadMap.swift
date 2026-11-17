@@ -1,6 +1,6 @@
 import PaddrAppSupport
-import SwiftUI
 import PaddrCore
+import SwiftUI
 
 struct ZonePadMap: View {
     let layout: PadZoneLayout
@@ -112,8 +112,8 @@ struct ZonePadMap: View {
 
     private func hitZone(at point: CGPoint, size: CGSize) -> ButtonZone? {
         guard size.width > 0, size.height > 0 else { return nil }
-        let x = ((point.x / size.width) * 2 - 1).clamped(to: -1...1)
-        let y = (1 - (point.y / size.height) * 2).clamped(to: -1...1)
+        let x = ((point.x / size.width) * 2 - 1).clamped(to: -1 ... 1)
+        let y = (1 - (point.y / size.height) * 2).clamped(to: -1 ... 1)
         let rawX = Int16((x * Double(Int16.max)).rounded())
         let rawY = Int16((y * Double(Int16.max)).rounded())
         return PadMapper.activeButtonZones(x: rawX, y: rawY, deadzone: deadzone, layout: layout).first
@@ -197,12 +197,12 @@ struct ZonePadMap: View {
             let columns: [ButtonZone: CGFloat] = [
                 .topLeft: 1.0 / 6.0, .left: 1.0 / 6.0, .bottomLeft: 1.0 / 6.0,
                 .up: 0.5, .center: 0.5, .down: 0.5,
-                .topRight: 5.0 / 6.0, .right: 5.0 / 6.0, .bottomRight: 5.0 / 6.0
+                .topRight: 5.0 / 6.0, .right: 5.0 / 6.0, .bottomRight: 5.0 / 6.0,
             ]
             let rows: [ButtonZone: CGFloat] = [
                 .topLeft: 1.0 / 6.0, .up: 1.0 / 6.0, .topRight: 1.0 / 6.0,
                 .left: 0.5, .center: 0.5, .right: 0.5,
-                .bottomLeft: 5.0 / 6.0, .down: 5.0 / 6.0, .bottomRight: 5.0 / 6.0
+                .bottomLeft: 5.0 / 6.0, .down: 5.0 / 6.0, .bottomRight: 5.0 / 6.0,
             ]
             position = CGPoint(x: columns[zone] ?? 0.5, y: rows[zone] ?? 0.5)
         }
@@ -246,7 +246,7 @@ struct ZonePadMap: View {
             )
         }
         context.draw(resolved, in: CGRect(x: point.x - labelSize.width / 2,
-            y: point.y - labelSize.height / 2, width: labelSize.width, height: labelSize.height))
+                                          y: point.y - labelSize.height / 2, width: labelSize.width, height: labelSize.height))
     }
 
     private func center(in bounds: CGRect) -> CGPoint { CGPoint(x: bounds.midX, y: bounds.midY) }

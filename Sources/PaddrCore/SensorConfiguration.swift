@@ -83,7 +83,7 @@ public struct GyroConfiguration: Codable, Equatable, Sendable {
             ("horizontalScale", horizontalScale, ConfigurationLimits.gyroHorizontalScale),
             ("holdingAngleDegrees", holdingAngleDegrees, ConfigurationLimits.gyroHoldingAngle),
             ("smoothing", smoothing, ConfigurationLimits.gyroSmoothing),
-            ("noiseThreshold", noiseThreshold, ConfigurationLimits.gyroNoiseThreshold)
+            ("noiseThreshold", noiseThreshold, ConfigurationLimits.gyroNoiseThreshold),
         ] {
             guard value.isFinite, range.contains(value) else {
                 throw PaddrError.configuration(

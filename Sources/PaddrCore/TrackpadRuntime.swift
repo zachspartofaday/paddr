@@ -508,7 +508,7 @@ public enum TrackpadRuntime {
                         guard pads.isNeutral, epoch.rearMapper.isNeutral(state.rearButtons),
                               epoch.gripMapper.isNeutral(state.grips),
                               validated.gripTouch == .unassigned
-                                || SensorFreshness.isFresh(timestamp, at: now) else {
+                              || SensorFreshness.isFresh(timestamp, at: now) else {
                             controllerEpoch = epoch
                             publishSensors(at: now)
                             return

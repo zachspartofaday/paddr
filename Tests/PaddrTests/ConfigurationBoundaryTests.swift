@@ -1,5 +1,5 @@
-import XCTest
 @testable import PaddrCore
+import XCTest
 #if canImport(CoreGraphics)
 import CoreGraphics
 #endif
@@ -54,7 +54,7 @@ final class ConfigurationBoundaryTests: XCTestCase {
             (".config/Paddr/config.json", configuration(PadConfiguration(mode: .mouse, sensitivity: 1))),
             (".config/PuckPads/config.json", configuration(PadConfiguration(mode: .mouse, sensitivity: 2))),
             (".config/TracksBack/config.json", configuration(PadConfiguration(mode: .mouse, sensitivity: 3))),
-            (".config/TrackIsBack/config.json", configuration(PadConfiguration(mode: .mouse, sensitivity: 4)))
+            (".config/TrackIsBack/config.json", configuration(PadConfiguration(mode: .mouse, sensitivity: 4))),
         ]
         defer { try? fileManager.removeItem(at: home) }
         for candidate in candidates {
@@ -256,7 +256,7 @@ final class ConfigurationBoundaryTests: XCTestCase {
     func testAccelerationSwitchMigratesLegacyProfilesAndPersistsDisabledStrength() throws {
         for amount in [0.0, 0.75] {
             let legacy = try JSONDecoder().decode(PadConfiguration.self,
-                from: Data("{\"mode\":\"mouse\",\"mouseAcceleration\":\(amount)}".utf8))
+                                                  from: Data("{\"mode\":\"mouse\",\"mouseAcceleration\":\(amount)}".utf8))
             XCTAssertEqual(legacy.mouseAccelerationEnabled, amount > 0)
             XCTAssertEqual(legacy.mouseAcceleration, amount)
         }

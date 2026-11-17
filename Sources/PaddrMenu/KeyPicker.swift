@@ -1,5 +1,5 @@
-import SwiftUI
 import PaddrCore
+import SwiftUI
 
 struct OutputBindingPicker: View {
     @Binding var selection: String
@@ -16,13 +16,13 @@ struct OutputBindingPicker: View {
         [
             .init(value: TapBindingCatalog.leftMouseButton, title: String(localized: "Left click"), systemImage: "computermouse.fill"),
             .init(value: TapBindingCatalog.rightMouseButton, title: String(localized: "Right click"), systemImage: "computermouse"),
-            .separator
+            .separator,
         ] + keyChoices.map { .init(value: $0, title: OutputBindingText.string(for: $0)) }
     }
 
     var body: some View {
         PaddrMenuPicker(title: "Zone action", selection: $selection, options: options, width: width)
-        .accessibilityLabel("Zone action")
-        .help("Assign a keyboard key, left click, or right click to this zone.")
+            .accessibilityLabel("Zone action")
+            .help("Assign a keyboard key, left click, or right click to this zone.")
     }
 }

@@ -1,5 +1,5 @@
-import SwiftUI
 import PaddrCore
+import SwiftUI
 
 struct TapActionPicker: View {
     @Binding var selection: String?
@@ -36,7 +36,7 @@ struct OptionalOutputBindingPicker: View {
             .separator,
             .init(value: .some(TapBindingCatalog.leftMouseButton), title: String(localized: "Left click"), systemImage: "computermouse.fill"),
             .init(value: .some(TapBindingCatalog.rightMouseButton), title: String(localized: "Right click"), systemImage: "computermouse"),
-            .separator
+            .separator,
         ]
         result += KeyCatalog.commonNames.map { .init(value: .some($0), title: OutputBindingText.string(for: $0)) }
         return result
@@ -44,6 +44,6 @@ struct OptionalOutputBindingPicker: View {
 
     var body: some View {
         PaddrMenuPicker(title: title, selection: $selection, options: options, width: width,
-            accessibilityIdentifier: accessibilityIdentifier)
+                        accessibilityIdentifier: accessibilityIdentifier)
     }
 }

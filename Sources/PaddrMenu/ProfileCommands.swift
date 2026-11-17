@@ -47,30 +47,30 @@ struct ProfileActionsPresentation {
             : isDefaultProfile ? "Default is read-only" : "Wait for the profile operation to finish"
 
         let create = ProfileActionItem(id: .new, title: "New Profile", systemImage: "plus",
-            isEnabled: draftReason == nil, disabledReason: draftReason)
+                                       isEnabled: draftReason == nil, disabledReason: draftReason)
         let duplicate = ProfileActionItem(id: .duplicate,
-            title: isDefaultProfile ? "Duplicate Default to Edit" : "Duplicate Profile",
-            systemImage: "plus.square.on.square",
-            isEnabled: draftReason == nil, disabledReason: draftReason)
+                                          title: isDefaultProfile ? "Duplicate Default to Edit" : "Duplicate Profile",
+                                          systemImage: "plus.square.on.square",
+                                          isEnabled: draftReason == nil, disabledReason: draftReason)
         let deleteReason = editReason ?? draftReason
 
         sections = [
             isDefaultProfile ? [duplicate, create] : [create, duplicate],
             [
                 ProfileActionItem(id: .rename, title: "Rename Profile", systemImage: "pencil",
-                    isEnabled: editReason == nil, disabledReason: editReason),
+                                  isEnabled: editReason == nil, disabledReason: editReason),
                 ProfileActionItem(id: .revertToSaved, title: "Revert to Saved",
-                    systemImage: "arrow.uturn.backward",
-                    isEnabled: canRevertToSaved,
-                    disabledReason: canRevertToSaved ? nil : "There are no unsaved changes to revert"),
+                                  systemImage: "arrow.uturn.backward",
+                                  isEnabled: canRevertToSaved,
+                                  disabledReason: canRevertToSaved ? nil : "There are no unsaved changes to revert"),
                 ProfileActionItem(id: .restoreDefaults, title: "Restore Defaults",
-                    systemImage: "arrow.counterclockwise",
-                    isEnabled: editReason == nil, disabledReason: editReason)
+                                  systemImage: "arrow.counterclockwise",
+                                  isEnabled: editReason == nil, disabledReason: editReason),
             ],
             [
                 ProfileActionItem(id: .delete, title: "Delete Profile", systemImage: "trash",
-                    isEnabled: deleteReason == nil, isDestructive: true, disabledReason: deleteReason)
-            ]
+                                  isEnabled: deleteReason == nil, isDestructive: true, disabledReason: deleteReason),
+            ],
         ]
     }
 

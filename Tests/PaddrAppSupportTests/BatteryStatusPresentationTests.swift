@@ -1,6 +1,6 @@
-import XCTest
 @testable import PaddrAppSupport
 import PaddrCore
+import XCTest
 
 final class BatteryStatusPresentationTests: XCTestCase {
     func testUnavailablePresentationUsesReservedPlaceholderAndNativeMenuCopy() {
@@ -34,7 +34,7 @@ final class BatteryStatusPresentationTests: XCTestCase {
             (20, .low),
             (59, .low),
             (60, .healthy),
-            (100, .healthy)
+            (100, .healthy),
         ]
 
         for (percentage, expectedBand) in cases {
@@ -52,7 +52,7 @@ final class BatteryStatusPresentationTests: XCTestCase {
             (25, "battery.25percent"),
             (50, "battery.50percent"),
             (75, "battery.75percent"),
-            (100, "battery.100percent")
+            (100, "battery.100percent"),
         ]
         for (percentage, expectedGlyph) in levelGlyphs {
             let presentation = BatteryStatusPresentation(
@@ -67,7 +67,7 @@ final class BatteryStatusPresentationTests: XCTestCase {
             (.charging, "Charge state: Charging"),
             (.sourceValidate, "Charge state: Validating source"),
             (.chargingDone, "Charge state: Charging complete"),
-            (.unknown(0xFE), "Charge state: Unknown")
+            (.unknown(0xFE), "Charge state: Unknown"),
         ]
         for (chargeState, expectedMenuCopy) in chargeStates {
             let presentation = BatteryStatusPresentation(

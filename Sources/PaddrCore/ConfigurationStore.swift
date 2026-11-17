@@ -107,7 +107,7 @@ public enum ConfigurationStore {
             ".config/Paddr/config.json",
             ".config/PuckPads/config.json",
             ".config/TracksBack/config.json",
-            ".config/TrackIsBack/config.json"
+            ".config/TrackIsBack/config.json",
         ]
         return relativePaths
             .map { homeDirectory.appendingPathComponent($0) }

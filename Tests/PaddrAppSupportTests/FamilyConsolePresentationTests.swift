@@ -1,10 +1,9 @@
 import AppKit
-import SwiftUI
-import XCTest
-
 import PaddrAppSupport
 import PaddrCore
 @testable import PaddrMenu
+import SwiftUI
+import XCTest
 
 @MainActor
 final class FamilyConsolePresentationTests: XCTestCase {
@@ -18,13 +17,13 @@ final class FamilyConsolePresentationTests: XCTestCase {
         XCTAssertEqual(PaddrStyle.Inset.control, 12)
         XCTAssertEqual(PaddrStyle.cardSpacing, 16)
         XCTAssertEqual(PaddrStyle.Metrics.defaultContentWidth,
-            PaddrStyle.Metrics.defaultWindowSize.width - (2 * PaddrStyle.Inset.window))
+                       PaddrStyle.Metrics.defaultWindowSize.width - (2 * PaddrStyle.Inset.window))
         XCTAssertGreaterThan(PaddrStyle.Metrics.defaultContentWidth,
-            PaddrStyle.Metrics.padEditorColumnsBreakpoint)
+                             PaddrStyle.Metrics.padEditorColumnsBreakpoint)
         XCTAssertGreaterThanOrEqual(PaddrStyle.Metrics.padEditorColumnsBreakpoint,
-            (2 * PaddrStyle.minimumPadColumnWidth) + PaddrStyle.cardSpacing)
+                                    (2 * PaddrStyle.minimumPadColumnWidth) + PaddrStyle.cardSpacing)
         XCTAssertEqual(PaddrStyle.padColumnWidth,
-            (PaddrStyle.Metrics.defaultContentWidth - PaddrStyle.cardSpacing) / 2)
+                       (PaddrStyle.Metrics.defaultContentWidth - PaddrStyle.cardSpacing) / 2)
         XCTAssertGreaterThanOrEqual(PaddrStyle.Metrics.controlHeight, 28)
         XCTAssertLessThanOrEqual(PaddrStyle.Metrics.controlHeight, 38)
     }
@@ -45,7 +44,7 @@ final class FamilyConsolePresentationTests: XCTestCase {
         let twoEditors: CGFloat = 2 * (190 + 16 + 240) + 24
         XCTAssertEqual(PaddrStyle.Metrics.defaultContentWidth, twoEditors)
         XCTAssertEqual(PaddrStyle.Bar.margin + PaddrStyle.Bar.inset, PaddrStyle.Inset.window,
-            "What the floating bar holds lines up with the workspace above it")
+                       "What the floating bar holds lines up with the workspace above it")
     }
 
     func testBespokeControlFamilyUsesApprovedBaseDimensions() {
@@ -139,7 +138,7 @@ final class FamilyConsolePresentationTests: XCTestCase {
             ),
             (input(isEnabled: false), .enableOutput),
             (input(isRunning: false), .releaseTrackpads),
-            (input(), .none)
+            (input(), .none),
         ]
 
         for (input, expectedAction) in cases {
@@ -247,5 +246,4 @@ final class FamilyConsolePresentationTests: XCTestCase {
             canToggleOutput: canToggleOutput
         )
     }
-
 }

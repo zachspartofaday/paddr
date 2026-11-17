@@ -22,20 +22,20 @@ public enum CenterTapTrackingMode: String, Codable, CaseIterable, Sendable {
 }
 
 public enum ConfigurationLimits {
-    public static let sensitivity = 0.1...20.0
-    public static let gyroSensitivity = 0.1...40.0
-    public static let gyroHoldingAngle = 0.0...90.0
-    public static let gyroVerticalScale = 0.1...4.0
-    public static let gyroHorizontalScale = 0.1...8.0
-    public static let gyroSmoothing = 0.0...1.0
-    public static let gyroNoiseThreshold = 0.0...5.0
-    public static let scrollSensitivity = 0.0...1.0
-    public static let mouseAcceleration = 0.0...1.0
-    public static let pointerSmoothingStrength = 0.0...1.0
-    public static let tapStabilizationThresholdPoints = 1.0...24.0
-    public static let tapMaximumMilliseconds = 1.0...5_000.0
-    public static let tapMaximumMovement = 0.0...100_000.0
-    public static let mouseDeadzone = 0.0...1.0
+    public static let sensitivity = 0.1 ... 20.0
+    public static let gyroSensitivity = 0.1 ... 40.0
+    public static let gyroHoldingAngle = 0.0 ... 90.0
+    public static let gyroVerticalScale = 0.1 ... 4.0
+    public static let gyroHorizontalScale = 0.1 ... 8.0
+    public static let gyroSmoothing = 0.0 ... 1.0
+    public static let gyroNoiseThreshold = 0.0 ... 5.0
+    public static let scrollSensitivity = 0.0 ... 1.0
+    public static let mouseAcceleration = 0.0 ... 1.0
+    public static let pointerSmoothingStrength = 0.0 ... 1.0
+    public static let tapStabilizationThresholdPoints = 1.0 ... 24.0
+    public static let tapMaximumMilliseconds = 1.0 ... 5_000.0
+    public static let tapMaximumMovement = 0.0 ... 100_000.0
+    public static let mouseDeadzone = 0.0 ... 1.0
 
     public static func containsDPadDeadzone(_ value: Double) -> Bool {
         value.isFinite && value >= 0 && value < 1
@@ -414,7 +414,7 @@ public struct PaddrConfiguration: Codable, Equatable, Sendable {
         }
         guard pad.tapStabilizationThresholdPoints.isFinite,
               ConfigurationLimits.tapStabilizationThresholdPoints.contains(
-                pad.tapStabilizationThresholdPoints
+                  pad.tapStabilizationThresholdPoints
               ) else {
             throw PaddrError.configuration(
                 "\(side.rawValue) tapStabilizationThresholdPoints must be between 1 and 24."

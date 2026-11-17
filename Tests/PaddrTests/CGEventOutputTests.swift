@@ -1,8 +1,8 @@
 #if canImport(CoreGraphics)
 import CoreGraphics
+@testable import PaddrCore
 import Synchronization
 import XCTest
-@testable import PaddrCore
 
 final class CGEventOutputTests: XCTestCase {
     func testMouseButtonReleaseThrowsWhenCurrentLocationIsUnavailable() {
@@ -23,14 +23,14 @@ final class CGEventOutputTests: XCTestCase {
             .mouseButton(.left, isPressed: true),
             .mouseMove(dx: 4, dy: -3),
             .mouseButton(.left, isPressed: false),
-            .mouseMove(dx: -2, dy: 5)
+            .mouseMove(dx: -2, dy: 5),
         ])
 
         XCTAssertEqual(recorder.requests, [
             .mouse(kind: .leftDown, button: .left, x: 100, y: 200),
             .mouse(kind: .leftDragged, button: .left, x: 104, y: 197, deltaX: 4, deltaY: -3),
             .mouse(kind: .leftUp, button: .left, x: 100, y: 200),
-            .mouse(kind: .moved, button: .left, x: 98, y: 205, deltaX: -2, deltaY: 5)
+            .mouse(kind: .moved, button: .left, x: 98, y: 205, deltaX: -2, deltaY: 5),
         ])
     }
 
@@ -40,7 +40,7 @@ final class CGEventOutputTests: XCTestCase {
 
         try output.dispatch([
             .mouseButton(.right, isPressed: true),
-            .mouseMove(dx: 1.5, dy: 2.5)
+            .mouseMove(dx: 1.5, dy: 2.5),
         ])
 
         XCTAssertEqual(recorder.requests.last, .mouse(
@@ -60,7 +60,7 @@ final class CGEventOutputTests: XCTestCase {
             .mouseButton(.left, isPressed: true),
             .mouseMove(dx: 2, dy: 3),
             .mouseButton(.left, isPressed: false),
-            .mouseMove(dx: 6, dy: 7)
+            .mouseMove(dx: 6, dy: 7),
         ])
 
         XCTAssertEqual(recorder.requests[2], .mouse(
@@ -96,7 +96,7 @@ final class CGEventOutputTests: XCTestCase {
         try output.dispatch([.mouseMove(dx: 1, dy: 1)])
 
         XCTAssertEqual(recorder.requests, [
-            .mouse(kind: .moved, button: .left, x: 101, y: 201, deltaX: 1, deltaY: 1)
+            .mouse(kind: .moved, button: .left, x: 101, y: 201, deltaX: 1, deltaY: 1),
         ])
     }
 
@@ -107,12 +107,12 @@ final class CGEventOutputTests: XCTestCase {
 
         try output.dispatch([
             .scroll(dx: 2.4, dy: -3.6),
-            .key(key, isPressed: true)
+            .key(key, isPressed: true),
         ])
 
         XCTAssertEqual(recorder.requests, [
             .scroll(horizontal: 2, vertical: -4),
-            .key(code: key.keyCode, isPressed: true)
+            .key(code: key.keyCode, isPressed: true),
         ])
     }
 
@@ -121,15 +121,15 @@ final class CGEventOutputTests: XCTestCase {
             let recorder = CGEventRequestRecorder()
             let output = makeOutput(recorder: recorder)
             var mapper = PadMapper(side: .left, configuration: .init(mode: .scroll, scrollSensitivity: 0.5))
-            for step in 0...10 {
+            for step in 0 ... 10 {
                 let sample = TrackpadSample(isTouched: true, isClicked: false,
-                    x: Int16(sign * step * 120), y: Int16(sign * step * 120), pressure: 0,
-                    timestampNanoseconds: UInt64(step))
+                                            x: Int16(sign * step * 120), y: Int16(sign * step * 120), pressure: 0,
+                                            timestampNanoseconds: UInt64(step))
                 try output.dispatch(try mapper.process(sample))
             }
             XCTAssertEqual(recorder.requests, [
                 .scroll(horizontal: Int32(sign), vertical: Int32(-sign)),
-                .scroll(horizontal: Int32(sign), vertical: Int32(-sign))
+                .scroll(horizontal: Int32(sign), vertical: Int32(-sign)),
             ])
         }
     }
@@ -138,7 +138,7 @@ final class CGEventOutputTests: XCTestCase {
         let recorder = CGEventRequestRecorder()
         let cursor = Mutex(CGPoint(x: 100, y: 200))
         let output = CGEventOutput(currentMouseLocation: { cursor.withLock { $0 } }, postEvent: recorder.record)
-        for _ in 0..<5 { try output.dispatch([.mouseMove(dx: 0.25, dy: -0.25)]) }
+        for _ in 0 ..< 5 { try output.dispatch([.mouseMove(dx: 0.25, dy: -0.25)]) }
         cursor.withLock { $0 = .zero }
         try output.dispatch([.mouseMove(dx: 2, dy: -3)])
         var xTotal: Int64 = 0
@@ -154,7 +154,7 @@ final class CGEventOutputTests: XCTestCase {
         XCTAssertEqual(xTotal, 3)
         XCTAssertEqual(yTotal, -4)
         XCTAssertEqual(recorder.requests.last,
-            .mouse(kind: .moved, button: .left, x: 2, y: -3, deltaX: 2, deltaY: -3))
+                       .mouse(kind: .moved, button: .left, x: 2, y: -3, deltaX: 2, deltaY: -3))
     }
 
     func testMotionResetDropsPriorEpochSubpointRemainder() throws {
@@ -164,7 +164,7 @@ final class CGEventOutputTests: XCTestCase {
         output.resetMouseMotion()
         try output.dispatch([.mouseMove(dx: 0.25, dy: -0.25)])
         XCTAssertEqual(recorder.requests.last,
-            .mouse(kind: .moved, button: .left, x: 100.25, y: 199.75, deltaX: 0, deltaY: 0))
+                       .mouse(kind: .moved, button: .left, x: 100.25, y: 199.75, deltaX: 0, deltaY: 0))
     }
 
     func testFractionalRelativeRemainderIsCommittedOnlyAfterSuccessfulPost() throws {
@@ -179,7 +179,7 @@ final class CGEventOutputTests: XCTestCase {
         XCTAssertThrowsError(try output.dispatch([.mouseMove(dx: 0.75, dy: -0.75)]))
         try output.dispatch([.mouseMove(dx: 0.25, dy: -0.25)])
         XCTAssertEqual(recorder.requests.last,
-            .mouse(kind: .moved, button: .left, x: 0.25, y: -0.25, deltaX: 1, deltaY: -1))
+                       .mouse(kind: .moved, button: .left, x: 0.25, y: -0.25, deltaX: 1, deltaY: -1))
         for bad in [Double.nan, .infinity, Double.greatestFiniteMagnitude] {
             XCTAssertThrowsError(try output.dispatch([.mouseMove(dx: bad, dy: 0)]))
         }

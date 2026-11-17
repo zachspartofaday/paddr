@@ -122,7 +122,7 @@ public struct ConfigurationProfileDocument: Codable, Equatable, Sendable {
     }
 
     public func validated(repairingMissingActiveProfile: Bool = false) throws -> ConfigurationProfileDocument {
-        guard (1...Self.currentSchemaVersion).contains(schemaVersion) else {
+        guard (1 ... Self.currentSchemaVersion).contains(schemaVersion) else {
             throw PaddrError.configuration(
                 "Unsupported profile document schema version \(schemaVersion)."
             )

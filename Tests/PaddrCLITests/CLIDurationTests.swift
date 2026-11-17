@@ -1,7 +1,7 @@
-import XCTest
 import PaddrCLIKit
 import PaddrCore
 import Synchronization
+import XCTest
 
 final class CLIDurationTests: XCTestCase {
     func testFinitePositiveFractionParsesExactly() throws {
@@ -37,7 +37,7 @@ final class CLIDurationTests: XCTestCase {
             duration: CLIDuration(argument: "0.25"),
             onAction: { _ in },
             runtime: { capturedConfiguration, capturedObserveOnly, capturedStopToken,
-                       capturedDuration, _ in
+                capturedDuration, _ in
                 capture.record(
                     configuration: capturedConfiguration,
                     observeOnly: capturedObserveOnly,

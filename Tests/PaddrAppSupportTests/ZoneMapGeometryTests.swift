@@ -1,9 +1,9 @@
 import CoreGraphics
-import SwiftUI
-@testable import PaddrMenu
-import XCTest
 @testable import PaddrAppSupport
 import PaddrCore
+@testable import PaddrMenu
+import SwiftUI
+import XCTest
 
 final class ZoneMapGeometryTests: XCTestCase {
     @MainActor
@@ -13,14 +13,14 @@ final class ZoneMapGeometryTests: XCTestCase {
         let shell = PaddrPadShape().path(in: bounds)
         XCTAssertFalse(shell.contains(.zero))
         XCTAssertTrue(shell.contains(CGPoint(x: 6, y: 6)),
-            "The approved tighter corner must include this point that the old 30-point shell excluded")
+                      "The approved tighter corner must include this point that the old 30-point shell excluded")
         let outline = ZoneMapGeometry.selectedOutlineRegion(
             for: CGPath(rect: CGRect(x: 0, y: 0, width: 95, height: 91), transform: nil),
             in: bounds, cornerRadius: PaddrStyle.Radius.pad, lineWidth: 2)
         XCTAssertFalse(outline.contains(CGPoint(x: 1, y: 1)))
         XCTAssertTrue(outline.contains(CGPoint(x: 6, y: 6)))
         XCTAssertEqual(outline.boundingBoxOfPath.maxX, 95, accuracy: 0.001,
-            "Changing the shell must preserve the contiguous internal divider")
+                       "Changing the shell must preserve the contiguous internal divider")
     }
 
     @MainActor
@@ -29,7 +29,7 @@ final class ZoneMapGeometryTests: XCTestCase {
         let focus = PaddrPadShape(insetAmount: -PaddrPadFocusRing.outset).path(in: bounds)
         XCTAssertEqual(focus.boundingRect, bounds.insetBy(dx: -4, dy: -4))
         XCTAssertFalse(focus.contains(CGPoint(x: 0.5, y: 0.5)),
-            "Growing bounds while retaining radius 14 incorrectly cuts inside the concentric corner")
+                       "Growing bounds while retaining radius 14 incorrectly cuts inside the concentric corner")
         XCTAssertTrue(focus.contains(CGPoint(x: 2, y: 2)))
         let focusStroke = focus.cgPath.copy(strokingWithWidth: 2, lineCap: .round, lineJoin: .round, miterLimit: 1)
         XCTAssertEqual(focusStroke.boundingBoxOfPath.minX, -5, accuracy: 0.01)
@@ -55,7 +55,7 @@ final class ZoneMapGeometryTests: XCTestCase {
             CGRect(x: bounds.minX, y: bounds.minY, width: bounds.width / 2, height: bounds.height / 2),
             CGRect(x: bounds.midX, y: bounds.minY, width: bounds.width / 2, height: bounds.height / 2),
             CGRect(x: bounds.midX, y: bounds.midY, width: bounds.width / 2, height: bounds.height / 2),
-            CGRect(x: bounds.minX, y: bounds.midY, width: bounds.width / 2, height: bounds.height / 2)
+            CGRect(x: bounds.minX, y: bounds.midY, width: bounds.width / 2, height: bounds.height / 2),
         ]
         let expectedBounds = [
             CGRect(x: inset, y: inset, width: bounds.width / 2 - inset, height: bounds.height / 2 - inset),
@@ -76,7 +76,7 @@ final class ZoneMapGeometryTests: XCTestCase {
                 y: bounds.midY,
                 width: bounds.width / 2 - inset,
                 height: bounds.height / 2 - inset
-            )
+            ),
         ]
 
         for (quadrant, expected) in zip(quadrants, expectedBounds) {

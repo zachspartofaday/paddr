@@ -83,7 +83,7 @@ private struct PaddrRearSelectorsLayout: Layout {
         let ends = [edges.left - stride, edges.left, edges.right - stride, edges.right]
         let origins = zip(ends, sizes).map { $0 - $1.width }
         guard origins[0] >= 0, ends[3] <= width,
-              (1..<4).allSatisfy({ origins[$0] >= ends[$0 - 1] + PaddrStyle.Spacing.s4 }) else { return nil }
+              (1 ..< 4).allSatisfy({ origins[$0] >= ends[$0 - 1] + PaddrStyle.Spacing.s4 }) else { return nil }
         return (sizes, origins)
     }
 }

@@ -22,6 +22,7 @@ struct PaddrControlShape: InsettableShape {
         copy.insetAmount += amount
         return copy
     }
+
     func path(in rect: CGRect) -> Path {
         RoundedRectangle(cornerRadius: max(0, radius - insetAmount), style: .continuous)
             .path(in: rect.insetBy(dx: insetAmount, dy: insetAmount))

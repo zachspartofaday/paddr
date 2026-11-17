@@ -50,6 +50,7 @@ public final class PaddrMenuModel {
             }
         }
     }
+
     public private(set) var savedConfiguration: PaddrConfiguration
     public private(set) var profiles: [ConfigurationProfile] = [.default]
     public private(set) var activeProfileID: ConfigurationProfileID = .default
@@ -60,8 +61,8 @@ public final class PaddrMenuModel {
                   !terminationDecisionInProgress,
                   isInitialized,
                   isEnabled == false
-                      || ((!profileDocumentSaveInProgress || replacesActiveConfiguration)
-                          && !isReleasingOutput)
+                  || ((!profileDocumentSaveInProgress || replacesActiveConfiguration)
+                      && !isReleasingOutput)
             else {
                 isRejectingEnabledChange = true
                 isEnabled = oldValue
@@ -73,6 +74,7 @@ public final class PaddrMenuModel {
             statusDidChange?()
         }
     }
+
     public private(set) var isRunning = false
     public private(set) var isReleasingOutput = false
     public private(set) var receiverDescription: String?
@@ -119,6 +121,7 @@ public final class PaddrMenuModel {
             resumePersistenceWaiters()
         }
     }
+
     @ObservationIgnored private var persistenceWaiters: [CheckedContinuation<Void, Never>] = []
     private var replacesActiveConfiguration = false
     // Readiness observes this activation obligation independently of unrelated
@@ -129,15 +132,18 @@ public final class PaddrMenuModel {
             resumePersistenceWaiters()
         }
     }
+
     @ObservationIgnored private var statusRefreshTask: Task<Void, Never>?
     @ObservationIgnored private var statusRefreshEpoch: UInt64 = 0
     @ObservationIgnored private var receiverStateGeneration: UInt64 = 0
     @ObservationIgnored private var lifecycleTask: Task<Void, Never>? {
         didSet { updateIsSearchingForPuck() }
     }
+
     @ObservationIgnored private var reconnectTask: Task<Void, Never>? {
         didSet { updateIsSearchingForPuck() }
     }
+
     @ObservationIgnored private var reconnectGeneration: UInt64 = 0
     @ObservationIgnored private var reconnectStatusGeneration: UInt64?
     @ObservationIgnored private var permissionRefreshTask: Task<Void, Never>?
@@ -145,6 +151,7 @@ public final class PaddrMenuModel {
     @ObservationIgnored private var terminationState = TerminationState.idle {
         didSet { updateIsSearchingForPuck() }
     }
+
     private var terminationDecisionInProgress = false
     @ObservationIgnored private var terminationEpoch: UInt64 = 0
     @ObservationIgnored private var terminationCompletions: [@MainActor (Bool) -> Void] = []
@@ -154,10 +161,12 @@ public final class PaddrMenuModel {
     public var hasPendingConfigurationPersistence: Bool {
         configurationTask != nil || profileDocumentSaveInProgress || activationCommitPending
     }
+
     public var hasSystemAccess: Bool { accessibilityTrusted && inputMonitoringGranted }
     public var activeProfile: ConfigurationProfile {
         profiles.first { $0.id == activeProfileID } ?? .default
     }
+
     public var canEditActiveProfile: Bool {
         terminationState == .idle
             && !terminationDecisionInProgress
@@ -165,6 +174,7 @@ public final class PaddrMenuModel {
             && !replacesActiveConfiguration
             && activeProfileID != .default
     }
+
     public var profileSelectionPresentation: ProfileSelectionPresentation {
         if let pendingProfileActivation {
             return .switching(
@@ -174,6 +184,7 @@ public final class PaddrMenuModel {
         }
         return .active(activeProfileID)
     }
+
     public var activeProfileControlsAppearEnabled: Bool {
         switch profileSelectionPresentation {
         case .active:
@@ -182,12 +193,14 @@ public final class PaddrMenuModel {
             isInitialized && activeProfileID != .default
         }
     }
+
     public var canManageProfiles: Bool {
         terminationState == .idle
             && !terminationDecisionInProgress
             && isInitialized
             && !profileOperationInProgress
     }
+
     public var canToggleOutput: Bool {
         terminationState == .idle
             && !terminationDecisionInProgress
@@ -195,6 +208,7 @@ public final class PaddrMenuModel {
             && (!profileDocumentSaveInProgress || replacesActiveConfiguration || isEnabled)
             && (isEnabled || !isReleasingOutput)
     }
+
     /// Calibration is an in-place runtime request; it neither saves the profile nor
     /// replaces the session, so existing held outputs keep their owners.
     public var canRecalibrateGyro: Bool {
@@ -244,6 +258,7 @@ public final class PaddrMenuModel {
             && (canEditActiveProfile || needsInitialSave)
             && hasUnsavedChanges
     }
+
     public var canSelectProfileFromMenu: Bool {
         terminationState == .idle
             && !terminationDecisionInProgress
@@ -252,6 +267,7 @@ public final class PaddrMenuModel {
             && configurationTask == nil
             && !profileDocumentSaveInProgress
     }
+
     public var readiness: PaddrReadinessResolution {
         PaddrReadinessResolver.resolve(
             PaddrReadinessInput(

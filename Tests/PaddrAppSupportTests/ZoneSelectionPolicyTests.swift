@@ -1,6 +1,6 @@
-import XCTest
 @testable import PaddrAppSupport
 import PaddrCore
+import XCTest
 
 final class ZoneSelectionPolicyTests: XCTestCase {
     func testEveryLayoutNormalizesToAVisibleInitialZone() {
@@ -13,12 +13,13 @@ final class ZoneSelectionPolicyTests: XCTestCase {
         }
     }
 
-    func testPreviousAndNextNavigationWrapForEveryLayout() {
+    func testPreviousAndNextNavigationWrapForEveryLayout() throws {
         for layout in PadZoneLayout.allCases {
             let first = layout.zones[0]
+            let last = try XCTUnwrap(layout.zones.last)
             let previous = ZoneSelectionPolicy.moved(from: first, direction: .previous, in: layout)
-            let next = ZoneSelectionPolicy.moved(from: layout.zones.last!, direction: .next, in: layout)
-            XCTAssertEqual(previous, layout.zones.last)
+            let next = ZoneSelectionPolicy.moved(from: last, direction: .next, in: layout)
+            XCTAssertEqual(previous, last)
             XCTAssertEqual(next, first)
         }
     }
@@ -138,7 +139,7 @@ final class ZoneSelectionPolicyTests: XCTestCase {
                 configuration.dpadKeys.up,
                 configuration.dpadKeys.right,
                 configuration.dpadKeys.down,
-                configuration.dpadKeys.left
+                configuration.dpadKeys.left,
             ]
         case .horizontalTwo:
             [configuration.dpadKeys.left, configuration.dpadKeys.right]
@@ -154,7 +155,7 @@ final class ZoneSelectionPolicyTests: XCTestCase {
                 configuration.gridKeys.right,
                 configuration.gridKeys.bottomLeft,
                 configuration.gridKeys.bottom,
-                configuration.gridKeys.bottomRight
+                configuration.gridKeys.bottomRight,
             ]
         }
     }

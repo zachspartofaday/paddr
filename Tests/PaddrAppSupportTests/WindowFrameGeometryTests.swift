@@ -1,13 +1,13 @@
 import Foundation
-import XCTest
 @testable import PaddrAppSupport
+import XCTest
 
 final class WindowFrameGeometryTests: XCTestCase {
     func testContentDrivenSizeFitsSmallScreensWithoutAnOversizedMinimum() {
         for (requested, expected) in [
             (CGSize(width: 1080, height: 520.3), CGSize(width: 900, height: 521)),
             (CGSize(width: 1080, height: 1100), CGSize(width: 900, height: 560)),
-            (CGSize(width: 680, height: 450), CGSize(width: 680, height: 450))
+            (CGSize(width: 680, height: 450), CGSize(width: 680, height: 450)),
         ] {
             XCTAssertEqual(WindowFrameGeometry.contentDrivenUsableSize(
                 requestedSize: requested,
@@ -21,7 +21,7 @@ final class WindowFrameGeometryTests: XCTestCase {
         for (screen, expected) in [
             (CGSize(width: 1800, height: 1200), CGSize(width: 1380, height: 1040)),
             (CGSize(width: 1200, height: 900), CGSize(width: 1190, height: 862)),
-            (CGSize(width: 600, height: 500), CGSize(width: 680, height: 600))
+            (CGSize(width: 600, height: 500), CGSize(width: 680, height: 600)),
         ] {
             XCTAssertEqual(WindowFrameGeometry.fittedDefaultUsableSize(
                 requestedSize: CGSize(width: 1380, height: 1040),
