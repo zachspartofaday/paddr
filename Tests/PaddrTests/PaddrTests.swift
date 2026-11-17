@@ -1,5 +1,5 @@
-import XCTest
 @testable import PaddrCore
+import XCTest
 
 final class PaddrTests: XCTestCase {
     func testTritonParserReadsBothTrackpads() {
@@ -87,7 +87,7 @@ final class PaddrTests: XCTestCase {
             (1, .discharging),
             (2, .charging),
             (3, .sourceValidate),
-            (4, .chargingDone)
+            (4, .chargingDone),
         ]
         for (rawValue, expected) in knownStates {
             XCTAssertEqual(
@@ -128,7 +128,7 @@ final class PaddrTests: XCTestCase {
             interfaces: [
                 TritonInterfaceSummary(interfaceNumber: 2, usagePage: 1, usage: 2, maximumInputReportSize: 54),
                 TritonInterfaceSummary(interfaceNumber: 3, usagePage: nil, usage: nil, maximumInputReportSize: 54),
-                TritonInterfaceSummary(interfaceNumber: nil, usagePage: nil, usage: nil, maximumInputReportSize: 46)
+                TritonInterfaceSummary(interfaceNumber: nil, usagePage: nil, usage: nil, maximumInputReportSize: 46),
             ]
         )
         XCTAssertEqual(summary.description, "Valve 0x28DE:0x1304 interfaces=2,3,? inputReport=46,54")
@@ -165,7 +165,7 @@ final class PaddrTests: XCTestCase {
         let coordinates: [(Int16, Int16, ButtonZone)] = [
             (-20_000, 20_000, .topLeft), (0, 20_000, .up), (20_000, 20_000, .topRight),
             (-20_000, 0, .left), (0, 0, .center), (20_000, 0, .right),
-            (-20_000, -20_000, .bottomLeft), (0, -20_000, .down), (20_000, -20_000, .bottomRight)
+            (-20_000, -20_000, .bottomLeft), (0, -20_000, .down), (20_000, -20_000, .bottomRight),
         ]
         for (x, y, expected) in coordinates {
             XCTAssertEqual(
@@ -186,7 +186,7 @@ final class PaddrTests: XCTestCase {
         XCTAssertEqual(centerDown, [.key(try KeyCatalog.resolve("space"), isPressed: true)])
         XCTAssertEqual(topRight, [
             .key(try KeyCatalog.resolve("space"), isPressed: false),
-            .key(try KeyCatalog.resolve("e"), isPressed: true)
+            .key(try KeyCatalog.resolve("e"), isPressed: true),
         ])
     }
 
@@ -202,7 +202,7 @@ final class PaddrTests: XCTestCase {
         XCTAssertEqual(down, [.key(try KeyCatalog.resolve("w"), isPressed: true)])
         XCTAssertEqual(across, [
             .key(try KeyCatalog.resolve("w"), isPressed: false),
-            .key(try KeyCatalog.resolve("d"), isPressed: true)
+            .key(try KeyCatalog.resolve("d"), isPressed: true),
         ])
         XCTAssertEqual(lift, [.key(try KeyCatalog.resolve("d"), isPressed: false)])
     }
@@ -240,7 +240,7 @@ final class PaddrTests: XCTestCase {
         XCTAssertEqual(center, [.mouseButton(.right, isPressed: true)])
         XCTAssertEqual(moveRight, [
             .mouseButton(.right, isPressed: false),
-            .key(try KeyCatalog.resolve("d"), isPressed: true)
+            .key(try KeyCatalog.resolve("d"), isPressed: true),
         ])
     }
 
@@ -290,7 +290,7 @@ final class PaddrTests: XCTestCase {
     func testTouchTapCanClickEitherMouseButton() throws {
         for (binding, button) in [
             (TapBindingCatalog.leftMouseButton, MouseButtonBinding.left),
-            (TapBindingCatalog.rightMouseButton, MouseButtonBinding.right)
+            (TapBindingCatalog.rightMouseButton, MouseButtonBinding.right),
         ] {
             var mapper = PadMapper(
                 side: .right,
@@ -300,7 +300,7 @@ final class PaddrTests: XCTestCase {
             let actions = try mapper.process(sample(touched: false, time: 20_000_000))
             XCTAssertEqual(actions, [
                 .mouseButton(button, isPressed: true),
-                .mouseButton(button, isPressed: false)
+                .mouseButton(button, isPressed: false),
             ])
         }
     }
@@ -392,7 +392,7 @@ final class PaddrTests: XCTestCase {
         let oneUnitOutside: Int16 = 16_385
         let tapActions: [TrackpadOutputAction] = [
             .key(try KeyCatalog.resolve("space"), isPressed: true),
-            .key(try KeyCatalog.resolve("space"), isPressed: false)
+            .key(try KeyCatalog.resolve("space"), isPressed: false),
         ]
 
         var coupledAtBoundary = PadMapper(
@@ -540,7 +540,7 @@ final class PaddrTests: XCTestCase {
             try mapper.process(sample(touched: false, x: 700, time: 20_000_000)),
             [
                 .key(try KeyCatalog.resolve("space"), isPressed: true),
-                .key(try KeyCatalog.resolve("space"), isPressed: false)
+                .key(try KeyCatalog.resolve("space"), isPressed: false),
             ]
         )
     }
@@ -762,7 +762,7 @@ final class PaddrTests: XCTestCase {
             var mapper = PadMapper(side: .right, configuration: configuration)
             _ = try mapper.process(sample(touched: true, time: 1_000_000))
             XCTAssertEqual(try mapper.process(sample(touched: true, x: 700, time: 2_000_000)),
-                [.mouseMove(dx: enabled ? 4 : 1, dy: 0)])
+                           [.mouseMove(dx: enabled ? 4 : 1, dy: 0)])
             XCTAssertEqual(configuration.mouseAcceleration, 1)
         }
     }
@@ -805,7 +805,7 @@ final class PaddrTests: XCTestCase {
             try tap.process(sample(touched: false, time: 20_000_000)),
             [
                 .key(try KeyCatalog.resolve("space"), isPressed: true),
-                .key(try KeyCatalog.resolve("space"), isPressed: false)
+                .key(try KeyCatalog.resolve("space"), isPressed: false),
             ]
         )
 

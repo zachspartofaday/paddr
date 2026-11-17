@@ -13,7 +13,6 @@ struct PaddrSectionContainer<Content: View>: View {
         content()
             .frame(maxWidth: .infinity, alignment: .leading)
     }
-
 }
 
 /// A natural-height, noninteractive heading for regions inside a card. Keeping headings

@@ -86,7 +86,7 @@ func waitUntil(
     // Preserve the historical helper's event-driven handoff without taking ownership of
     // `statusDidChange`, which belongs to the code under test.
     if didSatisfy, isInitializationHandoff, model.isInitialized {
-        for _ in 0..<4 { await Task.yield() }
+        for _ in 0 ..< 4 { await Task.yield() }
     }
     return didSatisfy
 }

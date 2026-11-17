@@ -1,7 +1,7 @@
 import AppKit
 import PaddrAppSupport
-import SwiftUI
 import PaddrCore
+import SwiftUI
 
 /// The status item uses the same status colours as the window.
 enum PaddrMenuBarPalette {
@@ -25,7 +25,7 @@ enum PaddrFamilyWindowChrome {
         .closable,
         .miniaturizable,
         .resizable,
-        .fullSizeContentView
+        .fullSizeContentView,
     ]
 
     static let configurationStyleMask = styleMask.subtracting(.resizable)
@@ -71,7 +71,7 @@ enum PaddrFamilyWindowChrome {
     }
 
     static func setUsableLayoutSize(_ size: NSSize, for window: NSWindow) {
-        for _ in 0..<3 {
+        for _ in 0 ..< 3 {
             window.contentView?.layoutSubtreeIfNeeded()
             guard !window.contentLayoutRect.size.isApproximatelyEqual(to: size) else { return }
             window.setContentSize(contentSize(forUsableLayoutSize: size, in: window))

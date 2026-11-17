@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import PaddrCore
+import XCTest
 
 final class RearButtonTests: XCTestCase {
     func testEachRearBitInEveryLayoutAndAllTruncatedLengths() throws {
@@ -10,7 +10,7 @@ final class RearButtonTests: XCTestCase {
             for (button, mask) in masks {
                 var bytes = [UInt8](repeating: 0, count: length)
                 bytes[0] = id
-                for offset in 0..<4 { bytes[2 + offset] = UInt8(truncatingIfNeeded: mask >> (8 * offset)) }
+                for offset in 0 ..< 4 { bytes[2 + offset] = UInt8(truncatingIfNeeded: mask >> (8 * offset)) }
                 let state = try XCTUnwrap(TritonParser.parseControllerState(bytes, timestampNanoseconds: 42))
                 for candidate in RearButton.allCases {
                     XCTAssertEqual(state.rearButtons.isPressed(candidate), candidate == button)
@@ -18,7 +18,7 @@ final class RearButtonTests: XCTestCase {
                 XCTAssertFalse(state.rearButtons.isNeutral)
                 XCTAssertEqual(state.pads.left.timestampNanoseconds, 42)
                 XCTAssertEqual(TritonParser.parseTrackpads(bytes, timestampNanoseconds: 42), state.pads)
-                for count in 0..<length {
+                for count in 0 ..< length {
                     XCTAssertNil(TritonParser.parseControllerState(Array(bytes.prefix(count)), timestampNanoseconds: 42))
                 }
             }
@@ -27,10 +27,10 @@ final class RearButtonTests: XCTestCase {
             XCTAssertTrue(try XCTUnwrap(TritonParser.parseControllerState(bytes, timestampNanoseconds: 0)).rearButtons.isNeutral)
             // Neighboring non-rear bits must not become presses.
             let unrelated: UInt32 = 0x0009_0240
-            for offset in 0..<4 { bytes[2 + offset] = UInt8(truncatingIfNeeded: unrelated >> (8 * offset)) }
+            for offset in 0 ..< 4 { bytes[2 + offset] = UInt8(truncatingIfNeeded: unrelated >> (8 * offset)) }
             XCTAssertTrue(try XCTUnwrap(TritonParser.parseControllerState(bytes, timestampNanoseconds: 0)).rearButtons.isNeutral)
             let all: UInt32 = 0x0006_0180
-            for offset in 0..<4 { bytes[2 + offset] = UInt8(truncatingIfNeeded: all >> (8 * offset)) }
+            for offset in 0 ..< 4 { bytes[2 + offset] = UInt8(truncatingIfNeeded: all >> (8 * offset)) }
             let state = try XCTUnwrap(TritonParser.parseControllerState(bytes, timestampNanoseconds: 0))
             XCTAssertTrue(RearButton.allCases.allSatisfy(state.rearButtons.isPressed))
         }

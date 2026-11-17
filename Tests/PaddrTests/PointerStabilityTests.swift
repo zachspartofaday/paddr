@@ -1,5 +1,5 @@
-import XCTest
 @testable import PaddrCore
+import XCTest
 
 final class PointerStabilityTests: XCTestCase {
     func testTapStabilizationDiscardsLiftJitterBeforeClick() throws {
@@ -21,7 +21,7 @@ final class PointerStabilityTests: XCTestCase {
             try mapper.process(sample(touched: false, x: 2_000, time: 40_000_000)),
             [
                 .mouseButton(.left, isPressed: true),
-                .mouseButton(.left, isPressed: false)
+                .mouseButton(.left, isPressed: false),
             ]
         )
     }
@@ -92,7 +92,7 @@ final class PointerStabilityTests: XCTestCase {
             try mapper.process(sample(touched: false, x: 700, time: 40_000_000)),
             [
                 .key(try KeyCatalog.resolve("space"), isPressed: true),
-                .key(try KeyCatalog.resolve("space"), isPressed: false)
+                .key(try KeyCatalog.resolve("space"), isPressed: false),
             ]
         )
     }
@@ -148,7 +148,7 @@ final class PointerStabilityTests: XCTestCase {
         var mapper = PadMapper(side: .right, configuration: configuration)
 
         _ = try mapper.process(sample(touched: true, time: 1_000_000))
-        for report in 1...5 {
+        for report in 1 ... 5 {
             XCTAssertTrue(
                 try mapper.process(
                     sample(
@@ -178,7 +178,7 @@ final class PointerStabilityTests: XCTestCase {
         var bothAxes = PadMapper(side: .right, configuration: configuration)
         _ = try bothAxes.process(sample(touched: true, time: 1_000_000))
         var bothAxesActions: [TrackpadOutputAction] = []
-        for report in 1...6 {
+        for report in 1 ... 6 {
             bothAxesActions += try bothAxes.process(
                 sample(
                     touched: true,
@@ -257,7 +257,7 @@ final class PointerStabilityTests: XCTestCase {
             sample(touched: true, x: 700, y: 350, time: 5_000_000),
             sample(touched: true, x: 770, y: 385, time: 9_000_000),
             sample(touched: true, x: 1_470, y: -315, time: 13_000_000),
-            sample(touched: false, x: 1_470, y: -315, time: 17_000_000)
+            sample(touched: false, x: 1_470, y: -315, time: 17_000_000),
         ]
         let disabled = try actions(
             for: samples,
@@ -282,7 +282,7 @@ final class PointerStabilityTests: XCTestCase {
             [
                 .mouseMove(dx: 1, dy: -0.5),
                 .mouseMove(dx: 0.1, dy: -0.05),
-                .mouseMove(dx: 1, dy: 1)
+                .mouseMove(dx: 1, dy: 1),
             ]
         )
     }
@@ -313,7 +313,7 @@ final class PointerStabilityTests: XCTestCase {
     ) throws -> PadMapper {
         var mapper = PadMapper(side: .right, configuration: configuration)
         _ = try mapper.process(sample(touched: true, time: 1_000_000))
-        for report in 1...5 {
+        for report in 1 ... 5 {
             XCTAssertTrue(
                 try mapper.process(
                     sample(

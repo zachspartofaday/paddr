@@ -16,7 +16,7 @@ public enum KeyCatalog {
         "backspace": 51, "escape": 53, "esc": 53, "command": 55, "cmd": 55,
         "shift": 56, "capslock": 57, "option": 58, "alt": 58, "control": 59,
         "f1": 122, "f2": 120, "f3": 99, "f4": 118,
-        "ctrl": 59, "left": 123, "right": 124, "down": 125, "up": 126
+        "ctrl": 59, "left": 123, "right": 124, "down": 125, "up": 126,
     ]
 
     public static let commonNames: [String] = [
@@ -24,7 +24,7 @@ public enum KeyCatalog {
         "shift", "control", "option", "command", "f1", "f2", "f3", "f4",
         "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
         "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
     ]
 
     public static func resolve(_ rawName: String) throws -> KeyBinding {

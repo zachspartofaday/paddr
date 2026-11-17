@@ -8,6 +8,7 @@ struct PaddrPadShape: InsettableShape {
         copy.insetAmount += amount
         return copy
     }
+
     func path(in rect: CGRect) -> Path {
         // Match the circular CGPath used by selected-zone outlines. Explicit
         // arcs also avoid continuous-path stroke spikes at corner tangencies.
@@ -33,8 +34,8 @@ struct PaddrPadSurface: ViewModifier {
                         var exterior = Path(CGRect(origin: .zero, size: size).insetBy(dx: -reach, dy: -reach))
                         exterior.addPath(path)
                         context.addFilter(.shadow(color: .black.opacity(PaddrStyle.Depth.padRecessOpacity),
-                            radius: PaddrStyle.Depth.padRecessRadius, y: PaddrStyle.Depth.padRecessOffset,
-                            options: .shadowOnly))
+                                                  radius: PaddrStyle.Depth.padRecessRadius, y: PaddrStyle.Depth.padRecessOffset,
+                                                  options: .shadowOnly))
                         context.fill(exterior, with: .color(.black), style: FillStyle(eoFill: true))
                     }
                     .allowsHitTesting(false)
@@ -57,7 +58,7 @@ struct PaddrPadFocusRing: View {
     var body: some View {
         PaddrPadShape(insetAmount: -Self.outset)
             .stroke(PaddrStyle.action, style: StrokeStyle(lineWidth: 2,
-                lineCap: .round, lineJoin: .round, dash: [4, 3]))
+                                                          lineCap: .round, lineJoin: .round, dash: [4, 3]))
             .allowsHitTesting(false)
             .accessibilityHidden(true)
     }

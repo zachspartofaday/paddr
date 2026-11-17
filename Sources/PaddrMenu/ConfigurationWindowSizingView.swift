@@ -26,9 +26,9 @@ struct ConfigurationWindowSizingView: NSViewRepresentable {
             stopObserving()
             guard let window else { return }
             NotificationCenter.default.addObserver(self, selector: #selector(screenChanged),
-                name: NSWindow.didChangeScreenNotification, object: window)
+                                                   name: NSWindow.didChangeScreenNotification, object: window)
             NotificationCenter.default.addObserver(self, selector: #selector(screenChanged),
-                name: NSApplication.didChangeScreenParametersNotification, object: nil)
+                                                   name: NSApplication.didChangeScreenParametersNotification, object: nil)
             scheduleResize()
         }
 

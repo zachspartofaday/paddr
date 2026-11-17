@@ -1,10 +1,9 @@
 import AppKit
+import PaddrAppSupport
+import PaddrCore
+@testable import PaddrMenu
 import SwiftUI
 import XCTest
-
-import PaddrAppSupport
-@testable import PaddrMenu
-import PaddrCore
 
 @MainActor
 final class MenuViewPresentationTests: XCTestCase {
@@ -125,7 +124,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertEqual(window.title, "Paddr")
         XCTAssertEqual(window.titleVisibility, .visible, "The product name is the system window title")
         XCTAssertTrue(window.titlebarAccessoryViewControllers.isEmpty,
-            "No custom title label competes with the toolbar")
+                      "No custom title label competes with the toolbar")
         XCTAssertEqual(window.toolbarStyle, .unifiedCompact)
         XCTAssertFalse(window.isDocumentEdited)
         XCTAssertEqual(window.subtitle, "")
@@ -210,7 +209,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertEqual(model.activeProfile.name, "Editable")
         XCTAssertTrue(model.hasUnsavedChanges, "Cancelling keeps the draft")
         XCTAssertEqual(checked(), ["Editable"],
-            "The picker shows the profile that is still active after a cancelled switch")
+                       "The picker shows the profile that is still active after a cancelled switch")
 
         try choose("Other", in: window)
         await settle(window)
@@ -260,14 +259,14 @@ final class MenuViewPresentationTests: XCTestCase {
             (menu()?.items ?? []).filter { !$0.title.isEmpty && !$0.isEnabled }.map(\.title)
         }
         XCTAssertEqual(menu()?.items.map(\.title).filter { !$0.isEmpty },
-            ["New Profile", "Duplicate Profile", "Rename Profile", "Revert to Saved", "Restore Defaults",
-             "Delete Profile"])
+                       ["New Profile", "Duplicate Profile", "Rename Profile", "Revert to Saved", "Restore Defaults",
+                        "Delete Profile"])
         XCTAssertEqual(disabled(), ["Revert to Saved"])
 
         model.configuration.left.sensitivity = 9
         await settle(window)
         XCTAssertEqual(disabled(), ["New Profile", "Duplicate Profile", "Delete Profile"],
-            "A draft blocks the commands that would replace it")
+                       "A draft blocks the commands that would replace it")
         let profileCount = model.profiles.count
         try choose("New Profile", in: window)
         try choose("Delete Profile", in: window)
@@ -292,12 +291,12 @@ final class MenuViewPresentationTests: XCTestCase {
         let toolbar = try XCTUnwrap(window.toolbar)
         XCTAssertEqual(toolbar.items.count, 4)
         XCTAssertEqual(toolbar.visibleItems?.map(\.itemIdentifier), toolbar.items.map(\.itemIdentifier),
-            "Nothing collapses into the overflow menu at the narrowest window")
+                       "Nothing collapses into the overflow menu at the narrowest window")
 
         func commandS() throws -> NSEvent {
             try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.command],
-                timestamp: 0, windowNumber: window.windowNumber, context: nil, characters: "s",
-                charactersIgnoringModifiers: "s", isARepeat: false, keyCode: 1))
+                                           timestamp: 0, windowNumber: window.windowNumber, context: nil, characters: "s",
+                                           charactersIgnoringModifiers: "s", isARepeat: false, keyCode: 1))
         }
         XCTAssertTrue(window.performKeyEquivalent(with: try commandS()))
         let saved = await waitUntil { !model.hasUnsavedChanges }
@@ -305,7 +304,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertEqual(model.savedConfiguration.left.sensitivity, 9)
         await settle(window)
         XCTAssertFalse(window.performKeyEquivalent(with: try commandS()),
-            "With nothing to save the shortcut is not claimed")
+                       "With nothing to save the shortcut is not claimed")
     }
 
     func testAskingForSetupShowsItInTheWindowAndScrollsItIntoView() async throws {
@@ -333,7 +332,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertTrue(grew, "The checklist joins the window's document")
         await settle(content)
         XCTAssertEqual(scroll.contentView.bounds.origin.y, top, accuracy: 1,
-            "Asking for setup from a scrolled window brings the checklist into view")
+                       "Asking for setup from a scrolled window brings the checklist into view")
 
         scroll.contentView.scroll(to: NSPoint(x: 0, y: top + 240))
         scroll.reflectScrolledClipView(scroll.contentView)
@@ -341,7 +340,7 @@ final class MenuViewPresentationTests: XCTestCase {
         setup.present(trigger: .help)
         await settle(content)
         XCTAssertEqual(scroll.contentView.bounds.origin.y, top, accuracy: 1,
-            "Asking again while it is showing scrolls back to it")
+                       "Asking again while it is showing scrolls back to it")
 
         setup.dismiss(as: .skipped)
         let shrank = await waitUntil { abs(document.bounds.height - withoutSetup) < 1 }
@@ -389,10 +388,10 @@ final class MenuViewPresentationTests: XCTestCase {
             return "unknown"
         }
         XCTAssertEqual(order,
-            ["paddr.profile.selector", "paddr.profile.actions", "space", "paddr.profile.save-apply"],
-            "Profile controls share the principal position; the one save action stands alone at the trailing edge")
+                       ["paddr.profile.selector", "paddr.profile.actions", "space", "paddr.profile.save-apply"],
+                       "Profile controls share the principal position; the one save action stands alone at the trailing edge")
         XCTAssertNil(accessibilityElement(in: try XCTUnwrap(window.contentView), identifier: "paddr.profile.save-apply"),
-            "The workspace carries no second header band")
+                     "The workspace carries no second header band")
 
         let picker = try XCTUnwrap(toolbarElement("paddr.profile.selector"))
         XCTAssertEqual(picker.accessibilityLabel?(), "Profile")
@@ -417,64 +416,64 @@ final class MenuViewPresentationTests: XCTestCase {
 
     func testProfileActionsKeepItemGatesAndNameTheReasonForEveryDisabledCommand() {
         let clean = ProfileActionsPresentation(isDefaultProfile: false, hasUnsavedChanges: false,
-            canEditActiveProfile: true, canRevertToSaved: false)
+                                               canEditActiveProfile: true, canRevertToSaved: false)
         XCTAssertEqual(clean.items.map(\.id),
-            [.new, .duplicate, .rename, .revertToSaved, .restoreDefaults, .delete])
+                       [.new, .duplicate, .rename, .revertToSaved, .restoreDefaults, .delete])
         XCTAssertEqual(clean.items.filter { !$0.isEnabled }.map(\.id), [.revertToSaved])
         XCTAssertEqual(clean.item(.revertToSaved)?.disabledReason.map { String(localized: $0) },
-            "There are no unsaved changes to revert")
+                       "There are no unsaved changes to revert")
 
         let draft = ProfileActionsPresentation(isDefaultProfile: false, hasUnsavedChanges: true,
-            canEditActiveProfile: true, canRevertToSaved: true)
+                                               canEditActiveProfile: true, canRevertToSaved: true)
         XCTAssertEqual(draft.items.filter { !$0.isEnabled }.map(\.id), [.new, .duplicate, .delete])
         for action in [ProfileAction.new, .duplicate, .delete] {
             XCTAssertEqual(draft.item(action)?.disabledReason.map { String(localized: $0) },
-                "Save or revert your changes first")
+                           "Save or revert your changes first")
         }
         XCTAssertEqual(draft.item(.revertToSaved)?.isEnabled, true,
-            "A draft can always be discarded for the saved profile")
+                       "A draft can always be discarded for the saved profile")
 
         let readOnly = ProfileActionsPresentation(isDefaultProfile: true, hasUnsavedChanges: false,
-            canEditActiveProfile: false, canRevertToSaved: false)
+                                                  canEditActiveProfile: false, canRevertToSaved: false)
         XCTAssertEqual(readOnly.items.prefix(2).map(\.id), [.duplicate, .new],
-            "Duplicating Default leads while Default is active")
+                       "Duplicating Default leads while Default is active")
         XCTAssertEqual(String(localized: try! XCTUnwrap(readOnly.item(.duplicate)).title),
-            "Duplicate Default to Edit")
+                       "Duplicate Default to Edit")
         for action in [ProfileAction.rename, .restoreDefaults, .delete] {
             XCTAssertEqual(readOnly.item(action)?.disabledReason.map { String(localized: $0) },
-                "Default is read-only")
+                           "Default is read-only")
         }
 
         let recovered = ProfileActionsPresentation(isDefaultProfile: false, hasUnsavedChanges: true,
-            canEditActiveProfile: true, canRevertToSaved: false)
+                                                   canEditActiveProfile: true, canRevertToSaved: false)
         XCTAssertEqual(recovered.item(.new)?.disabledReason.map { String(localized: $0) },
-            "Save this profile first",
-            "A profile that only needs saving is never told to revert edits it does not have")
+                       "Save this profile first",
+                       "A profile that only needs saving is never told to revert edits it does not have")
         XCTAssertEqual(recovered.item(.revertToSaved)?.disabledReason.map { String(localized: $0) },
-            "There are no unsaved changes to revert")
+                       "There are no unsaved changes to revert")
 
         let busy = ProfileActionsPresentation(isDefaultProfile: false, hasUnsavedChanges: false,
-            canEditActiveProfile: false, canRevertToSaved: false)
+                                              canEditActiveProfile: false, canRevertToSaved: false)
         for action in [ProfileAction.rename, .restoreDefaults, .delete] {
             XCTAssertEqual(busy.item(action)?.disabledReason.map { String(localized: $0) },
-                "Wait for the profile operation to finish")
+                           "Wait for the profile operation to finish")
         }
         let readOnlyDraft = ProfileActionsPresentation(isDefaultProfile: true, hasUnsavedChanges: true,
-            canEditActiveProfile: false, canRevertToSaved: true)
+                                                       canEditActiveProfile: false, canRevertToSaved: true)
         XCTAssertEqual(readOnlyDraft.item(.delete)?.disabledReason.map { String(localized: $0) },
-            "Default is read-only", "What can never be done outranks what must be done first")
+                       "Default is read-only", "What can never be done outranks what must be done first")
 
         for isDefault in [false, true] {
             for hasChanges in [false, true] {
                 for canEdit in [false, true] {
                     for canRevert in [false, true] {
                         let presentation = ProfileActionsPresentation(isDefaultProfile: isDefault,
-                            hasUnsavedChanges: hasChanges, canEditActiveProfile: canEdit,
-                            canRevertToSaved: canRevert)
+                                                                      hasUnsavedChanges: hasChanges, canEditActiveProfile: canEdit,
+                                                                      canRevertToSaved: canRevert)
                         XCTAssertEqual(Set(presentation.items.map(\.id)), Set(ProfileAction.allCases))
                         for item in presentation.items {
                             XCTAssertEqual(item.isEnabled, item.disabledReason == nil,
-                                "Every disabled command names its reason; an enabled one has none")
+                                           "Every disabled command names its reason; an enabled one has none")
                             XCTAssertEqual(item.isDestructive, item.id == .delete)
                         }
                     }
@@ -489,13 +488,13 @@ final class MenuViewPresentationTests: XCTestCase {
                 canSave: canSave, hasUnsavedChanges: hasUnsavedChanges, isSaving: isSaving))
         }
         XCTAssertEqual(help(canSave: true, hasUnsavedChanges: true, isSaving: false),
-            "Save this profile and apply it to output")
+                       "Save this profile and apply it to output")
         XCTAssertEqual(help(canSave: false, hasUnsavedChanges: false, isSaving: false),
-            "There are no unsaved changes")
+                       "There are no unsaved changes")
         XCTAssertEqual(help(canSave: false, hasUnsavedChanges: true, isSaving: true),
-            "Wait for the profile operation to finish")
+                       "Wait for the profile operation to finish")
         XCTAssertEqual(help(canSave: false, hasUnsavedChanges: true, isSaving: false),
-            "Saving is unavailable right now")
+                       "Saving is unavailable right now")
     }
 
     func testRevertToSavedAsksBeforeDiscardingAndOnlyWhenThereIsADraft() async {
@@ -689,7 +688,7 @@ final class MenuViewPresentationTests: XCTestCase {
             let customSize = NSSize(width: 1100, height: 720)
             PaddrFamilyWindowChrome.setUsableLayoutSize(customSize, for: migrated)
             migrated.saveFrame(usingName: newName)
-            for _ in 0..<3 {
+            for _ in 0 ..< 3 {
                 let reopened = makeWindow(hasToolbar: false, usesFullSizeContent: true)
                 XCTAssertTrue(reopened.setFrameUsingName(newName))
                 assertSize(reopened.contentLayoutRect.size, equals: customSize)
@@ -733,7 +732,7 @@ final class MenuViewPresentationTests: XCTestCase {
         window.setFrameTopLeftPoint(NSPoint(x: 50, y: screen.maxY))
         PaddrFamilyWindowChrome.fitConfigurationWindow(window, preferredHeight: 1100, visibleFrame: screen)
         XCTAssertEqual(window.contentLayoutRect.width, PaddrStyle.Metrics.defaultWindowSize.width, accuracy: 0.5,
-            "Managed opening must discard the former 1080-point width")
+                       "Managed opening must discard the former 1080-point width")
         XCTAssertEqual(window.frame.maxY, screen.maxY, accuracy: 0.5)
         XCTAssertEqual(window.frame.minY, screen.minY, accuracy: 0.5)
         XCTAssertTrue(screen.contains(window.frame))
@@ -805,8 +804,8 @@ final class MenuViewPresentationTests: XCTestCase {
             model: model, commands: commands, setupGuide: setup)
             .environment(\.accessibilityEnabled, true))
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: NSSize(
-                width: PaddrStyle.Metrics.defaultWindowSize.width, height: 1400)),
-            styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            width: PaddrStyle.Metrics.defaultWindowSize.width, height: 1400)),
+        styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         defer { window.close() }
         window.contentView = host
@@ -824,24 +823,24 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertEqual(model.readiness.nextAction.setupStep, .connection)
         XCTAssertEqual(stepStates, ["access": "Not done", "connection": "Next step",
                                     "profile": "Not done", "output": "Not done"],
-            "The step that owns the next action is the one marked next")
+                       "The step that owns the next action is the one marked next")
         XCTAssertNotNil(accessibilityElement(in: host, identifier: "paddr.setup.input-monitoring.request"),
-            "The permission step offers its action in place")
+                        "The permission step offers its action in place")
         let stoppedSearching = await waitUntil { !model.isSearchingForPuck }
         XCTAssertTrue(stoppedSearching, "This fixture's reconnect loop ends after its first probe")
         await settle(host)
         XCTAssertNotNil(accessibilityElement(in: host, identifier: "paddr.setup.refresh"),
-            "A missing puck that nothing polls for offers Refresh beside the instruction")
+                        "A missing puck that nothing polls for offers Refresh beside the instruction")
         XCTAssertNotNil(accessibilityElement(in: host, identifier: "paddr.setup.enable-output"))
         XCTAssertEqual(accessibilityElements(in: host, identifier: "paddr.profile.duplicate-to-edit").count, 1,
-            "The checklist carries the read-only notice; it is not repeated below")
+                       "The checklist carries the read-only notice; it is not repeated below")
 
         let bar = NSHostingView(rootView: ConfigurationView(model: model, setupGuide: setup)
             .environment(\.accessibilityEnabled, true))
         bar.frame = NSRect(origin: .zero, size: PaddrStyle.Metrics.defaultWindowSize)
         await settle(bar)
         XCTAssertNil(accessibilityElement(in: bar, identifier: "paddr.permissions.open-setup"),
-            "The bar does not repeat the permission request while setup shows it")
+                     "The bar does not repeat the permission request while setup shows it")
 
         let dismiss = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.setup.dismiss"))
         XCTAssertEqual(dismiss.accessibilityLabel?(), "Skip Setup")
@@ -853,7 +852,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertEqual(preferences.dismissal, .skipped)
         XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.setup"))
         XCTAssertNotNil(accessibilityElement(in: host, identifier: "paddr.profile.read-only-notice"),
-            "Without setup, Default still says why its controls are disabled")
+                        "Without setup, Default still says why its controls are disabled")
         XCTAssertEqual(accessibilityElements(in: host, identifier: "paddr.profile.duplicate-to-edit").count, 1)
         XCTAssertNotNil(accessibilityElement(in: bar, identifier: "paddr.permissions.open-setup"))
     }
@@ -884,7 +883,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertTrue(duplicated)
         await settle(host)
         XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.profile.read-only-notice"),
-            "An editable profile needs no notice")
+                     "An editable profile needs no notice")
     }
 
     func testReadOnlyNoticeWaitsForAProfileOperationAndSaysSo() async throws {
@@ -910,7 +909,7 @@ final class MenuViewPresentationTests: XCTestCase {
         await settle(host)
         if let button = duplicate() {
             XCTAssertEqual(button.isAccessibilityEnabled?(), false,
-                "A second duplication cannot start while the first is in flight")
+                           "A second duplication cannot start while the first is in flight")
         }
         XCTAssertEqual(
             ReadOnlyProfileNotice(model: model, commands: commands).disabledReason.map { String(localized: $0) },
@@ -967,7 +966,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertTrue(active)
         await settle(host)
         XCTAssertEqual(preferences.dismissal, .completed,
-            "Reaching active output ends automatic setup even if Done is never pressed")
+                       "Reaching active output ends automatic setup even if Done is never pressed")
         XCTAssertTrue(setup.isPresented, "The checklist stays for the person reading it")
         XCTAssertEqual(try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.setup.dismiss"))
             .accessibilityLabel?(), "Done")
@@ -1001,7 +1000,7 @@ final class MenuViewPresentationTests: XCTestCase {
             model: model, commands: ProfileCommands(), setupGuide: setup)
             .environment(\.accessibilityEnabled, true))
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: NSSize(width: width, height: 1800)),
-            styleMask: [.titled], backing: .buffered, defer: false)
+                              styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         defer { window.close() }
         window.contentView = host
@@ -1036,7 +1035,7 @@ final class MenuViewPresentationTests: XCTestCase {
             let host = NSHostingView(rootView: ApplyBarView(model: model).frame(width: width)
                 .environment(\.accessibilityEnabled, true))
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: 400),
-                styleMask: [.titled], backing: .buffered, defer: false)
+                                  styleMask: [.titled], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             defer { window.close() }
             window.contentView = host
@@ -1135,7 +1134,7 @@ final class MenuViewPresentationTests: XCTestCase {
         let expectedFrame = window.frame
 
         if let contentView = window.contentView {
-            for _ in 0..<12 {
+            for _ in 0 ..< 12 {
                 contentView.layoutSubtreeIfNeeded()
                 await Task.yield()
             }
@@ -1284,7 +1283,7 @@ final class MenuViewPresentationTests: XCTestCase {
         func groupHeight(showsLeadingDivider: Bool) -> CGFloat {
             let group = PaddrSettingsGroup(showsLeadingDivider: showsLeadingDivider) {
                 PaddrSettingsRow(title: "Sensitivity") {
-                    Slider(value: .constant(0.5), in: 0...1)
+                    Slider(value: .constant(0.5), in: 0 ... 1)
                         .frame(width: PaddrStyle.Width.control)
                 }
             }
@@ -1355,7 +1354,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertEqual(sectionHost.bounds.width, width, accuracy: 0.5)
         XCTAssertEqual(sectionHost.bounds.height, contentHeight, accuracy: 0.5)
         XCTAssertEqual(sectionFrame, sectionHost.bounds,
-            "An inner functional group must not add another enclosing surface or margin")
+                       "An inner functional group must not add another enclosing surface or margin")
     }
 
     func testSectionHeadingKeepsNaturalHeightOutsideTheControlRowFamily() {
@@ -1384,11 +1383,11 @@ final class MenuViewPresentationTests: XCTestCase {
         .frame(width: PaddrStyle.minimumPadSectionWidth)
         let host = NSHostingView(rootView: rows)
         host.frame = NSRect(x: 0, y: 0, width: PaddrStyle.minimumPadSectionWidth,
-            height: host.fittingSize.height)
+                            height: host.fittingSize.height)
         host.layoutSubtreeIfNeeded()
         XCTAssertLessThanOrEqual(host.fittingSize.width, PaddrStyle.minimumPadSectionWidth + 0.5)
         XCTAssertGreaterThan(host.fittingSize.height, 2 * PaddrStyle.Metrics.row,
-            "Compact labels must sit above controls instead of competing for the same row")
+                             "Compact labels must sit above controls instead of competing for the same row")
         for control in descendants(of: NSControl.self, in: host) {
             let rect = control.convert(control.bounds, to: host)
             XCTAssertGreaterThanOrEqual(rect.minX, -0.5)
@@ -1416,10 +1415,10 @@ final class MenuViewPresentationTests: XCTestCase {
                             )
 
                         let label = """
-                            \(colorScheme)/\(contrast)/\
-                            reduceTransparency:\(reduceTransparency)/\
-                            differentiateWithoutColor:\(differentiateWithoutColor)
-                            """
+                        \(colorScheme)/\(contrast)/\
+                        reduceTransparency:\(reduceTransparency)/\
+                        differentiateWithoutColor:\(differentiateWithoutColor)
+                        """
                         let hostingView = NSHostingView(rootView: view)
                         let fitted = hostingView.fittingSize
                         XCTAssertTrue(fitted.width.isFinite, label)
@@ -1715,8 +1714,8 @@ final class MenuViewPresentationTests: XCTestCase {
         configuration.right = PadConfiguration(mode: .mouse, mouseAcceleration: 0.2)
         let originalRight = configuration.right
         let host = NSHostingView(rootView: PadConfigurationView(side: .left,
-            configuration: Binding(get: { configuration.left }, set: { configuration.left = $0 }),
-            initialTuningExpanded: true))
+                                                                configuration: Binding(get: { configuration.left }, set: { configuration.left = $0 }),
+                                                                initialTuningExpanded: true))
         host.frame = NSRect(x: 0, y: 0, width: 500, height: 800)
         await settle(host)
         let toggle = try XCTUnwrap(descendants(of: PaddrTuningSwitchButton.self, in: host).first)
@@ -1779,7 +1778,7 @@ final class MenuViewPresentationTests: XCTestCase {
         collapsed.frame = NSRect(x: 0, y: 0, width: 640, height: 1000)
         await settle(collapsed)
         XCTAssertTrue(descendants(of: PaddrTuningSwitchButton.self, in: collapsed).isEmpty,
-            "Advanced switches should not compete with sensitivity and touch tap in the initial view")
+                      "Advanced switches should not compete with sensitivity and touch tap in the initial view")
 
         let expanded = NSHostingView(rootView: PadConfigurationView(
             side: .right, configuration: binding, isEditable: false, initialTuningExpanded: true
@@ -1802,7 +1801,7 @@ final class MenuViewPresentationTests: XCTestCase {
         configuration.centerTapTrackingMode = .coupled
         let locale = Locale(identifier: "en")
         XCTAssertEqual(PointerTuningPresentation.summary(configuration: configuration, locale: locale),
-            "No additional tuning enabled")
+                       "No additional tuning enabled")
 
         configuration.pointerSmoothingEnabled = true
         configuration.pointerSmoothingStrength = 0.35
@@ -1882,7 +1881,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertEqual(alert.buttons.map(\.title), [
             "Save & Quit",
             "Cancel",
-            "Quit Without Saving"
+            "Quit Without Saving",
         ])
         XCTAssertEqual(alert.buttons[1].keyEquivalent, "\u{1b}")
         XCTAssertTrue(alert.buttons[2].hasDestructiveAction)
@@ -1936,7 +1935,7 @@ final class MenuViewPresentationTests: XCTestCase {
             isEditable: false
         ).environment(\.accessibilityEnabled, true).padding(20))
         let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 480, height: 750),
-            styleMask: [.titled, .closable], backing: .buffered, defer: false)
+                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         defer { window.close() }
         window.contentView = host
@@ -1944,16 +1943,16 @@ final class MenuViewPresentationTests: XCTestCase {
         await settle(host)
         for expanded in [true, false] {
             let disclosure = try XCTUnwrap(accessibilityElement(in: host,
-                identifier: "paddr.pad.right.pointer-tuning"))
+                                                                identifier: "paddr.pad.right.pointer-tuning"))
             let frame = try XCTUnwrap(disclosure.accessibilityFrame?())
             // Click the text well beyond the disclosure indicator, not its arrow.
             let location = window.convertPoint(fromScreen: CGPoint(x: frame.minX + 70, y: frame.maxY - 8))
             let down = try XCTUnwrap(NSEvent.mouseEvent(with: .leftMouseDown, location: location,
-                modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
-                windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1))
+                                                        modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                                        windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1))
             let up = try XCTUnwrap(NSEvent.mouseEvent(with: .leftMouseUp, location: location,
-                modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime + 0.1,
-                windowNumber: window.windowNumber, context: nil, eventNumber: 2, clickCount: 1, pressure: 0))
+                                                      modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime + 0.1,
+                                                      windowNumber: window.windowNumber, context: nil, eventNumber: 2, clickCount: 1, pressure: 0))
             window.sendEvent(down)
             window.sendEvent(up)
             await settle(host)
@@ -1978,7 +1977,7 @@ final class MenuViewPresentationTests: XCTestCase {
             let host = NSHostingView(rootView: ApplyBarView(model: model)
                 .environment(\.accessibilityEnabled, true))
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 996, height: 250),
-                styleMask: [.titled, .closable], backing: .buffered, defer: false)
+                                  styleMask: [.titled, .closable], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             window.contentView = host
             await settle(host)
@@ -1992,7 +1991,7 @@ final class MenuViewPresentationTests: XCTestCase {
         let failed = await waitUntil { model.status.messageState == .failure }
         XCTAssertTrue(failed)
         XCTAssertTrue(ApplyBarView(model: model).showsStatusMessage,
-            "Suppressing repeated connection advice must preserve immediate failures")
+                      "Suppressing repeated connection advice must preserve immediate failures")
         _ = await session.stop()
     }
 
@@ -2011,7 +2010,7 @@ final class MenuViewPresentationTests: XCTestCase {
         let host = NSHostingView(rootView: ApplyBarView(model: model)
             .environment(\.accessibilityEnabled, true))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 996, height: 250),
-            styleMask: [.titled, .closable], backing: .buffered, defer: false)
+                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         defer { window.close() }
         window.contentView = host
@@ -2100,7 +2099,7 @@ final class MenuViewPresentationTests: XCTestCase {
 
     /// Toolbar items and window state update a run-loop turn after the content.
     private func settle(_ window: NSWindow) async {
-        for _ in 0..<8 {
+        for _ in 0 ..< 8 {
             window.contentView?.layoutSubtreeIfNeeded()
             await Task.yield()
             try? await Task.sleep(for: .milliseconds(10))
@@ -2161,7 +2160,7 @@ final class MenuViewPresentationTests: XCTestCase {
             let host = NSHostingView(rootView: ApplyBarView(model: model)
                 .environment(\.accessibilityEnabled, true))
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 300),
-                styleMask: [.titled, .closable], backing: .buffered, defer: false)
+                                  styleMask: [.titled, .closable], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             defer { window.close() }
             window.contentView = host
@@ -2175,13 +2174,13 @@ final class MenuViewPresentationTests: XCTestCase {
             model.isEnabled = true
             XCTAssertEqual(model.status, .off)
             XCTAssertEqual(model.readiness.nextAction, .waitForProfileOperation,
-                "Pending persistence is not a neutral-input wait")
+                           "Pending persistence is not a neutral-input wait")
             await settle(host)
             XCTAssertNil(footerNextAction(in: host), "Brief preparation should not flash guidance")
             try await Task.sleep(for: .milliseconds(300))
             await settle(host)
             XCTAssertEqual(footerNextAction(in: host),
-                String(localized: PaddrReadinessNextAction.waitForProfileOperation.title))
+                           String(localized: PaddrReadinessNextAction.waitForProfileOperation.title))
             XCTAssertFalse(model.isRunning)
             let startsBeforeSave = await session.startCount
             XCTAssertEqual(startsBeforeSave, 1, "Activation cannot restart before persistence finishes")
@@ -2210,7 +2209,7 @@ final class MenuViewPresentationTests: XCTestCase {
                 try await Task.sleep(for: .milliseconds(300))
                 await settle(host)
                 XCTAssertEqual(footerNextAction(in: host),
-                    String(localized: PaddrReadinessNextAction.releaseTrackpads.title))
+                               String(localized: PaddrReadinessNextAction.releaseTrackpads.title))
                 await session.send(.outputArmed)
                 let active = await waitUntil { model.isRunning }
                 XCTAssertTrue(active)
@@ -2253,7 +2252,7 @@ final class MenuViewPresentationTests: XCTestCase {
             let host = NSHostingView(rootView: ApplyBarView(model: model)
                 .environment(\.accessibilityEnabled, true))
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 300),
-                styleMask: [.titled, .closable], backing: .buffered, defer: false)
+                                  styleMask: [.titled, .closable], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             defer { window.close() }
             window.contentView = host
@@ -2279,7 +2278,7 @@ final class MenuViewPresentationTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(300))
             await settle(host)
             XCTAssertEqual(footerNextAction(in: host), neutralInstruction,
-                "Unrelated persistence must not replace the actionable neutral instruction")
+                           "Unrelated persistence must not replace the actionable neutral instruction")
 
             await session.send(.outputArmed)
             let activeBeforeSave = await waitUntil { model.isRunning }
@@ -2336,7 +2335,7 @@ final class MenuViewPresentationTests: XCTestCase {
             XCTAssertTrue(connected)
             let host = NSHostingView(rootView: ApplyBarView(model: model))
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 300),
-                styleMask: [.titled, .closable], backing: .buffered, defer: false)
+                                  styleMask: [.titled, .closable], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             defer { window.close() }
             window.contentView = host
@@ -2347,7 +2346,7 @@ final class MenuViewPresentationTests: XCTestCase {
             XCTAssertEqual(model.status, .waitingForNeutral)
             await settle(host)
             XCTAssertEqual(host.fittingSize.height, idleHeight, accuracy: 1,
-                "A normal activation wait must not insert a flashing footer row")
+                           "A normal activation wait must not insert a flashing footer row")
             if !armsQuickly {
                 let guidanceAppeared = await waitUntil {
                     await self.settle(host)
@@ -2371,7 +2370,7 @@ final class MenuViewPresentationTests: XCTestCase {
             XCTAssertEqual(ApplyBarView(model: model).outputValue, LocalizedStringResource("Releasing"))
             await settle(host)
             XCTAssertEqual(host.fittingSize.height, idleHeight, accuracy: 1,
-                "A normal output release must not insert a flashing footer row")
+                           "A normal output release must not insert a flashing footer row")
             if !armsQuickly {
                 let releaseGuidanceAppeared = await waitUntil {
                     await self.settle(host)
@@ -2388,13 +2387,13 @@ final class MenuViewPresentationTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(300))
             await settle(host)
             XCTAssertEqual(host.fittingSize.height, idleHeight, accuracy: 1,
-                "Canceled guidance must not appear after releases complete")
+                           "Canceled guidance must not appear after releases complete")
 
             await session.send(.failed("Fixture output failure"))
             let failed = await waitUntil { model.status.messageState == .failure }
             XCTAssertTrue(failed)
             XCTAssertTrue(ApplyBarView(model: model).showsStatusMessage,
-                "Failure guidance must not be gated by the neutral-wait delay")
+                          "Failure guidance must not be gated by the neutral-wait delay")
             await settle(host)
             XCTAssertGreaterThan(host.fittingSize.height, idleHeight + 5)
             _ = await session.stop()
@@ -2478,7 +2477,7 @@ final class MenuViewPresentationTests: XCTestCase {
         host.layoutSubtreeIfNeeded()
 
         XCTAssertLessThan(host.fittingSize.height, PaddrStyle.Control.height,
-            "A read-only value is a line of text, not a control-height container")
+                          "A read-only value is a line of text, not a control-height container")
         XCTAssertEqual(row.accessibilityLabelText, "Access")
         XCTAssertEqual(row.accessibilityValueText, "Needed")
     }
@@ -2496,7 +2495,7 @@ final class MenuViewPresentationTests: XCTestCase {
         let host = NSHostingView(rootView: battery)
 
         XCTAssertGreaterThan(host.fittingSize.width, shorter.fittingSize.width,
-            "The percentage is drawn, never reduced to an icon")
+                             "The percentage is drawn, never reduced to an icon")
         XCTAssertEqual(battery.accessibilityValueText, "Level 60%, Discharging")
     }
 
@@ -2546,9 +2545,9 @@ final class MenuViewPresentationTests: XCTestCase {
             "Each value keeps its own line"
         )
         XCTAssertEqual(hostingView.fittingSize.width, single.fittingSize.width, accuracy: 1,
-            "The list is as wide as its widest row, so every value shares the trailing edge")
+                       "The list is as wide as its widest row, so every value shares the trailing edge")
         XCTAssertLessThan(hostingView.fittingSize.width,
-            PaddrStyle.Metrics.minimumWindowSize.width - (2 * PaddrStyle.Metrics.outerSpacing))
+                          PaddrStyle.Metrics.minimumWindowSize.width - (2 * PaddrStyle.Metrics.outerSpacing))
     }
 
     private func assertApplyBarFitsMinimumWindow(
@@ -2650,7 +2649,7 @@ final class MenuViewPresentationTests: XCTestCase {
     }
 
     private func settle(_ hostingView: NSView) async {
-        for _ in 0..<6 {
+        for _ in 0 ..< 6 {
             hostingView.layoutSubtreeIfNeeded()
             await Task.yield()
         }

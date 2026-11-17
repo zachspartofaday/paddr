@@ -1,0 +1,17 @@
+# Layout-only formatting. Use SwiftFormat 0.64.4 or later.
+--min-version 0.64.4
+--unknown-options error
+--swift-version 6.3
+--language-mode 6
+
+# Closed rule set: a tool upgrade must not silently start rewriting code.
+--rules blankLineAfterImports,blankLinesAroundMark,blankLinesAtEndOfScope,blankLinesAtStartOfScope,blankLinesBetweenScopes,braces,consecutiveBlankLines,consecutiveSpaces,elseOnSameLine,emptyBraces,indent,leadingDelimiters,linebreakAtEndOfFile,linebreaks,semicolons,sortImports,spaceAroundBraces,spaceAroundBrackets,spaceAroundGenerics,spaceAroundOperators,spaceAroundParens,spaceInsideBraces,spaceInsideBrackets,spaceInsideGenerics,spaceInsideParens,trailingCommas,trailingSpace
+
+--indent 4
+--linebreaks lf
+--ifdef no-indent
+--indent-strings false
+--max-width none
+--trailing-commas collections-only
+
+--exclude .build,.swiftpm,dist,site

@@ -1,5 +1,5 @@
-import XCTest
 @testable import PaddrCore
+import XCTest
 
 final class MapperTapPolicyTests: XCTestCase {
     func testOnlyPointerAndScrollAllowTouchTap() {

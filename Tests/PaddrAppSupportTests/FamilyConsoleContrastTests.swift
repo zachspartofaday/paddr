@@ -1,9 +1,8 @@
 import AppKit
-import SwiftUI
-import XCTest
-
 import PaddrAppSupport
 @testable import PaddrMenu
+import SwiftUI
+import XCTest
 
 @MainActor
 final class FamilyConsoleContrastTests: XCTestCase {
@@ -28,7 +27,7 @@ final class FamilyConsoleContrastTests: XCTestCase {
                 assertEqual(try resolved(role, appearance: appearance), accent)
             }
             assertEqual(try resolved(PaddrStyle.controlForeground, appearance: appearance),
-                try resolved(PaddrStyle.selectedZoneCaptionForeground, appearance: appearance))
+                        try resolved(PaddrStyle.selectedZoneCaptionForeground, appearance: appearance))
             // Hover and press preserve readable selected text as well as the fill.
             for overlay in [PaddrStyle.controlHover, PaddrStyle.controlPressed] {
                 let fill = try resolved(overlay, appearance: appearance).composited(over: accent)
@@ -84,7 +83,7 @@ final class FamilyConsoleContrastTests: XCTestCase {
                     for fill in [PaddrStyle.selectedZoneFillTop, PaddrStyle.selectedZoneFillBottom] {
                         let selected = try resolved(fill, appearance: drawingAppearance).composited(over: surface)
                         XCTAssertGreaterThanOrEqual(boundary.contrastRatio(with: selected), 3,
-                            "Selected zone boundary: \(name.rawValue), \(contrast), elevated=\(elevated)")
+                                                    "Selected zone boundary: \(name.rawValue), \(contrast), elevated=\(elevated)")
                     }
                 }
             }
@@ -106,7 +105,7 @@ final class FamilyConsoleContrastTests: XCTestCase {
                     let pad = try resolved(appearance.surface(elevated: elevated), appearance: drawingAppearance)
                         .composited(over: background)
                     XCTAssertGreaterThanOrEqual(boundary.contrastRatio(with: tapFill.composited(over: pad)), 3,
-                        "Pointer boundary: \(name.rawValue), \(contrast), elevated=\(elevated)")
+                                                "Pointer boundary: \(name.rawValue), \(contrast), elevated=\(elevated)")
                 }
             }
         }
@@ -138,7 +137,7 @@ final class FamilyConsoleContrastTests: XCTestCase {
                 let standardBoundary = try resolved(standard.surfaceStroke, appearance: drawingAppearance)
                 let increasedBoundary = try resolved(increased.surfaceStroke, appearance: drawingAppearance)
                 XCTAssertGreaterThan(increasedBoundary.contrastRatio(with: increasedSurface),
-                    standardBoundary.contrastRatio(with: surface), name.rawValue)
+                                     standardBoundary.contrastRatio(with: surface), name.rawValue)
             }
         }
         XCTAssertGreaterThan(increased.strokeWidth, standard.strokeWidth)
@@ -150,7 +149,7 @@ final class FamilyConsoleContrastTests: XCTestCase {
             let background = try resolved(PaddrStyle.workspace, appearance: appearance)
             for (state, tone, text) in [
                 (StatusBadgeState.ready, PaddrStyle.successGreen, PaddrStyle.successText),
-                (StatusBadgeState.critical, PaddrStyle.errorText, PaddrStyle.errorText)
+                (StatusBadgeState.critical, PaddrStyle.errorText, PaddrStyle.errorText),
             ] {
                 let foreground = try resolved(state.textColor, appearance: appearance)
                 assertEqual(try resolved(state.color, appearance: appearance), try resolved(tone, appearance: appearance))

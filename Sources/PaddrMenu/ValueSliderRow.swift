@@ -62,7 +62,7 @@ struct ToggleValueSliderRow: View {
         ) {
             HStack(spacing: PaddrStyle.Spacing.s2) {
                 PaddrTuningSwitch(title: title, isOn: $isEnabled,
-                    accessibilityIdentifier: accessibilityIdentifier)
+                                  accessibilityIdentifier: accessibilityIdentifier)
                 Slider(value: $value.quantized(step: step, in: range), in: range)
                     .frame(minWidth: PaddrStyle.toggleSliderMinimumWidth)
                     .layoutPriority(1)

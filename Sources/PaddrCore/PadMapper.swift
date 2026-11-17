@@ -529,7 +529,7 @@ public struct PadMapper: Sendable {
     private func tapActions(for binding: String) throws -> [TrackpadOutputAction] {
         [
             try outputAction(for: binding, isPressed: true),
-            try outputAction(for: binding, isPressed: false)
+            try outputAction(for: binding, isPressed: false),
         ]
     }
 
@@ -591,5 +591,4 @@ public struct PadMapper: Sendable {
         case .bottomRight: return 8
         }
     }
-
 }

@@ -1,5 +1,5 @@
-import XCTest
 @testable import PaddrMenu
+import XCTest
 
 @MainActor
 final class ArtifactSmokeTests: XCTestCase {

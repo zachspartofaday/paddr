@@ -1,0 +1,55 @@
+# Diagnostics only. Use SwiftLint 0.65.1.
+# SwiftFormat owns layout, so do not run `swiftlint --fix`.
+# only_rules keeps a tool upgrade from silently adding policy.
+allow_zero_lintable_files: false
+only_rules:
+  - blanket_disable_command
+  - class_delegate_protocol
+  - compiler_protocol_init
+  - discarded_notification_center_observer
+  - discouraged_direct_init
+  - duplicate_conditions
+  - duplicate_enum_cases
+  - duplicated_key_in_dictionary_literal
+  - dynamic_inline
+  - force_cast
+  - force_try
+  - force_unwrapping
+  - identical_operands
+  - invalid_swiftlint_command
+  - invisible_character
+  - legacy_hashing
+  - notification_center_detachment
+  - ns_number_init_as_function_reference
+  - nsobject_prefer_isequal
+  - orphaned_doc_comment
+  - overridden_super_call
+  - private_unit_test
+  - prohibited_super_call
+  - self_in_property_initialization
+  - superfluous_disable_command
+  - unhandled_throwing_task
+  - unused_setter_value
+  - valid_ibinspectable
+  - xctfail_message
+
+compiler_protocol_init: error
+duplicate_conditions: error
+duplicate_enum_cases: error
+duplicated_key_in_dictionary_literal: error
+dynamic_inline: error
+invalid_swiftlint_command: error
+invisible_character: error
+self_in_property_initialization: error
+
+force_cast: warning
+force_try: warning
+force_unwrapping: warning
+identical_operands: warning
+unhandled_throwing_task: warning
+
+excluded:
+  - .build
+  - .swiftpm
+  - dist
+  - site

@@ -1,5 +1,5 @@
-import XCTest
 @testable import PaddrCore
+import XCTest
 
 final class OutputArbiterTests: XCTestCase {
     func testOverlappingKeyOwnershipReleasesAfterLastOwner() throws {
@@ -31,10 +31,10 @@ final class OutputArbiterTests: XCTestCase {
 
         XCTAssertTrue(arbiter.process([
             .key(key, isPressed: true),
-            .key(key, isPressed: false)
+            .key(key, isPressed: false),
         ], from: .rightPad).isEmpty)
         XCTAssertEqual(arbiter.process([.key(key, isPressed: false)], from: .leftPad), [
-            .key(key, isPressed: false)
+            .key(key, isPressed: false),
         ])
     }
 
@@ -45,10 +45,10 @@ final class OutputArbiterTests: XCTestCase {
 
         XCTAssertTrue(arbiter.process([
             .key(key, isPressed: false),
-            .key(key, isPressed: true)
+            .key(key, isPressed: true),
         ], from: .leftPad).isEmpty)
         XCTAssertEqual(arbiter.process([.key(key, isPressed: false)], from: .leftPad), [
-            .key(key, isPressed: false)
+            .key(key, isPressed: false),
         ])
     }
 

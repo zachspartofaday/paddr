@@ -8,7 +8,7 @@ let package = Package(
     products: [
         .library(name: "PaddrCore", targets: ["PaddrCore"]),
         .executable(name: "Paddr", targets: ["PaddrMenu"]),
-        .executable(name: "PaddrCLI", targets: ["PaddrCLI"])
+        .executable(name: "PaddrCLI", targets: ["PaddrCLI"]),
     ],
     targets: [
         .target(name: "PaddrCore"),
@@ -27,6 +27,6 @@ let package = Package(
         .testTarget(
             name: "PaddrAppSupportTests",
             dependencies: ["PaddrAppSupport", "PaddrCore", "PaddrMenu"]
-        )
+        ),
     ]
 )

@@ -1,6 +1,6 @@
+@testable import PaddrCore
 import Synchronization
 import XCTest
-@testable import PaddrCore
 
 final class SessionTests: XCTestCase {
     func testConcurrentStartsLaunchOnlyLatestReplacement() async {
@@ -334,7 +334,7 @@ final class SessionTests: XCTestCase {
             .key(space, isPressed: true),
             .key(space, isPressed: false),
             .key(space, isPressed: true),
-            .key(space, isPressed: false)
+            .key(space, isPressed: false),
         ])
     }
 
@@ -411,13 +411,13 @@ private final class ProgressPressureRuntime: Sendable {
         event(.waitingForController("pressure-test"))
         event(.controllerConnected)
         event(.outputArmed)
-        for reportCount in 1...40 {
+        for reportCount in 1 ... 40 {
             event(.progress(.init(reportCount: reportCount, actionCount: reportCount / 10)))
         }
         event(.controllerLost(.init(reportCount: 40, actionCount: 4)))
         event(.controllerConnected)
         event(.outputArmed)
-        for reportCount in 41...80 {
+        for reportCount in 41 ... 80 {
             event(.progress(.init(reportCount: reportCount, actionCount: reportCount / 10)))
         }
         produced.record(())
@@ -451,7 +451,7 @@ private final class ReleasePressureRuntime: Sendable {
         event(.waitingForController("release-pressure-test"))
         event(.outputReleased(revision: 7))
         event(.controllerConnected)
-        for reportCount in 1...80 {
+        for reportCount in 1 ... 80 {
             event(.progress(.init(reportCount: reportCount, actionCount: 0)))
         }
         produced.record(())
@@ -494,7 +494,7 @@ private final class BatteryPressureRuntime: Sendable {
         if losesController {
             event(.controllerLost(.init(reportCount: 2, actionCount: 0)))
         }
-        for reportCount in 1...80 {
+        for reportCount in 1 ... 80 {
             event(.progress(.init(reportCount: reportCount, actionCount: 0)))
         }
         produced.record(())

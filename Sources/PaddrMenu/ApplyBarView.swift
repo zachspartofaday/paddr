@@ -162,8 +162,8 @@ struct ApplyBarView: View {
                                     .focusable(false)
                                     .accessibilityHidden(true)
                                 PaddrTuningSwitch(title: outputToggleAccessibilityLabel, isOn: $model.isEnabled,
-                                    accessibilityIdentifier: outputToggleAccessibilityIdentifier,
-                                    help: outputToggleHelp)
+                                                  accessibilityIdentifier: outputToggleAccessibilityIdentifier,
+                                                  help: outputToggleHelp)
                                     // Align the drawn track, excluding its invisible
                                     // focus/hit reservation, with the workspace's trailing edge.
                                     .padding(.trailing, -(PaddrStyle.Width.toggle - PaddrStyle.Control.TuningSwitch.track.width) / 2)
@@ -430,5 +430,4 @@ struct ApplyBarView: View {
             )
         }
     }
-
 }

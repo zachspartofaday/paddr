@@ -1,7 +1,6 @@
 import Foundation
-import XCTest
-
 @testable import PaddrMenu
+import XCTest
 
 final class OpenSourceNoticesTests: XCTestCase {
     func testPackagedNoticeIsPreferred() {

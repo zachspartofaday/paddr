@@ -118,7 +118,7 @@ public final class TritonHIDDevice: TrackpadHIDStreaming {
     // The dongle carries one controller slot per USB interface 2 through 5 (SDL's
     // HIDAPI_DriverSteamTriton_IsSupportedDevice); interfaces below 2 are the
     // lizard-mode boot keyboard/mouse.
-    public static let dongleInterfaceNumbers = 2...5
+    public static let dongleInterfaceNumbers = 2 ... 5
     // Shortest meaningful report: a wireless-status packet (report ID + state byte).
     public static let minimumReportLength = 2
     // Shortest controller-state report: the 0x42/0x45 layout through both trackpads.
@@ -306,7 +306,7 @@ public final class TritonHIDDevice: TrackpadHIDStreaming {
         let matches = productIDs.map { productID in
             [
                 kIOHIDVendorIDKey as String: NSNumber(value: vendorID),
-                kIOHIDProductIDKey as String: NSNumber(value: productID)
+                kIOHIDProductIDKey as String: NSNumber(value: productID),
             ] as CFDictionary
         }
         IOHIDManagerSetDeviceMatchingMultiple(manager, matches as CFArray)

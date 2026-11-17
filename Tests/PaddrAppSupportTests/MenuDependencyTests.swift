@@ -1,8 +1,8 @@
 import Foundation
-import Synchronization
-import XCTest
 @testable import PaddrAppSupport
 import PaddrCore
+import Synchronization
+import XCTest
 
 @MainActor
 final class MenuDependencyTests: XCTestCase {

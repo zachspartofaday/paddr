@@ -1,5 +1,5 @@
-import SwiftUI
 import PaddrCore
+import SwiftUI
 
 /// Non-interactive squircle preview shown for pointer, scroll, and off modes so every
 /// pad card is anchored by the physical trackpad, matching the Zones area map.
@@ -66,7 +66,7 @@ struct PadModePreview: View {
             (CGPoint(x: bounds.midX, y: bounds.minY + inset), 1, 1),
             (CGPoint(x: bounds.midX, y: bounds.maxY - inset), 1, -1),
             (CGPoint(x: bounds.minX + inset, y: bounds.midY), 1, 0),
-            (CGPoint(x: bounds.maxX - inset, y: bounds.midY), -1, 0)
+            (CGPoint(x: bounds.maxX - inset, y: bounds.midY), -1, 0),
         ]
         for chevron in chevrons {
             var path = Path()

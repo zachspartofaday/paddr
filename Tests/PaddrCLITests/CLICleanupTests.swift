@@ -1,8 +1,8 @@
 import Foundation
-import Synchronization
-import XCTest
 import PaddrCLIKit
 @testable import PaddrCore
+import Synchronization
+import XCTest
 
 final class CLICleanupTests: XCTestCase {
     func testShutdownRetainsKeysAndMouseUntilRecoveryAfterReturnOrThrow() throws {
@@ -40,7 +40,7 @@ final class CLICleanupTests: XCTestCase {
                 XCTAssertFalse(token.hasPendingOutputs)
                 XCTAssertEqual(sink.actions, [
                     .key(key, isPressed: true), .mouseButton(.left, isPressed: true),
-                    .key(key, isPressed: false), .mouseButton(.left, isPressed: false)
+                    .key(key, isPressed: false), .mouseButton(.left, isPressed: false),
                 ])
                 XCTAssertEqual(sink.waits, 2)
                 XCTAssertEqual(sink.diagnostics.count, 2)
@@ -67,7 +67,7 @@ final class CLICleanupTests: XCTestCase {
                 // A batch fails after the first down. The second button was never pressed.
                 try ledger.dispatch([
                     .mouseButton(.left, isPressed: true), .mouseButton(.left, isPressed: false),
-                    .mouseButton(.right, isPressed: true)
+                    .mouseButton(.right, isPressed: true),
                 ])
                 XCTFail("Expected the partial tap to fail")
                 return .init(summary: .init(reportCount: 0, actionCount: 0), termination: .stopped)
@@ -85,6 +85,7 @@ private final class RecoveringOutput: TrackpadOutputDispatching, Sendable {
         var waits = 0
         var diagnostics: [String] = []
     }
+
     private let state = Mutex(State())
     var actions: [TrackpadOutputAction] { state.withLock { $0.actions } }
     var waits: Int { state.withLock { $0.waits } }

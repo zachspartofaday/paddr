@@ -1,6 +1,6 @@
-import XCTest
 @testable import PaddrAppSupport
 import PaddrCore
+import XCTest
 
 final class ZoneSelectionPolicyTests: XCTestCase {
     func testEveryLayoutNormalizesToAVisibleInitialZone() {
@@ -138,7 +138,7 @@ final class ZoneSelectionPolicyTests: XCTestCase {
                 configuration.dpadKeys.up,
                 configuration.dpadKeys.right,
                 configuration.dpadKeys.down,
-                configuration.dpadKeys.left
+                configuration.dpadKeys.left,
             ]
         case .horizontalTwo:
             [configuration.dpadKeys.left, configuration.dpadKeys.right]
@@ -154,7 +154,7 @@ final class ZoneSelectionPolicyTests: XCTestCase {
                 configuration.gridKeys.right,
                 configuration.gridKeys.bottomLeft,
                 configuration.gridKeys.bottom,
-                configuration.gridKeys.bottomRight
+                configuration.gridKeys.bottomRight,
             ]
         }
     }

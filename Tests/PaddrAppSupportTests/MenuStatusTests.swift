@@ -1,5 +1,5 @@
-import XCTest
 @testable import PaddrAppSupport
+import XCTest
 
 final class MenuStatusTests: XCTestCase {
     func testMessageStateMapsEveryMenuStatusCase() {
@@ -45,9 +45,9 @@ final class MenuStatusTests: XCTestCase {
 
     func testNeutralGuidanceIncludesMappedGripContactsAlongsideExistingInputs() {
         XCTAssertEqual(String(localized: PaddrReadinessNextAction.releaseTrackpads.title),
-            "Release both trackpads and any assigned rear buttons or grips")
+                       "Release both trackpads and any assigned rear buttons or grips")
         XCTAssertEqual(String(localized: MenuStatus.waitingForNeutral.message),
-            "Release both trackpads and any assigned rear buttons or grips to activate output…")
+                       "Release both trackpads and any assigned rear buttons or grips to activate output…")
     }
 
     func testEveryFailureMessageIncludesItsRecoveryAction() {

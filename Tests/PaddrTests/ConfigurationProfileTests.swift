@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import PaddrCore
+import XCTest
 
 final class ConfigurationProfileTests: XCTestCase {
     func testCanonicalDocumentRoundTripsIndependentCompleteConfigurations() throws {
@@ -149,7 +149,7 @@ final class ConfigurationProfileTests: XCTestCase {
         let proposedNames = [
             lowercaseUUID,
             lowercaseUUID.uppercased(),
-            " \n\(lowercaseUUID.uppercased())\t "
+            " \n\(lowercaseUUID.uppercased())\t ",
         ]
 
         for proposedName in proposedNames {
@@ -187,7 +187,7 @@ final class ConfigurationProfileTests: XCTestCase {
                     id: profileID,
                     name: " A0000000-0000-0000-0000-000000000033 ",
                     configuration: .default
-                )
+                ),
             ]
         )
 

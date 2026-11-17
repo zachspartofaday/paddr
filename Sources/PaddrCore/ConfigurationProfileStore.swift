@@ -198,7 +198,7 @@ public enum ConfigurationProfileStore {
     private static func decodeLegacyConfiguration(_ data: Data) throws -> PaddrConfiguration {
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               object["left"] != nil || object["right"] != nil || object["rearButtons"] != nil
-                || object["gyro"] != nil || object["gripTouch"] != nil else {
+              || object["gyro"] != nil || object["gripTouch"] != nil else {
             throw PaddrError.configuration(
                 "Configuration JSON is neither a profile document nor a raw pad/rear-button/sensor configuration."
             )
@@ -219,6 +219,7 @@ public final class ConfigurationProfileStoreClient: Sendable {
         case notLoaded
         case loaded(Data?)
     }
+
     private let version = Mutex<Version>(.notLoaded)
     private let explicitURL: URL?
     public let url: URL

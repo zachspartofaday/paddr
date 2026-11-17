@@ -1,10 +1,10 @@
-import XCTest
 @testable import PaddrCore
+import XCTest
 
 final class ScrollConservationTests: XCTestCase {
     func testSignedTotalsAreIndependentOfReportSegmentation() throws {
         for direction in [1, -1] {
-            let fine = try gesture(points: (0...10).map { direction * $0 * 120 })
+            let fine = try gesture(points: (0 ... 10).map { direction * $0 * 120 })
             let coarse = try gesture(points: [0, direction * 1200])
             XCTAssertEqual(total(fine).0, Double(direction * 2))
             XCTAssertEqual(total(fine).1, Double(-direction * 2))

@@ -1,12 +1,12 @@
-import XCTest
 @testable import PaddrCore
+import XCTest
 
 final class OutputBindingPresentationTests: XCTestCase {
     func testKnownBindingsHaveLocalizedPresentation() {
         let knownBindings = [
             TapBindingCatalog.leftMouseButton, TapBindingCatalog.rightMouseButton,
             "up", "right", "down", "left", "space", "return", "tab", "escape",
-            "delete", "shift", "control", "option", "command"
+            "delete", "shift", "control", "option", "command",
         ]
 
         for binding in knownBindings {

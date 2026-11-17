@@ -1,6 +1,6 @@
 import PaddrAppSupport
-import SwiftUI
 import PaddrCore
+import SwiftUI
 
 struct ButtonZoneConfigurationView: View {
     @Binding var configuration: PadConfiguration
@@ -74,9 +74,9 @@ struct ButtonZoneConfigurationView: View {
                         Slider(
                             value: $configuration.dpadDeadzone.quantized(
                                 step: 0.01,
-                                in: 0...Double(1).nextDown
+                                in: 0 ... Double(1).nextDown
                             ),
-                            in: 0...Double(1).nextDown
+                            in: 0 ... Double(1).nextDown
                         )
                         .disabled(!isEditable)
                         .accessibilityLabel("Neutral zone size")
@@ -100,18 +100,18 @@ struct ButtonZoneConfigurationView: View {
 
     private var areaLayoutPicker: some View {
         PaddrMenuPicker(title: "Zone layout", selection: $configuration.zoneLayout,
-            options: PadZoneLayout.allCases.map {
-                .init(value: $0, title: String(localized: $0.displayName))
-            })
-        .help("Choose how the trackpad is divided into zones.")
+                        options: PadZoneLayout.allCases.map {
+                            .init(value: $0, title: String(localized: $0.displayName))
+                        })
+                        .help("Choose how the trackpad is divided into zones.")
     }
 
     private var selectedAreaPicker: some View {
         PaddrMenuPicker(title: "Selected zone", selection: $selectedZone,
-            options: configuration.zoneLayout.zones.map {
-                .init(value: $0, title: String(localized: $0.title), systemImage: $0.systemImage)
-            }, accessibilityIdentifier: PaddrAccessibility.identifier("zones", "selected-area"))
-        .help("Choose the zone to configure.")
+                        options: configuration.zoneLayout.zones.map {
+                            .init(value: $0, title: String(localized: $0.title), systemImage: $0.systemImage)
+                        }, accessibilityIdentifier: PaddrAccessibility.identifier("zones", "selected-area"))
+            .help("Choose the zone to configure.")
     }
 }
 
