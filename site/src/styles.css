@@ -768,6 +768,17 @@ h2 {
   .appearance::before,
   .appearance__option,
   .window__frame .window__other { transition: none; }
+
+  /* The setting can change after the script has armed the list. Show every
+     step at once, whether or not it has scrolled into view. */
+  .steps.is-armed .steps__name::before,
+  .steps.is-armed li::after { transition: none; }
+
+  .steps.is-armed:not(.is-in) .steps__name::before,
+  .steps.is-armed:not(.is-in) li::after {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (forced-colors: active) {
@@ -792,9 +803,10 @@ h2 {
 
   h2 { position: static; }
 
-  /* Print everything, whether or not it has scrolled into view. */
-  .steps.is-armed .steps__name::before,
-  .steps.is-armed li::after {
+  /* Print everything, whether or not it has scrolled into view. The selectors
+     match the ones that hide the steps, so these win. */
+  .steps.is-armed:not(.is-in) .steps__name::before,
+  .steps.is-armed:not(.is-in) li::after {
     opacity: 1;
     transform: none;
   }
