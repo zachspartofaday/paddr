@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paddr: Steam Controller 2 input mapping for macOS</title>
+<meta name="description" content="Paddr is a menu-bar app that maps the trackpads, rear buttons, grips and gyro of a Steam Controller 2 to mouse, scroll and keyboard input on an Apple silicon Mac running macOS 27 or later, with the controller connected through its puck.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F3F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#20262D" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="Paddr">
+<meta property="og:description" content="A macOS menu-bar app that maps the trackpads, rear buttons, grips and gyro of a Steam Controller 2 to mouse, scroll and keyboard input.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="stylesheet" href="src/styles.css">
+<script type="module" src="src/main.js"></script>
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true" focusable="false" width="0" height="0">
+  <defs>
+    <clipPath id="clip-pad"><rect x="10" y="10" width="44" height="44" rx="9"/></clipPath>
+    <clipPath id="clip-glyph"><rect x="2" y="2" width="28" height="28" rx="6"/></clipPath>
+  </defs>
+</svg>
+
+<main class="page">
+
+  <header class="intro">
+    <div class="name">
+      <img src="assets/icon-128.png" width="60" height="60" alt="">
+      <h1>Paddr</h1>
+    </div>
+    <p class="lead">Paddr is a menu-bar app that maps the trackpads, rear buttons, grips and gyro of a Steam Controller 2 to mouse, scroll and keyboard input on an Apple silicon Mac running macOS 27 or later, with the controller connected through its puck.</p>
+    <p class="actions">
+      <a class="button" href="https://github.com/zachspartofaday/Paddr/releases/latest" rel="noopener">Download from GitHub Releases</a>
+      <a href="https://github.com/zachspartofaday/Paddr/blob/main/docs/USING.md" rel="noopener">Mapping guide</a>
+      <a href="https://github.com/zachspartofaday/Paddr" rel="noopener">Source code</a>
+    </p>
+  </header>
+
+  <figure class="window">
+    <div class="stage">
+      <div class="stage__inner">
+        <div class="appearance" role="radiogroup" aria-label="Window appearance" hidden>
+          <label class="appearance__option"><input type="radio" name="appearance" value="light"><span>Light</span></label>
+          <label class="appearance__option"><input type="radio" name="appearance" value="dark"><span>Dark</span></label>
+        </div>
+        <div class="window__frame">
+          <picture>
+            <source srcset="assets/window-dark.webp" media="(prefers-color-scheme: dark)">
+            <img src="assets/window-light.webp" width="1928" height="1550"
+                 alt="Paddr&rsquo;s configuration window. The toolbar has a profile picker and a Save &amp; Apply button. The left trackpad is in Zones mode with a four-way radial layout bound to the up, left, right and down arrow keys. The right trackpad is in Pointer mode with sensitivity and touch tap settings. Below are pickers for the rear buttons L4, L5, R4 and R5, the left and right grips, and the gyro. A bar at the bottom reads Controller not connected and holds the Enable output switch, which is off.">
+          </picture>
+        </div>
+      </div>
+    </div>
+    <figcaption>The configuration window. The left pad is in Zones mode, the right pad is in Pointer mode, and no controller is connected.</figcaption>
+  </figure>
+
+  <section class="section section--previews" aria-labelledby="mappings">
+    <h2 id="mappings">Mappings</h2>
+    <div class="section__body">
+      <div class="panel">
+        <table class="sheet sheet--previews" role="table">
+          <caption class="visually-hidden">What each control can send</caption>
+          <thead role="rowgroup">
+            <tr role="row">
+              <th scope="col" role="columnheader">Control</th>
+              <th scope="col" role="columnheader">Sends</th>
+            </tr>
+          </thead>
+          <tbody role="rowgroup">
+            <tr role="row">
+              <th scope="row" role="rowheader">Trackpad, Pointer mode</th>
+              <td role="cell">Mouse pointer movement.</td>
+              <td class="sheet__preview" aria-hidden="true">
+                <svg class="pv" data-preview="pointer" viewBox="0 0 64 64" focusable="false">
+                  <rect class="pv-pad" x="9" y="9" width="46" height="46" rx="10"/>
+                  <g class="pv-move">
+                    <circle class="pv-touch" cx="28" cy="26" r="7"/>
+                    <path class="pv-cursor" d="M28 26v13.2l3.5-3.3 2.6 5.5 2.2-1-2.5-5.4h4.9z"/>
+                  </g>
+                </svg>
+              </td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Trackpad, Scroll mode</th>
+              <td role="cell">Scrolling, vertical and horizontal.</td>
+              <td class="sheet__preview" aria-hidden="true">
+                <svg class="pv" data-preview="scroll" viewBox="0 0 64 64" focusable="false">
+                  <rect class="pv-pad" x="9" y="9" width="46" height="46" rx="10"/>
+                  <g clip-path="url(#clip-pad)">
+                    <g class="pv-lines">
+                      <rect class="pv-bar" x="17" y="17" width="24" height="4" rx="2"/>
+                      <rect class="pv-bar" x="17" y="26" width="30" height="4" rx="2"/>
+                      <rect class="pv-bar" x="17" y="35" width="19" height="4" rx="2"/>
+                      <rect class="pv-bar" x="17" y="44" width="27" height="4" rx="2"/>
+                      <rect class="pv-bar" x="17" y="53" width="22" height="4" rx="2"/>
+                      <rect class="pv-bar" x="17" y="62" width="30" height="4" rx="2"/>
+                      <rect class="pv-bar" x="17" y="71" width="16" height="4" rx="2"/>
+                      <rect class="pv-bar" x="56" y="17" width="20" height="4" rx="2"/>
+                      <rect class="pv-bar" x="56" y="26" width="14" height="4" rx="2"/>
+                      <rect class="pv-bar" x="56" y="35" width="24" height="4" rx="2"/>
+                      <rect class="pv-bar" x="56" y="44" width="18" height="4" rx="2"/>
+                      <rect class="pv-bar" x="56" y="53" width="22" height="4" rx="2"/>
+                      <rect class="pv-bar" x="56" y="62" width="12" height="4" rx="2"/>
+                    </g>
+                  </g>
+                  <circle class="pv-touch" cx="40" cy="44" r="6.5"/>
+                </svg>
+              </td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Trackpad, Zones mode</th>
+              <td role="cell">
+                A key or mouse button for each zone, held while the zone is touched. A pad has 2, 4 or 9 zones.
+                <ul class="layouts" aria-label="Zone layouts">
+                  <li><svg class="zg" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><g class="zg__zones" clip-path="url(#clip-glyph)"><path d="M2 2h28L16 16z"/><path d="M30 2v28L16 16z"/><path d="M30 30H2l14-14z"/><path d="M2 30V2l14 14z"/></g><rect x="2" y="2" width="28" height="28" rx="6"/><path d="M4.2 4.2 27.8 27.8M27.8 4.2 4.2 27.8"/></svg>Four-way radial</li>
+                  <li><svg class="zg" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><g class="zg__zones" clip-path="url(#clip-glyph)"><path d="M2 2h14v14H2z"/><path d="M16 2h14v14H16z"/><path d="M16 16h14v14H16z"/><path d="M2 16h14v14H2z"/></g><rect x="2" y="2" width="28" height="28" rx="6"/><path d="M16 2v28M2 16h28"/></svg>Four corners</li>
+                  <li><svg class="zg" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><g class="zg__zones" clip-path="url(#clip-glyph)"><path d="M2 2h14v28H2z"/><path d="M16 2h14v28H16z"/></g><rect x="2" y="2" width="28" height="28" rx="6"/><path d="M16 2v28"/></svg>Left / right</li>
+                  <li><svg class="zg" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><g class="zg__zones" clip-path="url(#clip-glyph)"><path d="M2 2h28v14H2z"/><path d="M2 16h28v14H2z"/></g><rect x="2" y="2" width="28" height="28" rx="6"/><path d="M2 16h28"/></svg>Top / bottom</li>
+                  <li><svg class="zg" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><g class="zg__zones" clip-path="url(#clip-glyph)"><path d="M2 2h9.33v9.33H2z"/><path d="M11.33 2h9.34v9.33h-9.34z"/><path d="M20.67 2H30v9.33h-9.33z"/><path d="M2 11.33h9.33v9.34H2z"/><path d="M11.33 11.33h9.34v9.34h-9.34z"/><path d="M20.67 11.33H30v9.34h-9.33z"/><path d="M2 20.67h9.33V30H2z"/><path d="M11.33 20.67h9.34V30h-9.34z"/><path d="M20.67 20.67H30V30h-9.33z"/></g><rect x="2" y="2" width="28" height="28" rx="6"/><path d="M11.33 2v28M20.67 2v28M2 11.33h28M2 20.67h28"/></svg>3 × 3 grid</li>
+                </ul>
+              </td>
+              <td class="sheet__preview" aria-hidden="true">
+                <svg class="pv" data-preview="zones" viewBox="0 0 64 64" focusable="false">
+                  <rect class="pv-pad" x="9" y="9" width="46" height="46" rx="10"/>
+                  <g clip-path="url(#clip-pad)">
+                    <path class="pv-zone is-on" d="M10 10h44L32 32z"/>
+                    <path class="pv-zone" d="M54 10v44L32 32z"/>
+                    <path class="pv-zone" d="M54 54H10l22-22z"/>
+                    <path class="pv-zone" d="M10 54V10l22 22z"/>
+                    <path class="pv-rule" d="M10 10 54 54M54 10 10 54"/>
+                  </g>
+                  <circle class="pv-touch" cx="32" cy="19" r="5.5"/>
+                </svg>
+              </td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Tap on a trackpad</th>
+              <td role="cell">A key, left click or right click. Pointer and Scroll modes only.</td>
+              <td class="sheet__preview" aria-hidden="true">
+                <svg class="pv" data-preview="tap" viewBox="0 0 64 64" focusable="false">
+                  <rect class="pv-pad" x="9" y="9" width="46" height="46" rx="10"/>
+                  <circle class="pv-ring" cx="32" cy="32" r="10"/>
+                  <circle class="pv-dot" cx="32" cy="32" r="4.5"/>
+                </svg>
+              </td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Rear buttons L4, L5, R4, R5</th>
+              <td role="cell">A key or mouse button, held while the button is held.</td>
+              <td class="sheet__preview" aria-hidden="true">
+                <svg class="pv" data-preview="rear" viewBox="0 0 64 64" focusable="false">
+                  <g transform="rotate(-7 21 20)"><g class="pv-key"><rect class="pv-shape" x="14" y="11" width="14" height="18" rx="5"/><rect class="pv-on" x="14" y="11" width="14" height="18" rx="5"/></g></g>
+                  <g transform="rotate(-7 22 44)"><g class="pv-key"><rect class="pv-shape" x="15" y="35" width="14" height="18" rx="5"/><rect class="pv-on" x="15" y="35" width="14" height="18" rx="5"/></g></g>
+                  <g transform="rotate(7 43 20)"><g class="pv-key"><rect class="pv-shape" x="36" y="11" width="14" height="18" rx="5"/><rect class="pv-on" x="36" y="11" width="14" height="18" rx="5"/></g></g>
+                  <g transform="rotate(7 42 44)"><g class="pv-key"><rect class="pv-shape" x="35" y="35" width="14" height="18" rx="5"/><rect class="pv-on" x="35" y="35" width="14" height="18" rx="5"/></g></g>
+                </svg>
+              </td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Left grip, right grip</th>
+              <td role="cell">A key or mouse button, held while the grip is touched.</td>
+              <td class="sheet__preview" aria-hidden="true">
+                <svg class="pv" data-preview="grips" viewBox="0 0 64 64" focusable="false">
+                  <g transform="rotate(9 20.5 32)"><rect class="pv-shape" x="13" y="11" width="15" height="42" rx="7.5"/><rect class="pv-on" x="13" y="11" width="15" height="42" rx="7.5"/></g>
+                  <g transform="rotate(-9 43.5 32)"><rect class="pv-shape" x="36" y="11" width="15" height="42" rx="7.5"/><rect class="pv-on" x="36" y="11" width="15" height="42" rx="7.5"/></g>
+                  <circle class="pv-touch" cx="20.5" cy="35" r="5.5"/>
+                </svg>
+              </td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Gyro</th>
+              <td role="cell">Mouse movement while a chosen grip or pad is touched, or always. Off by default. Calibrate it after turning output on; calibration is not saved.</td>
+              <td class="sheet__preview" aria-hidden="true">
+                <svg class="pv" data-preview="gyro" viewBox="0 0 64 64" focusable="false">
+                  <path class="pv-cursor" d="M27 9v13.2l3.5-3.3 2.6 5.5 2.2-1-2.5-5.4h4.9z"/>
+                  <g class="pv-body">
+                    <rect class="pv-shape" x="11" y="33" width="42" height="18" rx="9"/>
+                    <circle class="pv-shape" cx="22" cy="42" r="3.5"/>
+                    <circle class="pv-shape" cx="42" cy="42" r="3.5"/>
+                  </g>
+                </svg>
+              </td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Other buttons, sticks, triggers</th>
+              <td role="cell">Not mapped by Paddr. macOS handles them through its own controller support.</td>
+              <td class="sheet__preview" aria-hidden="true">
+                <svg class="pv pv--idle" data-preview="other" viewBox="0 0 64 64" focusable="false">
+                  <rect class="pv-outline" x="11" y="12" width="18" height="7" rx="3.5"/>
+                  <circle class="pv-outline" cx="22" cy="41" r="10.5"/>
+                  <circle class="pv-outline" cx="22" cy="41" r="4.5"/>
+                  <circle class="pv-outline" cx="43" cy="15.5" r="3.4"/>
+                  <circle class="pv-outline" cx="35.5" cy="23" r="3.4"/>
+                  <circle class="pv-outline" cx="50.5" cy="23" r="3.4"/>
+                  <circle class="pv-outline" cx="43" cy="30.5" r="3.4"/>
+                </svg>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The left and right trackpads are set separately. A set of mappings is saved as a profile, and you switch profiles from the window toolbar or the menu-bar menu.</p>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="requirements">
+    <h2 id="requirements">Requirements</h2>
+    <div class="section__body">
+      <div class="panel">
+        <table class="sheet" role="table">
+          <caption class="visually-hidden">What you need to run Paddr</caption>
+          <thead role="rowgroup">
+            <tr role="row">
+              <th scope="col" role="columnheader">Item</th>
+              <th scope="col" role="columnheader">Requirement</th>
+            </tr>
+          </thead>
+          <tbody role="rowgroup">
+            <tr role="row">
+              <th scope="row" role="rowheader">Mac</th>
+              <td role="cell">Apple silicon, running macOS 27 or later.</td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Controller</th>
+              <td role="cell">Steam Controller 2, connected through its puck.</td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">macOS permissions</th>
+              <td role="cell">Input Monitoring, to read the controller. Accessibility, to send mouse and keyboard input.</td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Steam</th>
+              <td role="cell">Not required. That includes Steam Input and Steam Overlay.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="install">
+    <h2 id="install">Install</h2>
+    <div class="section__body">
+      <div class="panel">
+        <ol class="steps" role="list">
+          <li>
+            <span class="steps__name">Download</span>
+            <span class="steps__text">Get <code>Paddr.zip</code> from <a href="https://github.com/zachspartofaday/Paddr/releases/latest" rel="noopener">GitHub Releases</a>, unzip it, and move <code>Paddr.app</code> to Applications.</span>
+          </li>
+          <li>
+            <span class="steps__name">Grant permissions</span>
+            <span class="steps__text">Open Paddr. Its window shows a setup checklist. Grant Input Monitoring and Accessibility from there.</span>
+          </li>
+          <li>
+            <span class="steps__name">Edit a profile</span>
+            <span class="steps__text">The built-in Default profile makes the left pad scroll and the right pad move the pointer, and cannot be edited. To change mappings, choose Duplicate to Edit, make your changes, then choose Save &amp; Apply. Saving does not turn output on.</span>
+          </li>
+          <li>
+            <span class="steps__name">Turn on output</span>
+            <span class="steps__text">Turn on Enable output, then release the pads and any assigned rear buttons and grips. Output starts once they are released. Closing the window leaves Paddr running in the menu bar.</span>
+          </li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="limits">
+    <h2 id="limits">Not supported or not confirmed</h2>
+    <div class="section__body">
+      <div class="panel">
+        <table class="sheet" role="table">
+          <caption class="visually-hidden">What is not supported or not confirmed</caption>
+          <thead role="rowgroup">
+            <tr role="row">
+              <th scope="col" role="columnheader">Item</th>
+              <th scope="col" role="columnheader">Status</th>
+            </tr>
+          </thead>
+          <tbody role="rowgroup">
+            <tr role="row">
+              <th scope="row" role="rowheader">Bluetooth, direct USB</th>
+              <td role="cell">Not validated. Only the puck connection is confirmed.</td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">macOS versions</th>
+              <td role="cell">Confirmed by the maintainer on released macOS 27 and the macOS 27.2 release candidate.</td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Games</th>
+              <td role="cell">Works with games launched directly, such as World of Warcraft. Support varies by game: games that capture the mouse for aiming, or that read raw controller input, may ignore Paddr&rsquo;s events.</td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Virtual gamepad</th>
+              <td role="cell">Not supported. Paddr sends mouse, scroll and keyboard events only, not stick or trigger input.</td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Grip pressure</th>
+              <td role="cell">Not supported. The grips report touch, not how hard they are squeezed.</td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Gyro without motion data</th>
+              <td role="cell">Gyro uses the motion data the puck already sends. If none arrives, gyro is unavailable for that session.</td>
+            </tr>
+            <tr role="row">
+              <th scope="row" role="rowheader">Controller firmware</th>
+              <td role="cell">Not modified. Paddr only reads the reports the puck sends.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="links">
+    <h2 id="links">Links</h2>
+    <div class="section__body">
+      <div class="panel">
+        <ul class="links">
+          <li><a href="https://github.com/zachspartofaday/Paddr/releases/latest" rel="noopener">Download</a></li>
+          <li><a href="https://github.com/zachspartofaday/Paddr/blob/main/docs/USING.md" rel="noopener">Mapping guide</a></li>
+          <li><a href="https://github.com/zachspartofaday/Paddr/blob/main/CHANGELOG.md" rel="noopener">Release notes</a></li>
+          <li><a href="https://github.com/zachspartofaday/Paddr" rel="noopener">Source code</a></li>
+          <li><a href="https://github.com/zachspartofaday/Paddr/issues" rel="noopener">Report a problem</a></li>
+          <li><a href="https://github.com/zachspartofaday/Paddr/blob/main/LICENSE" rel="noopener">MIT license</a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>

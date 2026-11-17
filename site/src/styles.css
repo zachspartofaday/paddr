@@ -1,0 +1,801 @@
+/*
+  Paddr site styles.
+
+  Colours are the app's own tokens (Sources/PaddrMenu/PaddrStyle.swift): the
+  grey canvas with white panels on it, blue accent in light appearance and
+  teal in dark. Type is the system face.
+
+  The window image is 964px wide at most, the point width of the app window,
+  so the 2x capture is shown pixel for pixel on a desktop display.
+
+  Everything here works without JavaScript. The script only plays the small
+  control drawings in the Mappings rows, reveals the Install steps in order,
+  and adds the Light / Dark switch for the window image.
+*/
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --well: #edf0f4;
+  --ink: #1c2630;
+  --ink-2: #52616e;
+  --rule: #e3e7ec;
+  --rule-strong: #c5ced7;
+  --edge: rgba(28, 38, 48, 0.09);
+  --line: #7d8a97;
+  --accent: #2859cf;
+  --on-accent: #ffffff;
+  --accent-wash: rgba(40, 89, 207, 0.1);
+  --zone: 0.26;
+  --code: #e9edf1;
+
+  --stage: linear-gradient(155deg, #d9e3fb 0%, #d5e7f3 48%, #cfece4 100%);
+  --stage-edge: rgba(28, 38, 48, 0.06);
+  --control: rgba(28, 38, 48, 0.09);
+  --control-thumb: #ffffff;
+  --panel-shadow: 0 1px 2px rgba(28, 38, 48, 0.04), 0 16px 32px -20px rgba(28, 38, 48, 0.22);
+  --window-edge: rgba(28, 38, 48, 0.3);
+  --window-shadow: rgba(30, 48, 92, 0.3);
+  --button-shadow: rgba(40, 89, 207, 0.45);
+
+  --gutter: 20px;
+  --term: 13.5rem;
+  --tile: 3.5rem;
+  --row: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #20262d;
+    --surface: #2b333c;
+    --well: #222930;
+    --ink: #f0f4f8;
+    --ink-2: #bac6d2;
+    --rule: #3a444f;
+    --rule-strong: #536372;
+    --edge: rgba(255, 255, 255, 0.07);
+    --line: #8a97a5;
+    --accent: #78c7bd;
+    --on-accent: #1c2630;
+    --accent-wash: rgba(120, 199, 189, 0.14);
+    --zone: 0.4;
+    --code: #3a4551;
+
+    --stage: linear-gradient(155deg, #1b2c50 0%, #1b3443 48%, #1d4a43 100%);
+    --stage-edge: rgba(255, 255, 255, 0.06);
+    --control: rgba(255, 255, 255, 0.1);
+    --control-thumb: #56636f;
+    --panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 32px -22px rgba(0, 0, 0, 0.7);
+    --window-edge: rgba(0, 0, 0, 0.7);
+    --window-shadow: rgba(0, 0, 0, 0.5);
+    --button-shadow: rgba(0, 0, 0, 0.5);
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --ink-2: var(--ink);
+    --rule: var(--rule-strong);
+    --edge: var(--rule-strong);
+    --line: var(--ink);
+  }
+}
+
+@media (min-width: 45em) {
+  :root {
+    --gutter: 32px;
+    --tile: 4rem;
+  }
+}
+
+@media (min-width: 60em) {
+  :root { --term: 14.5rem; }
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+[hidden] { display: none !important; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover { text-decoration-thickness: 2px; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+code {
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+  background: var(--code);
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.visually-hidden,
+.sheet thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sprite { position: absolute; }
+
+.page {
+  width: min(100% - 2 * var(--gutter), 70rem);
+  margin-inline: auto;
+  padding-block: clamp(32px, 5.5vw, 64px) clamp(48px, 8vw, 96px);
+}
+
+/* ---------- Name, summary, links ---------- */
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.name img {
+  display: block;
+  flex: none;
+  width: 3.75rem;
+  height: 3.75rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.25rem, 4.6vw, 2.75rem);
+  font-weight: 760;
+  line-height: 1.05;
+  letter-spacing: -0.022em;
+}
+
+.lead {
+  max-width: 46rem;
+  margin: 24px 0 0;
+  font-size: clamp(1.1875rem, 2.4vw, 1.5rem);
+  line-height: 1.42;
+  letter-spacing: -0.006em;
+  text-wrap: pretty;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 28px;
+  margin: 28px 0 0;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 20px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 620;
+  text-decoration: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 18px -10px var(--button-shadow);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+
+.button:hover {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 12px 22px -10px var(--button-shadow);
+}
+
+.button:active {
+  transform: translateY(0) scale(0.985);
+  filter: brightness(0.98);
+}
+
+.button:focus-visible { border-radius: 11px; }
+
+/* Links that stand alone get a taller hit area than links inside a sentence. */
+.actions a:not(.button),
+.links a {
+  display: inline-block;
+  padding-block: 6px;
+}
+
+/* ---------- The window on its stage ---------- */
+
+.window { margin: clamp(36px, 6vw, 56px) 0 0; }
+
+/* On narrow screens the stage runs edge to edge so the window stays as large
+   as it can. The side padding grows with the screen, and the two formulas
+   meet at 45em, so the window never gets smaller as the screen gets wider. */
+.stage {
+  margin-inline: calc(-1 * var(--gutter));
+  padding: 60px clamp(12px, (100vw - 390px) * 0.13 + 12px, 56px) 28px;
+  background: var(--stage);
+}
+
+@media (min-width: 45em) {
+  .stage {
+    margin-inline: 0;
+    padding: 64px clamp(24px, (100vw - 45em) * 0.14 + 24px, 78px);
+    border-radius: 28px;
+    box-shadow: inset 0 0 0 1px var(--stage-edge);
+  }
+}
+
+.stage__inner {
+  position: relative;
+  max-width: 964px;
+  margin-inline: auto;
+}
+
+.window__frame {
+  position: relative;
+  filter: drop-shadow(0 0 1px var(--window-edge)) drop-shadow(0 22px 34px var(--window-shadow));
+}
+
+.window__frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* The other appearance, added by the script and faded over the first. */
+.window__frame .window__other {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.window__frame.is-other .window__other { opacity: 1; }
+
+.window figcaption {
+  margin-top: 16px;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+}
+
+/* Light / Dark switch, drawn like the app's own segmented mode picker. */
+.appearance {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 16px);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--control);
+  font-size: 0.8125rem;
+  font-weight: 560;
+  line-height: 1;
+}
+
+.appearance::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  border-radius: 7px;
+  background: var(--control-thumb);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  transition: transform 0.28s cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+
+.appearance[data-selected="dark"]::before { transform: translateX(100%); }
+
+.appearance__option {
+  position: relative;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.appearance__option span {
+  display: grid;
+  place-items: center;
+  min-width: 3.75rem;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 7px;
+}
+
+.appearance[data-selected="light"] .appearance__option:first-of-type,
+.appearance[data-selected="dark"] .appearance__option:last-of-type { color: var(--ink); }
+
+.appearance__option input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.appearance__option input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Sections: heading on the left, a panel of rows on the right ---------- */
+
+.section {
+  display: grid;
+  gap: 14px 32px;
+  margin-top: clamp(40px, 6vw, 60px);
+}
+
+.window + .section { margin-top: clamp(44px, 7vw, 72px); }
+
+/* Stacked on narrow screens, so the heading is a step larger than the terms below it. */
+h2 {
+  margin: 0;
+  font-size: 1.4375rem;
+  font-weight: 720;
+  line-height: 1.25;
+  letter-spacing: -0.012em;
+}
+
+.section__body { min-width: 0; }
+
+.section__body > p {
+  max-width: 43rem;
+  margin: 18px 0 0;
+  padding-inline: var(--panel-pad);
+  text-wrap: pretty;
+}
+
+.panel {
+  --panel-pad: 20px;
+  padding: 4px var(--panel-pad);
+  border: 1px solid var(--edge);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--panel-shadow);
+}
+
+.section__body { --panel-pad: 20px; }
+
+@media (min-width: 45em) {
+  .panel,
+  .section__body { --panel-pad: 28px; }
+}
+
+@media (min-width: 64em) {
+  .section { grid-template-columns: 11.5rem minmax(0, 1fr); }
+
+  /* The heading stays in view while its panel scrolls past. */
+  h2 {
+    position: sticky;
+    top: 20px;
+    align-self: start;
+    padding-top: calc(5px + var(--row));
+    font-size: 1.3125rem;
+  }
+
+  /* The first Mappings term sits lower, level with the middle of its drawing. */
+  .section--previews h2 { padding-top: calc(17px + (var(--tile) - 1.55 * 1.0625rem) / 2); }
+}
+
+/* ---------- Term and description rows ---------- */
+
+.sheet {
+  display: block;
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.sheet tbody { display: block; }
+
+.sheet tbody tr {
+  display: grid;
+  grid-template-columns: var(--term) minmax(0, 1fr);
+  column-gap: 24px;
+  padding: var(--row) 0;
+  border-top: 1px solid var(--rule);
+}
+
+.sheet tbody tr:first-child { border-top: 0; }
+
+.sheet tbody th,
+.sheet tbody td { padding: 0; }
+
+.sheet tbody th { font-weight: 620; }
+
+.sheet tbody td { font-weight: 400; }
+
+/* Mappings: a third column holds a small drawing of the control. The text is
+   set down so that a single line sits level with the middle of the drawing. */
+.sheet--previews tbody tr {
+  --inset: calc((var(--tile) - 1.55em) / 2);
+  grid-template-columns: var(--term) minmax(0, 1fr) var(--tile);
+  grid-template-areas: "term text tile";
+  padding: 12px 0;
+}
+
+.sheet--previews tbody th {
+  grid-area: term;
+  padding-top: var(--inset);
+}
+
+.sheet--previews tbody td {
+  grid-area: text;
+  padding-top: var(--inset);
+  padding-bottom: 2px;
+}
+
+.sheet--previews tbody .sheet__preview {
+  grid-area: tile;
+  padding: 0;
+}
+
+.layouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 12px 0 4px;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+}
+
+.layouts li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zg {
+  display: block;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
+.zg__zones > * {
+  fill: var(--accent);
+  fill-opacity: calc(var(--zone) + 0.2);
+  stroke: none;
+  opacity: 0;
+}
+
+/* ---------- Control drawings ---------- */
+
+.pv {
+  display: block;
+  width: var(--tile);
+  height: var(--tile);
+  border-radius: 24%;
+  background: var(--well);
+  transition: background-color 0.25s ease;
+}
+
+/* Hovering a row replays its drawing; the tint says which one. */
+@media (hover: hover) {
+  .sheet--previews tbody tr:hover .pv:not(.pv--idle) { background: var(--accent-wash); }
+}
+
+.pv-pad {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1.25;
+}
+
+.pv-rule {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.pv-bar { fill: var(--rule-strong); }
+
+.pv-zone {
+  fill: var(--accent);
+  fill-opacity: var(--zone);
+  opacity: 0;
+}
+
+.pv-zone.is-on { opacity: 1; }
+
+.pv-shape {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1.25;
+}
+
+.pv-outline {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.25;
+}
+
+.pv--idle { opacity: 0.62; }
+
+.pv-on {
+  fill: var(--accent);
+  fill-opacity: 0.34;
+  stroke: var(--accent);
+  stroke-width: 1.25;
+  opacity: 0;
+}
+
+.pv-cursor {
+  fill: var(--ink);
+  stroke: var(--surface);
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+
+.pv-touch {
+  fill: var(--accent);
+  fill-opacity: 0.26;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  opacity: 0;
+}
+
+.pv-ring {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  opacity: 0.5;
+}
+
+.pv-dot { fill: var(--accent); }
+
+.pv-touch,
+.pv-ring,
+.pv-dot,
+.pv-key,
+.pv-body {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* ---------- Install steps ---------- */
+
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps li {
+  --badge: 1.75rem;
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--term) minmax(0, 1fr);
+  column-gap: 24px;
+  padding: var(--row) 0;
+  counter-increment: step;
+}
+
+.steps__name {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-weight: 620;
+}
+
+.steps__name::before {
+  content: counter(step);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--badge);
+  height: var(--badge);
+  margin-top: calc((1.55em - var(--badge)) / 2);
+  border-radius: 50%;
+  background: var(--accent-wash);
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* A line from each number to the next. */
+.steps li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--row) + (1.55em - var(--badge)) / 2 + var(--badge) + 5px);
+  bottom: calc(5px - var(--row) - (1.55em - var(--badge)) / 2);
+  left: calc(var(--badge) / 2 - 1px);
+  width: 2px;
+  border-radius: 1px;
+  background: var(--rule-strong);
+  transform-origin: top;
+}
+
+/* With the script running and motion allowed, the numbers arrive in order
+   the first time the list scrolls into view. */
+.steps.is-armed .steps__name::before {
+  transition: transform 0.4s cubic-bezier(0.3, 1.4, 0.5, 1), opacity 0.25s ease;
+  transition-delay: calc(var(--i, 0) * 0.16s);
+}
+
+.steps.is-armed li::after {
+  transition: transform 0.3s ease;
+  transition-delay: calc(var(--i, 0) * 0.16s + 0.12s);
+}
+
+.steps.is-armed:not(.is-in) .steps__name::before {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+.steps.is-armed:not(.is-in) li::after { transform: scaleY(0); }
+
+.steps li:nth-child(2) { --i: 1; }
+.steps li:nth-child(3) { --i: 2; }
+.steps li:nth-child(4) { --i: 3; }
+
+/* ---------- Links ---------- */
+
+.links {
+  display: grid;
+  gap: 2px 24px;
+  margin: 0;
+  padding: 10px 0;
+  list-style: none;
+}
+
+@media (min-width: 30em) {
+  .links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 45em) {
+  .links { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ---------- Narrow screens: terms sit above their descriptions ---------- */
+
+@media (max-width: 37.5em) {
+  :root { --tile: 3rem; }
+}
+
+@media (max-width: 49.99em) {
+  .sheet tbody tr {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 2px;
+  }
+
+  .sheet--previews tbody tr {
+    grid-template-columns: minmax(0, 1fr) var(--tile);
+    grid-template-areas: "term tile" "text text";
+    align-items: center;
+    row-gap: 8px;
+  }
+
+  .sheet--previews tbody th,
+  .sheet--previews tbody td { padding-top: 0; }
+
+  .steps li {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 4px;
+  }
+
+  .steps__text { padding-left: calc(var(--badge) + 12px); }
+}
+
+/* ---------- Arrival: one sequence when the page loads ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .name,
+  .lead,
+  .actions { animation: arrive 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+  .lead { animation-delay: 0.06s; }
+
+  .actions { animation-delay: 0.12s; }
+
+  .name img { animation: pop 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+
+  .stage { animation: arrive 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.16s both; }
+
+  .window__frame { animation: settle 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.26s both; }
+
+  .appearance { animation: fade 0.5s ease 0.5s both; }
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.7) rotate(-8deg);
+  }
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.975);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .pv,
+  .appearance::before,
+  .appearance__option,
+  .window__frame .window__other { transition: none; }
+}
+
+@media (forced-colors: active) {
+  .button { border: 2px solid ButtonText; }
+
+  .appearance { border: 1px solid ButtonText; }
+
+  .appearance[data-selected="light"] .appearance__option:first-of-type,
+  .appearance[data-selected="dark"] .appearance__option:last-of-type {
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
+@media print {
+  .window__frame { filter: none; }
+
+  .stage,
+  .panel { box-shadow: none; }
+
+  .appearance { display: none; }
+
+  h2 { position: static; }
+
+  /* Print everything, whether or not it has scrolled into view. */
+  .steps.is-armed .steps__name::before,
+  .steps.is-armed li::after {
+    opacity: 1;
+    transform: none;
+  }
+}
