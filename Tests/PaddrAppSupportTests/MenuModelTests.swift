@@ -2522,6 +2522,51 @@ final class MenuModelTests: XCTestCase {
         XCTAssertTrue(model.hasUnsavedChanges)
     }
 
+    func testRevertToSavedDiscardsOnlyTheDraftWithoutPersisting() async {
+        let state = readyState(receiver: nil)
+        var stored = PaddrConfiguration.default
+        stored.left.sensitivity = 4
+        stored.rearButtons.l4 = "f1"
+        state.loadedConfiguration = stored
+        let model = PaddrMenuModel(dependencies: dependencies(state: state))
+        await waitUntil(model: model) { model.isInitialized }
+
+        XCTAssertFalse(model.canRevertToSaved, "A clean draft has nothing to revert")
+        XCTAssertFalse(model.revertToSaved())
+
+        model.configuration.left.sensitivity = 7
+        model.configuration.rearButtons.r5 = "F4"
+        XCTAssertTrue(model.canRevertToSaved)
+
+        XCTAssertTrue(model.revertToSaved())
+        XCTAssertEqual(model.configuration, stored, "Every draft field returns to the saved value")
+        XCTAssertEqual(model.savedConfiguration, stored)
+        XCTAssertFalse(model.hasUnsavedChanges)
+        XCTAssertFalse(model.canRevertToSaved)
+        XCTAssertEqual(state.saveCallCount, 0, "Reverting must not persist or apply")
+    }
+
+    func testRevertToSavedClearsRestoredDefaultsGuidance() async {
+        let state = readyState(receiver: nil)
+        var stored = PaddrConfiguration.default
+        stored.left.sensitivity = 4
+        state.loadedConfiguration = stored
+        let model = PaddrMenuModel(dependencies: dependencies(state: state))
+        await waitUntil(model: model) { model.isInitialized }
+        let statusBeforeEditing = model.status
+
+        model.restoreDefaults()
+        XCTAssertEqual(model.status, .defaultsRestored)
+
+        XCTAssertTrue(model.revertToSaved())
+        XCTAssertEqual(model.configuration, stored)
+        XCTAssertEqual(
+            model.status,
+            statusBeforeEditing,
+            "“Save to apply them” must not outlive the restored draft"
+        )
+    }
+
     func testRearButtonDraftCommitsOnlyWithSuccessfulSaveAndApply() async {
         let state = readyState(receiver: nil)
         let model = PaddrMenuModel(dependencies: dependencies(state: state))

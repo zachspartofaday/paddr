@@ -16,7 +16,6 @@ extension Binding where Value == Double {
 
 struct ValueSliderRow: View {
     let title: LocalizedStringResource
-    let systemImage: String
     @Binding var value: Double
     let range: ClosedRange<Double>
     let step: Double
@@ -26,7 +25,6 @@ struct ValueSliderRow: View {
     var body: some View {
         PaddrSettingsRow(
             title: title,
-            systemImage: systemImage,
             labelWidth: PaddrStyle.Width.labelColumnWide
         ) {
             HStack(spacing: PaddrStyle.Spacing.s2) {
@@ -46,7 +44,6 @@ struct ValueSliderRow: View {
 
 struct ToggleValueSliderRow: View {
     let title: LocalizedStringResource
-    let systemImage: String
     @Binding var isEnabled: Bool
     @Binding var value: Double
     let range: ClosedRange<Double>
@@ -61,7 +58,6 @@ struct ToggleValueSliderRow: View {
     var body: some View {
         PaddrSettingsRow(
             title: title,
-            systemImage: systemImage,
             labelWidth: PaddrStyle.Width.labelColumnWide
         ) {
             HStack(spacing: PaddrStyle.Spacing.s2) {

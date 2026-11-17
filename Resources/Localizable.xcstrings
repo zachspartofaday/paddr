@@ -109,12 +109,6 @@
     "Profile: %arg": {
       "comment": "Status-menu summary for the active profile; the argument is its user-visible name."
     },
-    "Puck connected": {
-      "comment": "Status-menu value indicating that the puck transport is connected."
-    },
-    "Puck not found": {
-      "comment": "Status-menu value indicating that the puck transport is unavailable."
-    },
     "Release both trackpads and any assigned rear buttons": {
       "comment": "Readiness action shown while output waits for neutral trackpads."
     },
@@ -145,8 +139,8 @@
     "Mapped output is unavailable while the profile operation finishes.": {
       "comment": "Disabled reason for the output switch during a profile operation."
     },
-    "Transport: %arg": {
-      "comment": "Status-menu summary for the puck transport."
+    "Puck: %arg": {
+      "comment": "Status-menu summary for the puck"
     },
     "Wait for mapped input to release": {
       "comment": "Readiness action shown while mapped output is being released."
@@ -269,17 +263,6 @@
         }
       }
     },
-    "Allow Access": {
-      "comment": "Onboarding page title for the permissions step.",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Allow Access"
-          }
-        }
-      }
-    },
     "An unexpected error occurred.": {
       "localizations": {
         "en": {
@@ -290,12 +273,12 @@
         }
       }
     },
-    "Area layout": {
+    "Zone layout": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Area layout"
+            "value": "Zone layout"
           }
         }
       }
@@ -311,22 +294,12 @@
         }
       }
     },
-    "Assign a keyboard key, left click, or right click to this touch area.": {
+    "Assign a keyboard key, left click, or right click to this zone.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Assign a keyboard key, left click, or right click to this touch area."
-          }
-        }
-      }
-    },
-    "Back": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Back"
+            "value": "Assign a keyboard key, left click, or right click to this zone."
           }
         }
       }
@@ -474,22 +447,22 @@
         }
       }
     },
-    "Choose how the trackpad is divided into button areas.": {
+    "Choose how the trackpad is divided into zones.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose how the trackpad is divided into button areas."
+            "value": "Choose how the trackpad is divided into zones."
           }
         }
       }
     },
-    "Choose the trackpad area to configure.": {
+    "Choose the zone to configure.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose the trackpad area to configure."
+            "value": "Choose the zone to configure."
           }
         }
       }
@@ -542,16 +515,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Complete the Input Monitoring prompt, then return to Paddr."
-          }
-        }
-      }
-    },
-    "Configuration saved": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Configuration saved"
           }
         }
       }
@@ -641,23 +604,12 @@
     },
     "Create": {},
     "Create Profile": {},
-    "Create, duplicate, rename, or delete profiles": {},
     "Cut": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Cut"
-          }
-        }
-      }
-    },
-    "Default is a safe, read-only reference. Duplicate Default to create an editable profile, then set each pad to Pointer, Scroll, Off, or Zones.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Default is a safe, read-only reference. Duplicate Default to create an editable profile, then set each pad to Pointer, Scroll, Off, or Zones."
           }
         }
       }
@@ -744,13 +696,13 @@
         }
       }
     },
-    "Enable Paddr in Input Monitoring (add it with + if it isn't listed), then relaunch Paddr.": {
+    "Enable Paddr in Input Monitoring (add it with + if it isn’t listed), then relaunch Paddr.": {
       "comment": "Status guidance after opening Input Monitoring settings.",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enable Paddr in Input Monitoring (add it with + if it isn't listed), then relaunch Paddr."
+            "value": "Enable Paddr in Input Monitoring (add it with + if it isn’t listed), then relaunch Paddr."
           }
         }
       }
@@ -781,26 +733,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Four-way radial"
-          }
-        }
-      }
-    },
-    "Get Started": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Get Started"
-          }
-        }
-      }
-    },
-    "Guide progress": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Guide progress"
           }
         }
       }
@@ -875,17 +807,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Input Monitoring access is ready"
-          }
-        }
-      }
-    },
-    "Input Monitoring lets Paddr receive controller reports from the puck, and Accessibility lets it send your mapped mouse and keyboard input. Paddr asks for Input Monitoring at first launch; otherwise it only requests permission or opens Settings when you choose an action below.": {
-      "comment": "Onboarding page detail for the permissions step.",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Input Monitoring lets Paddr receive controller reports from the puck, and Accessibility lets it send your mapped mouse and keyboard input. Paddr asks for Input Monitoring at first launch; otherwise it only requests permission or opens Settings when you choose an action below."
           }
         }
       }
@@ -1050,16 +971,6 @@
       }
     },
     "New Profile": {},
-    "Next": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Next"
-          }
-        }
-      }
-    },
     "None": {
       "localizations": {
         "en": {
@@ -1112,7 +1023,7 @@
         }
       }
     },
-    "Open Configuration to switch profiles…": {},
+    "Open Configuration to Switch Profiles…": {},
     "Open Configuration…": {
       "localizations": {
         "en": {
@@ -1283,16 +1194,6 @@
     "Profile name": {},
     "Profile names must be nonempty and unique, ignoring case.": {},
     "Profiles": {},
-    "Profiles and Duplicate Default": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Profiles and Duplicate Default"
-          }
-        }
-      }
-    },
     "Puck": {
       "comment": "Short receiver status title for the puck indicator.",
       "localizations": {
@@ -1551,23 +1452,23 @@
         }
       }
     },
-    "Select a highlighted pad area, then choose its keyboard or mouse action.": {
+    "Select a zone on the pad, then choose its keyboard or mouse action.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Select a highlighted pad area, then choose its keyboard or mouse action."
+            "value": "Select a zone on the pad, then choose its keyboard or mouse action."
           }
         }
       }
     },
     "Select the active profile": {},
-    "Selected area": {
+    "Selected zone": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Selected area"
+            "value": "Selected zone"
           }
         }
       }
@@ -1634,16 +1535,6 @@
         }
       }
     },
-    "Skip": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Skip"
-          }
-        }
-      }
-    },
     "Some settings are invalid. Review the values and try again.": {
       "localizations": {
         "en": {
@@ -1661,16 +1552,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Space"
-          }
-        }
-      }
-    },
-    "Start Output Safely": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Start Output Safely"
           }
         }
       }
@@ -1697,8 +1578,6 @@
         }
       }
     },
-    "Step %arg of %arg": {},
-    "Step %arg of %arg: %arg": {},
     "Switching profiles replaces the current draft. Unsaved changes will not be copied.": {},
     "Switching to %arg": {
       "comment": "Profile selector accessibility value while the selected profile is being saved"
@@ -1742,16 +1621,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tap area"
-          }
-        }
-      }
-    },
-    "The Paddr menu shows receiver and controller status with the Mapped output toggle. When output starts, release both trackpads and any assigned rear buttons to return to neutral before mapped input activates.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The Paddr menu shows receiver and controller status with the Mapped output toggle. When output starts, release both trackpads and any assigned rear buttons to return to neutral before mapped input activates."
           }
         }
       }
@@ -2023,16 +1892,6 @@
         }
       }
     },
-    "Welcome to Paddr": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Welcome to Paddr"
-          }
-        }
-      }
-    },
     "When on, pointer movement continues inside and across the center tap radius. When off, the radius also acts as a pointer dead zone.": {
       "comment": "Help text for the per-pad center tap tracking toggle.",
       "localizations": {
@@ -2152,14 +2011,13 @@
     "Enable": {},
     "Enable output": {},
     "No additional tuning enabled": {},
-    "Open setup…": {},
+    "Open Setup…": {},
     "Output stopped because of an error. Check the puck and controller, then enable output again.": {},
     "Pointer dead zone": {},
     "Pointer tuning": {},
     "Smoothing %arg": {},
     "Tap radius %arg": {},
     "Tap stabilization %arg": {},
-    "The Paddr menu shows receiver and controller status with the Enable output switch. When output starts, release both trackpads and any assigned rear buttons to return to neutral before mapped input activates.": {},
     "Turning on saves your pending changes.": {},
     "Input Monitoring access needed": {
       "comment": "Persistent setup banner when Input Monitoring has not been granted."
@@ -2241,7 +2099,6 @@
     "Ignores rotation slower than this rate after stationary calibration.": {},
     "On enabling output, hold the controller still to calibrate. Always-on aiming starts after calibration.": {},
     "On enabling output, hold the controller still to calibrate. Release the activation touch, then touch again to aim.": {},
-    "The Paddr menu shows receiver and controller status with the Enable output switch. When output starts, release both trackpads and any assigned rear buttons or grips to return to neutral before mapped input activates.": {},
     "Touch holds the assigned action; releasing the grip releases it. A grip can also activate gyro aiming.": {},
     "Grip touch": {
       "comment": "Controller-wide gyro and capacitive grip-touch settings or live status.",
@@ -2530,6 +2387,81 @@
     "Adjusts left and right aiming without changing up and down aiming. Defaults to 2.5×.": {
       "comment": "Independent horizontal gyro gain; does not change the vertical or base sensitivity.",
       "extractionState": "manual"
+    },
+    "Enable Output": {
+      "comment": "Status-menu command that turns mapped output on or off, and the setup checklist button that turns it on."
+    },
+    "Explains each pointer tuning setting.": {
+      "comment": "Tooltip and accessibility help for the information button beside the Pointer tuning heading."
+    },
+    "About pointer tuning": {
+      "comment": "Accessibility name of the information button beside the Pointer tuning heading."
+    },
+    "Save or revert your changes first": {
+      "comment": "Tooltip on a disabled profile command while the draft has unsaved changes."
+    },
+    "There are no unsaved changes to revert": {
+      "comment": "Tooltip on the disabled Revert to Saved command."
+    },
+    "Revert to Saved": {
+      "comment": "Profile command and confirmation button that discards unsaved draft changes."
+    },
+    "Revert to saved?": {
+      "comment": "Title of the confirmation shown before unsaved draft changes are discarded."
+    },
+    "This discards your unsaved changes and shows the profile as it was last saved. Mapped output is not affected.": {
+      "comment": "Message of the Revert to Saved confirmation."
+    },
+    "Create, duplicate, rename, revert, or delete profiles": {
+      "comment": "Tooltip for the profile actions menu in the toolbar."
+    },
+    "Save this profile and apply it to mapped output": {
+      "comment": "Tooltip for Save & Apply while there are unsaved changes."
+    },
+    "There are no unsaved changes": {
+      "comment": "Tooltip for Save & Apply while it is disabled because nothing changed."
+    },
+    "Default is read-only. Duplicate it to make changes.": {
+      "comment": "Workspace notice shown while the read-only Default profile is active."
+    },
+    "Set up Paddr": {
+      "comment": "Title of the setup checklist in the configuration window."
+    },
+    "You can reopen this from Help > Paddr Guide.": {
+      "comment": "Setup checklist note; Help and Paddr Guide are the menu and menu item names."
+    },
+    "Skip Setup": {
+      "comment": "Button that hides the setup checklist before setup is complete."
+    },
+    "Input Monitoring and Accessibility are allowed.": {
+      "comment": "Setup checklist detail once both permissions are granted."
+    },
+    "The puck and controller are connected.": {
+      "comment": "Setup checklist detail once the puck and controller are connected."
+    },
+    "You’re editing your own profile. Default stays as a read-only reference.": {
+      "comment": "Setup checklist detail once an editable profile is active."
+    },
+    "Turn on output, then release both trackpads so mapped input starts from neutral.": {
+      "comment": "Setup checklist detail for the Enable output step."
+    },
+    "Connect your controller": {
+      "comment": "Setup checklist step title."
+    },
+    "Create your own profile": {
+      "comment": "Setup checklist step title."
+    },
+    "Next step": {
+      "comment": "Accessibility value of the setup step to do next."
+    },
+    "Not done": {
+      "comment": "Accessibility value of a setup step that is not complete."
+    },
+    "Connect the puck": {
+      "comment": "Status guidance shown while the puck is missing and Paddr is already looking for it."
+    },
+    "Edited": {
+      "comment": "Window subtitle shown beside the title while the profile has unsaved changes."
     }
   },
   "version": "1.0"

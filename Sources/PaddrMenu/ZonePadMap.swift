@@ -61,12 +61,12 @@ struct ZonePadMap: View {
                                 context.fill(neutral, with: .color(PaddrStyle.textPrimary.opacity(0.10)))
                                 context.stroke(
                                     neutral,
-                                    with: .color(.secondary.opacity(0.62)),
+                                    with: .color(PaddrStyle.textSecondary.opacity(0.62)),
                                     style: StrokeStyle(lineWidth: 1, dash: [3, 3])
                                 )
                                 context.draw(
                                     Text(verbatim: "○")
-                                        .font(.caption.bold())
+                                        .font(PaddrTextRole.bindingPlate.font)
                                         .foregroundStyle(PaddrStyle.textSecondary),
                                     at: center(in: bounds)
                                 )
@@ -107,7 +107,7 @@ struct ZonePadMap: View {
             return .handled
         }
         .accessibilityHidden(true)
-        .help("Select a highlighted pad area, then choose its keyboard or mouse action.")
+        .help("Select a zone on the pad, then choose its keyboard or mouse action.")
     }
 
     private func hitZone(at point: CGPoint, size: CGSize) -> ButtonZone? {
@@ -222,7 +222,7 @@ struct ZonePadMap: View {
         let point = labelPoint(for: zone, in: bounds)
         let plateWidth: CGFloat = layout == .gridNine ? 38 : 78
         let label = OutputBindingText.text(for: configuration[bindingFor: zone])
-            .font(.caption.bold())
+            .font(PaddrTextRole.bindingPlate.font)
             .foregroundStyle(selected ? PaddrStyle.selectedZoneCaptionForeground : PaddrStyle.textSecondary)
         let resolved = context.resolve(label)
         let labelSize = resolved.measure(in: CGSize(width: plateWidth - 4, height: .greatestFiniteMagnitude))

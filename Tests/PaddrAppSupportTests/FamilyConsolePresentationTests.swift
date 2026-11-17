@@ -9,7 +9,8 @@ import PaddrCore
 @MainActor
 final class FamilyConsolePresentationTests: XCTestCase {
     func testNativeWorkspaceGeometryMatchesApprovedContract() {
-        XCTAssertEqual(PaddrStyle.Metrics.defaultWindowSize, NSSize(width: 996, height: 640))
+        // Two complete pad editors and one window margin each side; no card inset.
+        XCTAssertEqual(PaddrStyle.Metrics.defaultWindowSize, NSSize(width: 964, height: 640))
         XCTAssertEqual(PaddrStyle.Metrics.minimumWindowSize, NSSize(width: 680, height: 600))
         XCTAssertEqual(PaddrStyle.Metrics.outerSpacing, 24)
         XCTAssertEqual(PaddrStyle.Inset.window, 24)
@@ -41,8 +42,10 @@ final class FamilyConsolePresentationTests: XCTestCase {
             XCTAssertEqual(PaddrPadColumns.previewWidth(in: width), 190)
             XCTAssertEqual(PaddrPadColumns.inspectorLeading(in: width) + 240, width)
         }
-        XCTAssertEqual(PaddrStyle.Metrics.defaultWindowSize.width - 2 * PaddrStyle.Inset.chrome,
-            2 * (190 + 16 + 240) + 24)
+        let twoEditors: CGFloat = 2 * (190 + 16 + 240) + 24
+        XCTAssertEqual(PaddrStyle.Metrics.defaultContentWidth, twoEditors)
+        XCTAssertEqual(PaddrStyle.Bar.margin + PaddrStyle.Bar.inset, PaddrStyle.Inset.window,
+            "What the floating bar holds lines up with the workspace above it")
     }
 
     func testBespokeControlFamilyUsesApprovedBaseDimensions() {
@@ -100,8 +103,8 @@ final class FamilyConsolePresentationTests: XCTestCase {
             return try XCTUnwrap(result)
         }
 
-        let lightCanvas = try resolved(PaddrStyle.night0, under: .aqua)
-        let darkCanvas = try resolved(PaddrStyle.night0, under: .darkAqua)
+        let lightCanvas = try resolved(PaddrStyle.canvas, under: .aqua)
+        let darkCanvas = try resolved(PaddrStyle.canvas, under: .darkAqua)
         let lightText = try resolved(PaddrStyle.textPrimary, under: .aqua)
         let darkText = try resolved(PaddrStyle.textPrimary, under: .darkAqua)
         XCTAssertGreaterThan(lightCanvas.redComponent, darkCanvas.redComponent)
@@ -187,11 +190,11 @@ final class FamilyConsolePresentationTests: XCTestCase {
 
         XCTAssertEqual(presentation.outputSummary, "Output: Active")
         XCTAssertEqual(presentation.controllerSummary, "Controller: Connected")
-        XCTAssertEqual(presentation.transportSummary, "Transport: Puck connected")
+        XCTAssertEqual(presentation.puckSummary, "Puck: Connected")
         XCTAssertEqual(presentation.profileSummary, "Profile: Everyday")
         XCTAssertTrue(presentation.accessibilityLabel.contains(presentation.outputSummary))
         XCTAssertTrue(presentation.accessibilityLabel.contains(presentation.controllerSummary))
-        XCTAssertTrue(presentation.accessibilityLabel.contains(presentation.transportSummary))
+        XCTAssertTrue(presentation.accessibilityLabel.contains(presentation.puckSummary))
         XCTAssertTrue(presentation.accessibilityLabel.contains(presentation.profileSummary))
         XCTAssertEqual(presentation.tintRole, .active)
         XCTAssertEqual(presentation.symbolName, "hand.point.up.left.fill")

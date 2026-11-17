@@ -3,39 +3,22 @@ import PaddrAppSupport
 import SwiftUI
 import PaddrCore
 
+/// The status item uses the same status colours as the window.
 enum PaddrMenuBarPalette {
     static func color(for role: MenuBarTintRole) -> NSColor? {
         switch role {
-        case .active:
-            active
-        case .warning:
-            warning
-        case .none:
-            nil
+        case .active: PaddrStyle.successGreenNSColor
+        case .warning: PaddrStyle.cautionAmberNSColor
+        case .none: nil
         }
-    }
-
-    private static let active = NSColor(name: nil) { appearance in
-        isDark(appearance)
-            ? NSColor(srgbRed: 70.0 / 255.0, green: 180.0 / 255.0, blue: 135.0 / 255.0, alpha: 1)
-            : NSColor(srgbRed: 35.0 / 255.0, green: 125.0 / 255.0, blue: 87.0 / 255.0, alpha: 1)
-    }
-
-    private static let warning = NSColor(name: nil) { appearance in
-        isDark(appearance)
-            ? NSColor(srgbRed: 1, green: 179.0 / 255.0, blue: 64.0 / 255.0, alpha: 1)
-            : NSColor(srgbRed: 168.0 / 255.0, green: 90.0 / 255.0, blue: 0, alpha: 1)
-    }
-
-    private static func isDark(_ appearance: NSAppearance) -> Bool {
-        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
     }
 }
 
 @MainActor
 enum PaddrFamilyWindowChrome {
-    static let configurationTitlePointSize: CGFloat = 16
-    static let configurationAutosaveName = "PaddrConfigurationWindow.v10"
+    /// The default width changed when the workspace lost its enclosing card, so
+    /// frames saved by earlier layouts are not reused.
+    static let configurationAutosaveName = "PaddrConfigurationWindow.v11"
 
     static let styleMask: NSWindow.StyleMask = [
         .titled,
@@ -52,43 +35,35 @@ enum PaddrFamilyWindowChrome {
         window.titlebarSeparatorStyle = .none
     }
 
-    /// Keeps the compact blended titlebar while giving the product name a deliberate,
-    /// non-interactive treatment instead of turning it into a toolbar control.
-    static func installConfigurationTitle(_ title: String, in window: NSWindow) {
-        let label = NSTextField(labelWithString: title)
-        label.font = .systemFont(ofSize: configurationTitlePointSize, weight: .semibold)
-        label.textColor = .labelColor
-        label.lineBreakMode = .byTruncatingTail
-        label.usesSingleLineMode = true
-        label.setAccessibilityIdentifier(PaddrAccessibility.identifier("window", "title"))
-        label.setAccessibilityLabel(title)
-        label.translatesAutoresizingMaskIntoConstraints = false
-
-        let horizontalInset: CGFloat = 10
-        let container = NSView(
-            frame: NSRect(
-                origin: .zero,
-                size: NSSize(
-                    width: ceil(label.intrinsicContentSize.width) + (2 * horizontalInset),
-                    height: 32
-                )
-            )
+    /// Builds the configuration window exactly as the application shows it: the
+    /// system title, and a toolbar that SwiftUI fills from `ConfigurationView`.
+    static func makeConfigurationWindow(rootView: some View) -> NSWindow {
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: PaddrStyle.Metrics.defaultWindowSize),
+            styleMask: configurationStyleMask,
+            backing: .buffered,
+            defer: false
         )
-        container.addSubview(label)
-        NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: horizontalInset),
-            label.trailingAnchor.constraint(
-                lessThanOrEqualTo: container.trailingAnchor,
-                constant: -horizontalInset
-            ),
-            label.centerYAnchor.constraint(equalTo: container.centerYAnchor)
-        ])
+        window.title = String(localized: "Paddr")
+        window.toolbarStyle = .unifiedCompact
+        window.collectionBehavior.insert(.fullScreenNone)
+        window.standardWindowButton(.zoomButton)?.isEnabled = false
+        window.tabbingMode = .disallowed
+        window.isReleasedWhenClosed = false
+        let hostingController = NSHostingController(rootView: rootView)
+        // Content measurements own the frame, not the hosting controller's
+        // unconstrained intrinsic minimum (which can include the whole scroll document).
+        hostingController.sizingOptions = []
+        window.contentViewController = hostingController
+        apply(to: window)
+        return window
+    }
 
-        let accessory = NSTitlebarAccessoryViewController()
-        accessory.layoutAttribute = .leading
-        accessory.view = container
-        window.addTitlebarAccessoryViewController(accessory)
-        window.titleVisibility = .hidden
+    /// Unsaved changes use the standard document cue: the dot in the close button
+    /// and "Edited" beside the title.
+    static func setDocumentEdited(_ isEdited: Bool, for window: NSWindow) {
+        window.isDocumentEdited = isEdited
+        window.subtitle = isEdited ? String(localized: "Edited") : ""
     }
 
     static func setMinimumUsableLayoutSize(_ size: NSSize, for window: NSWindow) {
@@ -291,21 +266,14 @@ private extension NSSize {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     private let model = PaddrMenuModel()
-    private let onboardingPreferences = OnboardingPreferences()
+    private let setupGuide = SetupGuidePresentation()
     private let statusMenu = NSMenu()
     private var statusItem: NSStatusItem?
     private var configurationWindowController: NSWindowController?
-    private var guideWindowController: NSWindowController?
-    private var guidePresentation = OnboardingWindowPresentation()
     private var isResolvingTerminationRequest = false
     private var terminationResolutionTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let shouldShowGuide = OnboardingEligibility.shouldPresent(
-            trigger: .automatic,
-            hasRecordedDismissal: onboardingPreferences.hasRecordedDismissal
-        )
-
         NSApplication.shared.setActivationPolicy(.accessory)
         installMainMenu()
 
@@ -319,8 +287,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             self?.updateStatusItem()
         }
         updateStatusItem()
+        // First launch shows setup inside the one window, not in a second one.
+        setupGuide.present(trigger: .automatic)
         showConfigurationWindow()
-        if shouldShowGuide { showGuideWindow(trigger: .automatic) }
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
@@ -451,7 +420,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
 
     @objc private func showGuideFromHelp() {
-        showGuideWindow(trigger: .help)
+        setupGuide.present(trigger: .help)
+        showConfigurationWindow()
     }
 
     @objc private func openSourceNotices() {
@@ -640,8 +610,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             identifier: "controller-summary"
         )
         addStatusSummary(
-            presentation.transportSummary,
-            identifier: "transport-summary"
+            presentation.puckSummary,
+            identifier: "puck-summary"
         )
         addStatusSummary(
             presentation.profileSummary,
@@ -650,7 +620,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         statusMenu.addItem(.separator())
 
         let outputItem = NSMenuItem(
-            title: String(localized: "Enable output"),
+            title: String(localized: "Enable Output"),
             action: #selector(toggleEnabled),
             keyEquivalent: ""
         )
@@ -659,7 +629,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         outputItem.state = model.isEnabled ? .on : .off
         outputItem.image = NSImage(
             systemSymbolName: model.isEnabled ? "wave.3.right.circle.fill" : "pause.circle",
-            accessibilityDescription: String(localized: "Enable output")
+            accessibilityDescription: String(localized: "Enable Output")
         )
         outputItem.identifier = NSUserInterfaceItemIdentifier(
             PaddrAccessibility.identifier("menu", "output-toggle")
@@ -712,7 +682,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             }
         } else {
             let item = NSMenuItem(
-                title: String(localized: "Open Configuration to switch profiles…"),
+                title: String(localized: "Open Configuration to Switch Profiles…"),
                 action: #selector(openConfiguration),
                 keyEquivalent: ""
             )
@@ -814,28 +784,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             return
         }
 
-        let window = NSWindow(
-            contentRect: NSRect(origin: .zero, size: PaddrStyle.Metrics.defaultWindowSize),
-            styleMask: PaddrFamilyWindowChrome.configurationStyleMask,
-            backing: .buffered,
-            defer: false
+        let window = PaddrFamilyWindowChrome.makeConfigurationWindow(
+            rootView: ConfigurationView(model: model, managesWindowSize: true, setupGuide: setupGuide)
         )
-        window.title = String(localized: "Paddr")
-        window.toolbarStyle = .unifiedCompact
-        window.collectionBehavior.insert(.fullScreenNone)
-        window.standardWindowButton(.zoomButton)?.isEnabled = false
-        window.tabbingMode = .disallowed
-        window.isReleasedWhenClosed = false
         window.delegate = self
-        let hostingController = NSHostingController(
-            rootView: ConfigurationView(model: model, managesWindowSize: true)
-        )
-        // Content measurements below own the frame, not the hosting controller's
-        // unconstrained intrinsic minimum (which can include the whole scroll document).
-        hostingController.sizingOptions = []
-        window.contentViewController = hostingController
-        PaddrFamilyWindowChrome.apply(to: window)
-        PaddrFamilyWindowChrome.installConfigurationTitle(window.title, in: window)
         PaddrFamilyWindowChrome.restoreConfigurationFrame(for: window)
 
         let controller = NSWindowController(window: window)
@@ -844,88 +796,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         NSApplication.shared.activate()
     }
 
-    private func showGuideWindow(trigger: OnboardingPresentationTrigger) {
-        guard OnboardingEligibility.shouldPresent(
-            trigger: trigger,
-            hasRecordedDismissal: onboardingPreferences.hasRecordedDismissal
-        ) else { return }
-
-        model.refreshStatus()
-        NSApplication.shared.setActivationPolicy(.regular)
-        switch guidePresentation.requestPresentation() {
-        case .focusExisting:
-            guard let window = guideWindowController?.window else {
-                guidePresentation.didClose()
-                showGuideWindow(trigger: trigger)
-                return
-            }
-            window.makeKeyAndOrderFront(nil)
-            NSApplication.shared.activate()
-            return
-        case .create:
-            break
-        }
-
-        let window = NSWindow(
-            contentRect: NSRect(origin: .zero, size: PaddrStyle.Metrics.guideWindowSize),
-            styleMask: PaddrFamilyWindowChrome.styleMask,
-            backing: .buffered,
-            defer: false
-        )
-        window.title = String(localized: "Paddr Guide")
-        window.collectionBehavior.insert(.fullScreenNone)
-        window.standardWindowButton(.zoomButton)?.isEnabled = false
-        window.tabbingMode = .disallowed
-        window.isReleasedWhenClosed = false
-        window.delegate = self
-        window.contentViewController = NSHostingController(
-            rootView: OnboardingGuideView(
-                model: model,
-                onSkip: { [weak self] in self?.dismissGuide(as: .skipped) },
-                onComplete: { [weak self] in self?.dismissGuide(as: .completed) }
-            )
-        )
-        PaddrFamilyWindowChrome.apply(to: window)
-        PaddrFamilyWindowChrome.setUsableLayoutSize(
-            PaddrStyle.Metrics.guideWindowSize,
-            for: window
-        )
-        PaddrFamilyWindowChrome.setMinimumUsableLayoutSize(
-            PaddrStyle.Metrics.minimumGuideWindowSize,
-            for: window
-        )
-        window.center()
-
-        let controller = NSWindowController(window: window)
-        guideWindowController = controller
-        controller.showWindow(nil)
-        NSApplication.shared.activate()
-    }
-
-    private func dismissGuide(as dismissal: OnboardingDismissal) {
-        onboardingPreferences.record(dismissal)
-        guideWindowController?.close()
-    }
-
     func windowWillClose(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow else { return }
-        if window === guideWindowController?.window {
-            onboardingPreferences.record(.skipped)
-            guidePresentation.didClose()
-            guideWindowController = nil
-        } else if window !== configurationWindowController?.window {
-            return
-        }
+        guard let window = notification.object as? NSWindow,
+              window === configurationWindowController?.window else { return }
         updateActivationPolicy(afterClosing: window)
     }
 
     private func updateActivationPolicy(afterClosing closingWindow: NSWindow) {
-        let companionWindows = [
-            configurationWindowController?.window,
-            guideWindowController?.window
-        ]
-        .compactMap { $0 }
-        .filter { $0 !== closingWindow }
+        let companionWindows = [configurationWindowController?.window]
+            .compactMap { $0 }
+            .filter { $0 !== closingWindow }
         let requiresRegularActivation = companionWindows.contains { window in
             CompanionWindowState(
                 isVisible: window.isVisible,

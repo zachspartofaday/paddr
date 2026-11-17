@@ -86,6 +86,9 @@ public final class PaddrMenuModel {
     public private(set) var actionCount = 0
     public private(set) var needsInitialSave = false
     public private(set) var isInitialized = false
+    /// True while the one-second reconnect probe is looking for the puck, so the
+    /// interface does not ask for a manual refresh the probe makes unnecessary.
+    public private(set) var isSearchingForPuck = false
 
     @ObservationIgnored private let dependencies: MenuDependencies
     @ObservationIgnored private let outputGate = OutputGate(enabled: false)
@@ -130,7 +133,12 @@ public final class PaddrMenuModel {
     @ObservationIgnored private var statusRefreshEpoch: UInt64 = 0
     @ObservationIgnored private var receiverStateGeneration: UInt64 = 0
     @ObservationIgnored private var lifecycleTask: Task<Void, Never>?
-    @ObservationIgnored private var reconnectTask: Task<Void, Never>?
+    @ObservationIgnored private var reconnectTask: Task<Void, Never>? {
+        didSet {
+            let isSearching = reconnectTask != nil
+            if isSearchingForPuck != isSearching { isSearchingForPuck = isSearching }
+        }
+    }
     @ObservationIgnored private var reconnectGeneration: UInt64 = 0
     @ObservationIgnored private var reconnectStatusGeneration: UInt64?
     @ObservationIgnored private var permissionRefreshTask: Task<Void, Never>?
@@ -256,7 +264,8 @@ public final class PaddrMenuModel {
                 isRunning: isRunning,
                 isReleasingOutput: isReleasingOutput,
                 canToggleOutput: canToggleOutput,
-                isPreparingActivation: activationCommitPending || replacesActiveConfiguration
+                isPreparingActivation: activationCommitPending || replacesActiveConfiguration,
+                isSearchingForPuck: isSearchingForPuck
             )
         )
     }
@@ -634,6 +643,33 @@ public final class PaddrMenuModel {
               !hasUnsavedChanges || discardChanges else { return false }
         configuration = .default
         publishStatus(.defaultsRestored)
+        return true
+    }
+
+    /// Whether the draft holds edits that can be discarded for the saved
+    /// profile. The conditions match the ones under which the draft accepts
+    /// an edit at all.
+    public var canRevertToSaved: Bool {
+        terminationState == .idle
+            && !terminationDecisionInProgress
+            && isInitialized
+            && !replacesActiveConfiguration
+            && configuration != savedConfiguration
+    }
+
+    /// Discards draft edits and shows the profile as it was last saved.
+    /// Nothing is written and mapped output is untouched, because the saved
+    /// configuration is the one already in effect.
+    @discardableResult
+    public func revertToSaved() -> Bool {
+        guard canRevertToSaved else { return false }
+        configuration = savedConfiguration
+        if status == .defaultsRestored {
+            // "Save to apply them" no longer describes the draft.
+            preservingCurrentOperationalStatusAuthority {
+                publishStatus(operationalStatus)
+            }
+        }
         return true
     }
 

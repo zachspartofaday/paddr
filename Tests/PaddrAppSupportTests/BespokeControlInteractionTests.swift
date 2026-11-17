@@ -426,25 +426,6 @@ final class BespokeControlInteractionTests: XCTestCase {
         XCTAssertEqual(writes, 0)
     }
 
-    func testActionMenuRetainsItemGatesAndIts32PointVisibleTarget() async throws {
-        var calls = 0
-        let host = NSHostingView(rootView: PaddrActionMenu(title: "Profile actions", systemImage: "ellipsis.circle",
-            actions: [.init(title: "Rename Profile", isEnabled: false) { calls += 100 },
-                      .separator, .init(title: "New Profile") { calls += 1 }],
-            accessibilityIdentifier: "test.actions", accessibilityValue: "Editable profile"))
-        host.frame = NSRect(x: 0, y: 0, width: 32, height: 32)
-        await settle(host)
-        let control = try XCTUnwrap(descendants(PaddrPopUpButton.self, host).first)
-        XCTAssertEqual(control.bounds.size, NSSize(width: 32, height: 32))
-        XCTAssertEqual(control.iconName, "ellipsis.circle")
-        let menu = try XCTUnwrap(control.menu)
-        XCTAssertFalse(menu.items[1].isEnabled)
-        menu.performActionForItem(at: 1)
-        XCTAssertEqual(calls, 0)
-        menu.performActionForItem(at: 3)
-        XCTAssertEqual(calls, 1)
-    }
-
     func testBothExpandedEditorsKeepTheirSwitchesMountedAndFocusedAcrossReflow() async throws {
         var configuration = PaddrConfiguration.default
         configuration.left.mode = .mouse
@@ -585,8 +566,8 @@ final class BespokeControlInteractionTests: XCTestCase {
         }
     }
 
-    func testMaterialFallbackRetainsNativeHitAccessibilityAndFocusOwners() async throws {
-        let host = NSHostingView(rootView: materialFixture(PaddrAppearance()))
+    func testControlsStayOpaqueAndKeepNativeHitAccessibilityAndFocusOwnersInEveryAppearance() async throws {
+        let host = NSHostingView(rootView: controlFixture(PaddrAppearance()))
         let window = window(host, width: 560, height: 40)
         defer { window.close() }
         await settle(host)
@@ -595,19 +576,28 @@ final class BespokeControlInteractionTests: XCTestCase {
         let mode = try XCTUnwrap(descendants(PaddrModeSegmentedControl.self, host).first)
         for appearance in [PaddrAppearance(), PaddrAppearance(reduceTransparency: true),
                            PaddrAppearance(colorSchemeContrast: .increased), PaddrAppearance(reduceMotion: true)] {
-            host.rootView = materialFixture(appearance)
+            host.rootView = controlFixture(appearance)
             await settle(host)
             XCTAssertTrue(descendants(PaddrPopUpButton.self, host).first === menu)
             XCTAssertTrue(descendants(PaddrTuningSwitchButton.self, host).first === toggle)
             XCTAssertTrue(descendants(PaddrModeSegmentedControl.self, host).first === mode)
             XCTAssertEqual(mode.controlAppearance, appearance)
-            XCTAssertEqual(appearance.usesControlGlass, !appearance.usesOpaqueFallback && !appearance.hasIncreasedContrast)
+            XCTAssertEqual(appearance.usesChromeGlass, !appearance.usesOpaqueFallback && !appearance.hasIncreasedContrast)
+            // Workspace controls carry no material: the same opaque fill is drawn by the
+            // control itself whether or not the system asks for reduced transparency.
+            var expectedFill: NSColor?
+            host.effectiveAppearance.performAsCurrentDrawingAppearance {
+                expectedFill = NSColor(PaddrStyle.controlFill).usingColorSpace(.sRGB)
+            }
+            let fill = try sample(raster(menu), CGPoint(x: menu.bounds.maxX - 40, y: menu.bounds.midY))
+            XCTAssertLessThan(distance(fill, try XCTUnwrap(expectedFill)), 0.02,
+                "A menu must draw the opaque control fill: \(appearance)")
             for control in [menu as NSControl, toggle, mode] {
                 XCTAssertTrue(window.makeFirstResponder(control))
                 XCTAssertTrue(window.firstResponder === control)
                 let point = CGPoint(x: control.bounds.midX, y: control.bounds.midY)
                 XCTAssertTrue(host.hitTest(host.convert(point, from: control)) === control,
-                    "Material backgrounds must leave the native control as the full hierarchy hit owner")
+                    "The native control must own hit testing across its full bounds")
             }
             XCTAssertNil(toggle.accessibilityChildren())
             XCTAssertEqual((mode.cell?.accessibilityChildren())?.count, 4)
@@ -617,7 +607,7 @@ final class BespokeControlInteractionTests: XCTestCase {
         }
     }
 
-    private func materialFixture(_ appearance: PaddrAppearance) -> some View {
+    private func controlFixture(_ appearance: PaddrAppearance) -> some View {
         HStack {
             PaddrMenuPicker(title: "Profile", selection: .constant(0), options: [.init(value: 0, title: "Editable")])
             PaddrTuningSwitch(title: "Smoothing", isOn: .constant(true), accessibilityIdentifier: "test.switch")
@@ -723,7 +713,7 @@ final class BespokeControlInteractionTests: XCTestCase {
     }
 
     func testSelectorAndSwitchHoverRemainSecondaryWithoutChangingValues() async throws {
-        let host = NSHostingView(rootView: materialFixture(PaddrAppearance()))
+        let host = NSHostingView(rootView: controlFixture(PaddrAppearance()))
         let window = window(host, width: 560, height: 40)
         defer { window.close() }
         await settle(host)
@@ -756,12 +746,11 @@ final class BespokeControlInteractionTests: XCTestCase {
                 .overlay { PaddrPadFocusRing() }
             HStack {
                 Button {} label: { Text("Save & Apply").frame(width: 156) }.paddrActionButton(.primary)
-                Button("Open setup…") {}.paddrActionButton(.secondary)
+                Button("Open Setup…") {}.paddrActionButton(.secondary)
             }
         }
-        // Explicit opaque geometry evidence: cached AppKit display cannot capture
-        // a mixed regular/clear native glass composition. Normal material is
-        // verified by the WindowServer exporter, never inferred from these PNGs.
+        // Workspace controls are opaque in every appearance, so cached AppKit display
+        // captures them completely. Reduce Transparency is kept on to pin that.
         .environment(\._accessibilityReduceTransparency, true))
         let window = window(host, width: 272, height: 278)
         defer { window.close() }

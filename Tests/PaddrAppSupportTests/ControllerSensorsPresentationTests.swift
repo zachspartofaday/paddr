@@ -422,6 +422,62 @@ final class ControllerSensorsPresentationTests: XCTestCase {
         XCTAssertNotNil(accessibilityElement(in: host, identifier: "paddr.test-grip-info"))
     }
 
+    func testPointerTuningInfoButtonExplainsEveryTuningSettingWithoutHover() async throws {
+        let explanations = PointerTuningPresentation.explainedSettings.compactMap {
+            PointerTuningPresentation.explanation(for: $0)
+        }
+        XCTAssertEqual(explanations.count, 5, "Every setting inside the disclosure has an explanation")
+
+        let oldWindows = Set(NSApplication.shared.windows.map(ObjectIdentifier.init))
+        var writes = 0
+        var configuration = PaddrConfiguration.default.right
+        configuration.mode = .mouse
+        let host = NSHostingView(rootView: PadConfigurationView(side: .right,
+            configuration: Binding(get: { configuration }, set: { configuration = $0; writes += 1 }),
+            isEditable: false)
+            .environment(\.accessibilityEnabled, true).padding(20))
+        let window = makeWindow(host, width: 480, height: 750)
+        defer { window.close() }
+        window.makeKeyAndOrderFront(nil)
+        await settle(host)
+
+        let button = try XCTUnwrap(
+            accessibilityElement(in: host, identifier: "paddr.pad.right.pointer-tuning-info"),
+            accessibilityTree(host))
+        XCTAssertEqual(button.accessibilityLabel?(), "About pointer tuning")
+        XCTAssertEqual(button.accessibilityRole?(), .button)
+        XCTAssertEqual(button.accessibilityHelp?(), "Explains each pointer tuning setting.")
+        XCTAssertEqual(button.accessibilityPerformPress?(), true,
+            "The explanation stays reachable while a read-only profile disables editing")
+        await settle(host)
+
+        let popover = try XCTUnwrap(NSApplication.shared.windows.first {
+            $0 !== window && !oldWindows.contains(ObjectIdentifier($0)) && $0.isVisible
+        }, "Activating the information button should show its native popover")
+        defer { popover.close() }
+        let content = try XCTUnwrap(popover.contentView)
+        await settle(content)
+        // Static text reports its string as the value; combined rows report a label.
+        var spoken = ""
+        var visited = Set<ObjectIdentifier>()
+        func collect(_ object: AnyObject) {
+            guard visited.insert(ObjectIdentifier(object)).inserted else { return }
+            let value = (object as? NSObject)?.perform(NSSelectorFromString("accessibilityValue"))?
+                .takeUnretainedValue() as? String
+            spoken += [object.accessibilityLabel?(), value].compactMap { $0 }.joined(separator: "\n") + "\n"
+            for child in object.accessibilityChildren?() as? [Any] ?? [] { collect(child as AnyObject) }
+        }
+        collect(content)
+        for explanation in explanations {
+            XCTAssertTrue(spoken.contains(String(localized: explanation.title)), spoken)
+            XCTAssertTrue(spoken.contains(String(localized: explanation.detail)), spoken)
+        }
+        XCTAssertTrue(spoken.contains("Done"))
+        XCTAssertEqual(writes, 0, "Reading the explanation never edits the mapping")
+        XCTAssertNotNil(accessibilityElement(in: host, identifier: "paddr.pad.right.pointer-tuning"),
+            "The native disclosure stays the single expand and collapse control")
+    }
+
     func testUnassignedGripContactsStayHiddenAcrossDraftChangesAndGyroActivation() async throws {
         var gyro = GyroConfiguration(enabled: true, activation: .rightGrip)
         var grips = GripTouchConfiguration.unassigned
@@ -644,7 +700,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                                              ("Horizontal sensitivity", edges.left, PaddrStyle.Width.readout),
                                              ("Vertical sensitivity", edges.right, PaddrStyle.Width.readout),
                                              ("Gyro smoothing", edges.right, PaddrStyle.Width.readout),
-                                             ("Noise threshold", edges.right, PaddrStyle.Width.gyroReadout)] {
+                                             ("Noise threshold", edges.left, PaddrStyle.Width.gyroReadout)] {
                     let slider = try XCTUnwrap(elements[label])
                     let screenFrame = try XCTUnwrap(slider.accessibilityFrame?())
                     let frame = host.convert(window.convertFromScreen(screenFrame), from: nil)
@@ -659,7 +715,7 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 XCTAssertEqual(switches.count, 3, "Six sliders, horizontal tilt and two inversion switches are the nine tuning controls")
                 for control in switches {
                     let frame = control.convert(control.bounds, to: host)
-                    let end = control.accessibilityLabel() == "Tilt for horizontal aiming" ? edges.left : edges.right
+                    let end = control.accessibilityLabel() == "Invert horizontal" ? edges.left : edges.right
                     if direction == .leftToRight {
                         XCTAssertEqual(frame.maxX, end, accuracy: 0.5)
                     } else {
@@ -673,11 +729,21 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 let horizontalY = try XCTUnwrap(elements["Horizontal sensitivity"]?.accessibilityFrame?()).midY
                 XCTAssertEqual(horizontalY, verticalY, accuracy: 0.5, "Axis sensitivity controls share a row")
                 let horizontalSwitch = try XCTUnwrap(switches.first { $0.accessibilityLabel() == "Invert horizontal" })
-                let tilt = try XCTUnwrap(switches.first { $0.accessibilityLabel() == "Tilt for horizontal aiming" })
-                XCTAssertEqual(tilt.accessibilityFrame().midY, horizontalSwitch.accessibilityFrame().midY, accuracy: 0.5)
                 let verticalSwitch = try XCTUnwrap(switches.first { $0.accessibilityLabel() == "Invert vertical" })
-                XCTAssertLessThan(verticalSwitch.accessibilityFrame().maxY, tilt.accessibilityFrame().minY,
-                    "The final inversion control remains on the fifth row")
+                XCTAssertEqual(horizontalSwitch.accessibilityFrame().midY, verticalSwitch.accessibilityFrame().midY,
+                    accuracy: 0.5, "The two inversion switches share a row")
+                XCTAssertLessThan(horizontalSwitch.accessibilityFrame().maxY, horizontalY,
+                    "Inversion follows the axis sensitivities it modifies")
+                let tilt = try XCTUnwrap(switches.first { $0.accessibilityLabel() == "Tilt for horizontal aiming" })
+                let holdingAngle = try XCTUnwrap(elements["Holding angle"]?.accessibilityFrame?())
+                XCTAssertLessThan(tilt.accessibilityFrame().maxY, verticalSwitch.accessibilityFrame().minY,
+                    "Holding angle and tilt follow the inversion row")
+                XCTAssertLessThan(holdingAngle.maxY, verticalSwitch.accessibilityFrame().minY,
+                    "Tilt sits beside the holding angle it depends on")
+                let noiseFrame = try XCTUnwrap(elements["Noise threshold"]?.accessibilityFrame?())
+                XCTAssertLessThan(noiseFrame.maxY, tilt.accessibilityFrame().minY,
+                    "Noise threshold has no partner and ends the grid on its own row")
+                XCTAssertLessThan(noiseFrame.maxY, holdingAngle.minY)
             }
         }
     }

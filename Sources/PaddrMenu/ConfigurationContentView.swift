@@ -1,14 +1,24 @@
 import PaddrAppSupport
 import SwiftUI
 
-/// The complete scroll document, kept as one production surface so rendered layout tests
-/// can measure card enclosure independently from AppKit's scroll-view implementation.
+/// The complete scroll document, kept as one production surface so rendered layout
+/// tests can measure it independently from AppKit's scroll-view implementation.
+/// It sits directly on the window surface; nothing encloses it.
 struct ConfigurationContentView: View {
     @Bindable var model: PaddrMenuModel
+    let commands: ProfileCommands
+    var setupGuide: SetupGuidePresentation?
     var initialTuningExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: PaddrStyle.cardSpacing) {
+            if let setupGuide, setupGuide.isPresented {
+                SetupChecklistView(model: model, commands: commands) { setupGuide.dismiss(as: $0) }
+            } else if model.activeProfileID == .default {
+                // The checklist carries the same notice as its profile step.
+                ReadOnlyProfileNotice(model: model, commands: commands)
+                Divider()
+            }
             DualPadConfigurationView(
                 configuration: $model.configuration,
                 appearsEnabled: model.activeProfileControlsAppearEnabled,
@@ -34,7 +44,7 @@ struct ConfigurationContentView: View {
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .paddrCard()
-        .padding(PaddrStyle.Inset.window)
+        .padding(.horizontal, PaddrStyle.Inset.window)
+        .padding(.vertical, PaddrStyle.Inset.section)
     }
 }

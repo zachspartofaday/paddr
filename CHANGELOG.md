@@ -2,6 +2,36 @@
 
 User-visible changes to Paddr are recorded here. Release entries describe confirmed behavior at the time of each release; later entries may supersede earlier limitations.
 
+## Unreleased
+
+- Move the profile picker, profile actions and **Save & Apply** into the window
+  toolbar on the system's Liquid Glass, and give Save & Apply Command-S. The
+  window uses its standard title and shows **Edited** while a draft is unsaved.
+- Float connection, battery and **Enable output** in a Liquid Glass bar over
+  the workspace, which now sits directly on the window surface. Reduce
+  Transparency and Increase Contrast replace the glass with an opaque bordered
+  bar. Menus, mode pickers, switches and secondary buttons in the workspace use
+  one opaque fill instead of individual glass effects.
+- Replace the separate guide window with a setup checklist inside the
+  configuration window. It marks the next step among access, connection, an
+  editable profile and output, offers that step's action in place, and reopens
+  from Help > Paddr Guide.
+- Add **Revert to Saved** to the profile actions, with confirmation, to discard
+  only the unsaved draft. Disabled profile actions name their reason.
+- Show a read-only notice with **Duplicate to Edit** in the workspace while
+  Default is selected.
+- Put **Refresh** beside the instruction that asks for it and in Connection
+  details. While Paddr is already looking for the puck, the status reads
+  **Connect the puck**.
+- Present Connection details as a plain label-and-value list opened from a
+  button-shaped status control.
+- Add an info button beside **Pointer tuning** that explains each setting
+  without hover, and pair related gyro tuning settings in rows.
+- Use "puck" and "zone" consistently, title-case menu commands and
+  **Open Setup…**, show ready states in the success colour, and draw menu-bar
+  status tints from the same status colours as the window.
+- Product screenshots in `docs/images` predate this layout.
+
 ## 2.1.0 — 2026-10-29
 
 - Add opt-in gyro-to-mouse aiming with touch activation, sensitivity, inversion,

@@ -90,7 +90,7 @@ struct PadModePreview: View {
     private func drawGlyph(_ systemImage: String, in bounds: CGRect, context: inout GraphicsContext) {
         context.draw(
             Text(Image(systemName: systemImage))
-                .font(.title3.weight(.medium))
+                .font(PaddrTextRole.padGlyph.font)
                 .foregroundStyle(PaddrStyle.textSecondary.opacity(0.82)),
             at: CGPoint(x: bounds.midX, y: bounds.midY)
         )

@@ -6,53 +6,43 @@ struct ConfigurationView: View {
     // Fixed-size fixture hosts opt out; the application's window always opts in.
     var managesWindowSize = false
     var initialTuningExpanded = false
-    @State private var headerHeight: CGFloat = 0
+    var setupGuide: SetupGuidePresentation?
+    @State private var commands = ProfileCommands()
     @State private var documentHeight: CGFloat = 0
-    @State private var footerHeight: CGFloat = 0
+    @State private var barHeight: CGFloat = 0
 
+    /// The bar floats over the bottom of the document, so a window that shows
+    /// everything is as tall as the document plus the bar.
     private var preferredHeight: CGFloat? {
-        guard headerHeight > 0, documentHeight > 0, footerHeight > 0 else { return nil }
-        return ceil(headerHeight + documentHeight + footerHeight + 1)
+        guard documentHeight > 0, barHeight > 0 else { return nil }
+        return ceil(documentHeight + barHeight)
     }
 
     var body: some View {
-        ZStack {
-            PanelBackgroundView()
-
-            VStack(spacing: 0) {
-                TopControlsView(model: model)
-                    .padding(.horizontal, PaddrStyle.Inset.chrome)
-                    .padding(.vertical, PaddrStyle.Spacing.s3)
-                    .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { headerHeight = $0 }
-                Divider()
-                ScrollView {
-                    ConfigurationContentView(model: model, initialTuningExpanded: initialTuningExpanded)
-                        .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { documentHeight = $0 }
-                }
-                .scrollIndicators(.automatic)
-
-                ApplyBarView(model: model)
-                    .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { footerHeight = $0 }
-            }
+        ScrollView {
+            ConfigurationContentView(
+                model: model, commands: commands, setupGuide: setupGuide,
+                initialTuningExpanded: initialTuningExpanded
+            )
+            .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { documentHeight = $0 }
         }
+        .scrollIndicators(.automatic)
+        .safeAreaBar(edge: .bottom, spacing: 0) {
+            ApplyBarView(model: model, showsPermissionNotice: setupGuide?.isPresented != true)
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { barHeight = $0 }
+        }
+        .background { PanelBackgroundView() }
         .background {
             if managesWindowSize {
                 ConfigurationWindowSizingView(preferredHeight: preferredHeight)
             }
         }
+        .background { ConfigurationWindowDocumentState(isEdited: model.hasUnsavedChanges) }
         .paddrTypography(.rowLabel)
         .foregroundStyle(PaddrStyle.textPrimary)
         .controlSize(.regular)
         .tint(PaddrStyle.controlTint)
-        .toolbar {
-            ToolbarSpacer(.flexible)
-
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button("Refresh", systemImage: "arrow.clockwise", action: model.refreshStatus)
-                    .labelStyle(.iconOnly)
-                    .help("Refresh controller and permission status")
-                    .paddrAccessibilityID("toolbar", "refresh")
-            }
-        }
+        .toolbar { ConfigurationToolbar(model: model, commands: commands) }
+        .profileDialogs(model: model, commands: commands)
     }
 }

@@ -9,7 +9,7 @@ public enum MenuBarTintRole: Equatable, Sendable {
 public struct MenuBarPresentation: Equatable, Sendable {
     public let outputSummary: String
     public let controllerSummary: String
-    public let transportSummary: String
+    public let puckSummary: String
     public let profileSummary: String
     public let accessibilityLabel: String
     public let symbolName: String
@@ -38,9 +38,9 @@ public struct MenuBarPresentation: Equatable, Sendable {
         let controllerValue = controllerConnected
             ? String(localized: "Connected")
             : String(localized: "Not found")
-        let transportValue = puckConnected
-            ? String(localized: "Puck connected")
-            : String(localized: "Puck not found")
+        let puckValue = puckConnected
+            ? String(localized: "Connected")
+            : String(localized: "Not found")
 
         outputSummary = String(
             localized: "Output: \(outputValue)",
@@ -50,17 +50,17 @@ public struct MenuBarPresentation: Equatable, Sendable {
             localized: "Controller: \(controllerValue)",
             comment: "Status-menu summary for controller connection"
         )
-        transportSummary = String(
-            localized: "Transport: \(transportValue)",
-            comment: "Status-menu summary for the puck transport"
+        puckSummary = String(
+            localized: "Puck: \(puckValue)",
+            comment: "Status-menu summary for the puck"
         )
         profileSummary = String(
             localized: "Profile: \(profileName)",
             comment: "Status-menu summary for the active profile; the argument is its user-visible name"
         )
         accessibilityLabel = String(
-            localized: "Paddr. \(outputSummary). \(controllerSummary). \(transportSummary). \(profileSummary).",
-            comment: "Menu-bar status item summary in output, controller, transport, profile order"
+            localized: "Paddr. \(outputSummary). \(controllerSummary). \(puckSummary). \(profileSummary).",
+            comment: "Menu-bar status item summary in output, controller, puck, profile order"
         )
         if isReleasingOutput {
             symbolName = "arrow.down.circle.fill"
