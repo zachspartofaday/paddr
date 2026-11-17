@@ -53,7 +53,7 @@ private struct PaddrRearSelectorsLayout: Layout {
         // An unspecified proposal asks for the ideal size, not the fallback's
         // minimum row count. Match the preferred workspace so fittingSize and
         // the mounted default document agree about the one-row height.
-        let width = proposal.width ?? (PaddrStyle.Metrics.defaultWindowSize.width - 2 * PaddrStyle.Inset.chrome)
+        let width = proposal.width ?? (PaddrStyle.Metrics.defaultContentWidth)
         if let row = inlineRow(width: width, subviews: subviews) {
             return CGSize(width: width, height: row.sizes.map(\.height).max() ?? 0)
         }

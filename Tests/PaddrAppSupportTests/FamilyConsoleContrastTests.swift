@@ -41,7 +41,7 @@ final class FamilyConsoleContrastTests: XCTestCase {
     func testWorkspaceTextMeetsContrastInBothAppearances() throws {
         for name in [NSAppearance.Name.aqua, .darkAqua] {
             let appearance = try XCTUnwrap(NSAppearance(named: name))
-            for backgroundColor in [PaddrStyle.night0, PaddrStyle.night1] {
+            for backgroundColor in [PaddrStyle.canvas, PaddrStyle.workspace, PaddrStyle.controlFill] {
                 let background = try resolved(backgroundColor, appearance: appearance)
                 for textColor in [PaddrStyle.textPrimary, PaddrStyle.textSecondary, PaddrStyle.textTertiary] {
                     let foreground = try resolved(textColor, appearance: appearance)
@@ -55,7 +55,7 @@ final class FamilyConsoleContrastTests: XCTestCase {
         let lightAppearance = try XCTUnwrap(NSAppearance(named: .aqua))
         let darkAppearance = try XCTUnwrap(NSAppearance(named: .darkAqua))
         let lightBackground = SRGBColor(red: 1, green: 1, blue: 1, alpha: 1)
-        let darkBackground = try resolved(PaddrStyle.night1, appearance: darkAppearance)
+        let darkBackground = try resolved(PaddrStyle.workspace, appearance: darkAppearance)
 
         for role in [MenuBarTintRole.active, .warning] {
             let dynamicColor = try XCTUnwrap(PaddrMenuBarPalette.color(for: role))
@@ -63,13 +63,18 @@ final class FamilyConsoleContrastTests: XCTestCase {
             let darkColor = try resolved(dynamicColor, appearance: darkAppearance)
             XCTAssertGreaterThanOrEqual(lightColor.contrastRatio(with: lightBackground), 3)
             XCTAssertGreaterThanOrEqual(darkColor.contrastRatio(with: darkBackground), 3)
+
+            // The status item shares the window's status tokens; it has no palette of its own.
+            let token = role == .active ? PaddrStyle.successGreen : PaddrStyle.cautionAmber
+            XCTAssertEqual(lightColor, try resolved(token, appearance: lightAppearance))
+            XCTAssertEqual(darkColor, try resolved(token, appearance: darkAppearance))
         }
     }
 
     func testSelectedZoneBoundaryAndCaptionMeetRenderedContrastInBothAppearances() throws {
         for name in [NSAppearance.Name.aqua, .darkAqua] {
             let drawingAppearance = try XCTUnwrap(NSAppearance(named: name))
-            let background = try resolved(PaddrStyle.night1, appearance: drawingAppearance)
+            let background = try resolved(PaddrStyle.workspace, appearance: drawingAppearance)
             let boundary = try resolved(PaddrStyle.selectionBoundary, appearance: drawingAppearance)
             for contrast in [ColorSchemeContrast.standard, .increased] {
                 let appearance = PaddrAppearance(colorSchemeContrast: contrast)
@@ -92,7 +97,7 @@ final class FamilyConsoleContrastTests: XCTestCase {
     func testPointerTapBoundaryMeetsRenderedContrastInBothAppearances() throws {
         for name in [NSAppearance.Name.aqua, .darkAqua] {
             let drawingAppearance = try XCTUnwrap(NSAppearance(named: name))
-            let background = try resolved(PaddrStyle.night1, appearance: drawingAppearance)
+            let background = try resolved(PaddrStyle.workspace, appearance: drawingAppearance)
             let boundary = try resolved(PaddrStyle.selectionBoundary, appearance: drawingAppearance)
             let tapFill = try resolved(PaddrStyle.selectedTapFill, appearance: drawingAppearance)
             for contrast in [ColorSchemeContrast.standard, .increased] {
@@ -142,7 +147,7 @@ final class FamilyConsoleContrastTests: XCTestCase {
     func testStatusSemanticsRemainReadableInBothAppearances() throws {
         for name in [NSAppearance.Name.aqua, .darkAqua] {
             let appearance = try XCTUnwrap(NSAppearance(named: name))
-            let background = try resolved(PaddrStyle.night1, appearance: appearance)
+            let background = try resolved(PaddrStyle.workspace, appearance: appearance)
             for (state, tone, text) in [
                 (StatusBadgeState.ready, PaddrStyle.successGreen, PaddrStyle.successText),
                 (StatusBadgeState.critical, PaddrStyle.errorText, PaddrStyle.errorText)
@@ -200,7 +205,7 @@ final class FamilyConsoleContrastTests: XCTestCase {
     }
 }
 
-private struct SRGBColor {
+private struct SRGBColor: Equatable {
     let red: CGFloat
     let green: CGFloat
     let blue: CGFloat

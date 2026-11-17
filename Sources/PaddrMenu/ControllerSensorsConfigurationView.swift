@@ -85,7 +85,7 @@ struct ControllerSensorsConfigurationView: View {
                 if selection.wrappedValue != nil {
                     Text(ControllerSensorPresentation.gripState(touched))
                         .paddrTypography(.caption)
-                        .foregroundStyle(touched == true ? PaddrStyle.action : PaddrStyle.textSecondary)
+                        .foregroundStyle(touched == true ? StatusBadgeState.ready.textColor : PaddrStyle.textSecondary)
                         .paddrAccessibilityID("grip", identifier, "state")
                 }
             }
@@ -128,7 +128,7 @@ struct ControllerSensorsConfigurationView: View {
                         .multilineTextAlignment(.trailing)
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(gyroState.title)
-                        .foregroundStyle(gyroState.isReady ? PaddrStyle.action : PaddrStyle.warningText)
+                        .foregroundStyle(gyroState.isReady ? StatusBadgeState.ready.textColor : PaddrStyle.warningText)
                         .help(gyroState.instruction ?? gyroState.title)
                         .paddrAccessibilityID("gyro", "status")
                     Button {
@@ -215,6 +215,8 @@ struct ControllerSensorsConfigurationView: View {
         .frame(idealWidth: 320, maxWidth: 360, alignment: .leading)
     }
 
+    /// Rows read across as pairs: overall response, each axis, each inversion,
+    /// then how the controller is held. Noise threshold has no partner.
     private var tuning: some View {
         VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
             tuningPair {
@@ -228,19 +230,6 @@ struct ControllerSensorsConfigurationView: View {
                     valueText: gyro.smoothing.formatted(.percent.precision(.fractionLength(0)).locale(locale)))
             }
             tuningPair {
-                sensorSlider("Holding angle", value: $gyro.holdingAngleDegrees,
-                    range: ConfigurationLimits.gyroHoldingAngle, step: 1,
-                    valueText: ControllerSensorPresentation.angle(gyro.holdingAngleDegrees, locale: locale),
-                    showsHoldingAngleGuide: true)
-                    .help("Match how you hold the controller: 0° is flat and 90° is upright.")
-            } trailing: {
-                sensorSlider("Noise threshold", value: $gyro.noiseThreshold,
-                    range: ConfigurationLimits.gyroNoiseThreshold, step: 0.1,
-                    valueText: ControllerSensorPresentation.noise(gyro.noiseThreshold, locale: locale),
-                    readoutWidth: PaddrStyle.Width.gyroReadout)
-                    .help("Ignores rotation slower than this rate after stationary calibration.")
-            }
-            tuningPair {
                 sensorSlider("Horizontal sensitivity", value: $gyro.horizontalScale,
                     range: ConfigurationLimits.gyroHorizontalScale, step: 0.1,
                     valueText: gyro.horizontalScale.formatted(.number.precision(.fractionLength(1)).locale(locale)) + "×")
@@ -251,16 +240,29 @@ struct ControllerSensorsConfigurationView: View {
                     valueText: gyro.verticalScale.formatted(.number.precision(.fractionLength(1)).locale(locale)) + "×")
             }
             tuningPair {
-                toggleRow("Tilt for horizontal aiming", value: $gyro.horizontalUsesTilt, identifier: "horizontal-tilt",
-                    help: "Use side-to-side tilt instead of turning for horizontal aiming. Holding angle applies to both modes; up and down aiming is unchanged.")
-            } trailing: {
                 toggleRow("Invert horizontal", value: $gyro.invertHorizontal, identifier: "invert-horizontal")
-            }
-            tuningPair {
-                // Nine settings keep complete paired rows; this last left cell is empty.
-                Color.clear.frame(height: 0).accessibilityHidden(true).allowsHitTesting(false)
             } trailing: {
                 toggleRow("Invert vertical", value: $gyro.invertVertical, identifier: "invert-vertical")
+            }
+            tuningPair {
+                sensorSlider("Holding angle", value: $gyro.holdingAngleDegrees,
+                    range: ConfigurationLimits.gyroHoldingAngle, step: 1,
+                    valueText: ControllerSensorPresentation.angle(gyro.holdingAngleDegrees, locale: locale),
+                    showsHoldingAngleGuide: true)
+                    .help("Match how you hold the controller: 0° is flat and 90° is upright.")
+            } trailing: {
+                toggleRow("Tilt for horizontal aiming", value: $gyro.horizontalUsesTilt, identifier: "horizontal-tilt",
+                    help: "Use side-to-side tilt instead of turning for horizontal aiming. Holding angle applies to both modes; up and down aiming is unchanged.")
+            }
+            tuningPair {
+                sensorSlider("Noise threshold", value: $gyro.noiseThreshold,
+                    range: ConfigurationLimits.gyroNoiseThreshold, step: 0.1,
+                    valueText: ControllerSensorPresentation.noise(gyro.noiseThreshold, locale: locale),
+                    readoutWidth: PaddrStyle.Width.gyroReadout)
+                    .help("Ignores rotation slower than this rate after stationary calibration.")
+            } trailing: {
+                // The ninth setting ends the grid in reading order; its partner cell is empty.
+                Color.clear.frame(height: 0).accessibilityHidden(true).allowsHitTesting(false)
             }
         }
     }
@@ -362,7 +364,7 @@ private struct ControllerSensorSummaryLayout: Layout {
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width.flatMap { $0.isFinite ? max(0, $0) : nil }
-            ?? (PaddrStyle.Metrics.defaultWindowSize.width - 2 * PaddrStyle.Inset.chrome)
+            ?? (PaddrStyle.Metrics.defaultContentWidth)
         if let row = inlineRow(width: width, subviews: subviews) {
             return CGSize(width: width, height: row.sizes.map(\.height).max() ?? 0)
         }
@@ -410,14 +412,13 @@ private struct ControllerSensorTuningCell<Content: View>: View {
     }
 }
 
-/// A real button keeps the explanatory copy available to keyboard and assistive
-/// input as well as hover, without leaving a permanent paragraph in the editor.
+/// The sensor headings' information button: one paragraph, preceded by the
+/// current gyro instruction when there is one.
 struct ControllerSensorInfoButton: View {
     let title: LocalizedStringResource
     let message: LocalizedStringResource
     let identifier: String
     var currentInstruction: LocalizedStringResource?
-    @State private var isPresented = false
 
     private var helpText: String {
         guard let currentInstruction else { return String(localized: message) }
@@ -428,28 +429,11 @@ struct ControllerSensorInfoButton: View {
     }
 
     var body: some View {
-        Button { isPresented.toggle() } label: {
-            Label(title, systemImage: "info.circle")
-                .labelStyle(.iconOnly)
-                .paddrTypography(.caption)
-                .foregroundStyle(PaddrStyle.textSecondary)
-        }
-        .buttonStyle(.borderless)
-        .controlSize(.small)
-        .accessibilityLabel(title)
-        .help(Text(verbatim: helpText))
-        .paddrAccessibilityID(identifier)
-        .popover(isPresented: $isPresented, arrowEdge: .bottom) {
-            VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
-                Text(verbatim: helpText)
-                    .paddrTypography(.rowLabel)
-                    .fixedSize(horizontal: false, vertical: true)
-                Button("Done") { isPresented = false }
-                    .paddrActionButton(.secondary)
-                    .keyboardShortcut(.cancelAction)
-            }
-            .padding(PaddrStyle.Inset.section)
-            .frame(idealWidth: 320, maxWidth: 360, alignment: .leading)
+        PaddrInfoButton(title: title, help: helpText,
+            identifier: PaddrAccessibility.identifier(identifier)) {
+            Text(verbatim: helpText)
+                .paddrTypography(.rowLabel)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

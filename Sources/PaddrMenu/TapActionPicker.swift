@@ -5,7 +5,7 @@ struct TapActionPicker: View {
     @Binding var selection: String?
 
     var body: some View {
-        PaddrSettingsRow(title: "Touch tap", systemImage: "hand.tap") {
+        PaddrSettingsRow(title: "Touch tap") {
             OptionalOutputBindingPicker(selection: $selection, title: "Touch tap action")
         }
         .help("Click a mouse button or emit a keyboard key after a short touch and release.")

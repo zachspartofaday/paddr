@@ -1,5 +1,11 @@
 # Live interface captures
 
+These captures predate the unreleased 2026-11 layout. They show the earlier
+profile band, enclosing workspace card and footer band; the current window puts
+profile controls and Save & Apply in the toolbar and floats connection, battery
+and output in a bar over the workspace. They have not been refreshed, because a
+refresh needs the permission-approved running app with the controller connected.
+
 These four product screenshots were refreshed on 2026-10-29 from the already
 running, permission-approved Developer ID preview at
 `/tmp/paddr-gyro-axis-gain-20261029/preview/Paddr.app`, on macOS 27.2 build `26B118`.

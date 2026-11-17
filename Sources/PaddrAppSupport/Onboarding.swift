@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 package enum OnboardingPresentationTrigger: Sendable {
     case automatic
@@ -46,24 +47,46 @@ package final class OnboardingPreferences {
     }
 }
 
-package enum OnboardingWindowAction: Equatable, Sendable {
-    case create
-    case focusExisting
-}
+/// Whether the setup checklist is showing in the configuration window. Automatic
+/// presentation happens once; Help can always reopen it.
+@MainActor
+@Observable
+package final class SetupGuidePresentation {
+    package private(set) var isPresented = false
+    /// Counts presentations, so the window can bring the checklist into view
+    /// each time it is asked for, including while it is already showing.
+    package private(set) var presentationCount = 0
+    @ObservationIgnored private let preferences: OnboardingPreferences
 
-package struct OnboardingWindowPresentation: Equatable, Sendable {
-    package private(set) var isVisible = false
-
-    package init() {}
-
-    package mutating func requestPresentation() -> OnboardingWindowAction {
-        guard !isVisible else { return .focusExisting }
-        isVisible = true
-        return .create
+    package init(preferences: OnboardingPreferences = OnboardingPreferences()) {
+        self.preferences = preferences
     }
 
-    package mutating func didClose() {
-        isVisible = false
+    package func present(trigger: OnboardingPresentationTrigger) {
+        guard OnboardingEligibility.shouldPresent(
+            trigger: trigger,
+            hasRecordedDismissal: preferences.hasRecordedDismissal
+        ) else { return }
+        isPresented = true
+        presentationCount += 1
+    }
+
+    /// Setup finished, so it is not offered automatically again. The checklist
+    /// stays up for the person still reading it.
+    package func recordCompletion() {
+        preferences.record(.completed)
+    }
+
+    /// Closing the window ends an unfinished presentation, as closing the
+    /// separate guide window once did.
+    package func windowDidClose() {
+        guard isPresented else { return }
+        dismiss(as: .skipped)
+    }
+
+    package func dismiss(as dismissal: OnboardingDismissal) {
+        preferences.record(dismissal)
+        isPresented = false
     }
 }
 
@@ -78,25 +101,5 @@ package struct CompanionWindowState: Equatable, Sendable {
 
     package var requiresRegularActivation: Bool {
         isVisible || isMiniaturized
-    }
-}
-
-package struct OnboardingPager: Equatable, Sendable {
-    package static let pageCount = 4
-
-    package private(set) var pageIndex = 0
-
-    package init() {}
-
-    package var pageNumber: Int { pageIndex + 1 }
-    package var canGoBack: Bool { pageIndex > 0 }
-    package var isLastPage: Bool { pageIndex == Self.pageCount - 1 }
-
-    package mutating func advance() {
-        pageIndex = min(pageIndex + 1, Self.pageCount - 1)
-    }
-
-    package mutating func goBack() {
-        pageIndex = max(pageIndex - 1, 0)
     }
 }

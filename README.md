@@ -15,9 +15,9 @@ Turn the trackpads into a mouse, scroll surface, or a set of keyboard shortcuts.
 Use one pad for movement and the other for scrolling, or turn either into a pointer. Both editors stay visible together, so you can shape the whole setup in one place.
 
 - **Pointer and scroll:** tune each pad independently, including acceleration, smoothing and touch taps.
-- **Button Zones:** choose from five layouts, from two large regions to a nine-button grid. Give each area its own key or mouse action.
+- **Button Zones:** choose from five layouts, from two large regions to a nine-button grid. Give each zone its own key or mouse action.
 - **Rear buttons and grip touch:** map L4, L5, R4 and R5, plus independent left and right grip-contact actions. Grips sense touch, not squeeze pressure.
-- **Profiles:** save complete setups and switch from the window or menu bar. Edits stay a draft until you apply them.
+- **Profiles:** save complete setups and switch from the window toolbar or menu bar. Edits stay a draft until you apply them, and **Revert to Saved** discards a draft you don't want.
 
 ## Fine aiming, with a touch
 
@@ -31,24 +31,24 @@ The starting tuning uses 10 pt/° sensitivity, 2.5× gain on both axes and a 45�
 
 ## At home on your Mac
 
-A compact workspace, a live battery indicator, and tuning that opens when you need it. The window fits its contents and scrolls on smaller screens. Light mode uses blue accents; dark mode takes its teal from the Compass icon.
+A compact workspace, a live battery indicator, and tuning that opens when you need it. Profiles and **Save & Apply** sit in the window toolbar; connection, battery and **Enable output** float in a Liquid Glass bar over the workspace. The window fits its contents and scrolls on smaller screens. Light mode uses blue accents; dark mode takes its teal from the Compass icon.
 
 ![Paddr's light workspace with the same saved mappings and calibrated gyro](docs/images/paddr-profile-overview-light.png)
 
 Paddr works with directly launched games such as **World of Warcraft**. It sends ordinary mouse, scroll and keyboard events while Apple's native controller service handles buttons, sticks and triggers. Steam, Steam Input and Steam Overlay are not required.
 
-Game support varies, especially for captured mouse aiming and games using raw controller input. Paddr reads the puck's reports without changing controller firmware or native gamepad mappings. [Capture notes](docs/images/README.md) record their source and state.
+Game support varies, especially for captured mouse aiming and games using raw controller input. Paddr reads the puck's reports without changing controller firmware or native gamepad mappings. The screenshots predate the toolbar and floating bar; [capture notes](docs/images/README.md) record their source and state.
 
 ## Install and get started
 
 You'll need an **Apple silicon Mac running macOS 27 or later** and a **Steam Controller 2 connected through its puck**. The maintainer has confirmed released macOS 27 and macOS 27.2 release candidate. Bluetooth and direct USB remain unvalidated.
 
 1. Download `Paddr.zip` from [Releases](https://github.com/zachspartofaday/Paddr/releases/latest), unzip it, and move `Paddr.app` to Applications.
-2. Launch Paddr and grant **Input Monitoring** to read the controller and **Accessibility** to send mapped input. The guide and **Open setup** link to the relevant macOS settings.
+2. Launch Paddr and follow the setup checklist in its window. Grant **Input Monitoring** to read the controller and **Accessibility** to send mapped input; the checklist and **Open Setup…** link to the relevant macOS settings.
 3. Choose **Duplicate to Edit** for the built-in Default profile, configure your mappings, and choose **Save & Apply**.
 4. Turn on **Enable output**, then release the pads, assigned rear buttons and assigned grips so output can activate. For gyro aiming, choose **Calibrate** and follow the hold-still prompt.
 
-Saving does not enable output. Closing the window leaves Paddr in the menu bar; reopen the guide from Help at any time.
+Saving does not enable output. Closing the window leaves Paddr in the menu bar; reopen the setup checklist from **Paddr Guide…** in the menu-bar menu, or from **Help > Paddr Guide** while the window is open.
 
 ## Guides and development
 

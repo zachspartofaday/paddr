@@ -36,10 +36,11 @@ struct PaddrAppearance: Equatable {
         )
     }
 
-    /// Controls use native glass only when neither setting requires an opaque boundary.
-    var usesControlGlass: Bool { !usesOpaqueFallback && !hasIncreasedContrast }
+    /// The bars that float above the workspace use Liquid Glass only when neither
+    /// setting asks for an opaque boundary.
+    var usesChromeGlass: Bool { !usesOpaqueFallback && !hasIncreasedContrast }
 
-    /// Accent surfaces are always flat, including disabled primary actions.
+    /// Accent surfaces are flat, including disabled primary actions.
     func accentFill(enabled: Bool) -> Color {
         enabled ? PaddrStyle.controlTint : PaddrStyle.boundary
     }

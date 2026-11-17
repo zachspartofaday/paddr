@@ -52,15 +52,15 @@ struct ButtonZoneConfigurationView: View {
 
     private var inspector: some View {
         VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
-            PaddrSettingsRow(title: "Layout", systemImage: "square.grid.2x2") {
+            PaddrSettingsRow(title: "Layout") {
                 areaLayoutPicker.disabled(!isEditable)
             }
 
-            PaddrSettingsRow(title: "Selected area", systemImage: selectedZone.systemImage) {
+            PaddrSettingsRow(title: "Selected zone") {
                 selectedAreaPicker
             }
 
-            PaddrSettingsRow(title: "Action", systemImage: "keyboard") {
+            PaddrSettingsRow(title: "Action") {
                 OutputBindingPicker(
                     selection: $configuration[bindingFor: selectedZone],
                     width: PaddrStyle.Width.control
@@ -69,7 +69,7 @@ struct ButtonZoneConfigurationView: View {
             }
 
             if configuration.zoneLayout != .gridNine {
-                PaddrSettingsRow(title: "Neutral zone", systemImage: "circle.dotted") {
+                PaddrSettingsRow(title: "Neutral zone") {
                     HStack(spacing: PaddrStyle.Spacing.s2) {
                         Slider(
                             value: $configuration.dpadDeadzone.quantized(
@@ -99,19 +99,19 @@ struct ButtonZoneConfigurationView: View {
     }
 
     private var areaLayoutPicker: some View {
-        PaddrMenuPicker(title: "Area layout", selection: $configuration.zoneLayout,
+        PaddrMenuPicker(title: "Zone layout", selection: $configuration.zoneLayout,
             options: PadZoneLayout.allCases.map {
                 .init(value: $0, title: String(localized: $0.displayName))
             })
-        .help("Choose how the trackpad is divided into button areas.")
+        .help("Choose how the trackpad is divided into zones.")
     }
 
     private var selectedAreaPicker: some View {
-        PaddrMenuPicker(title: "Selected area", selection: $selectedZone,
+        PaddrMenuPicker(title: "Selected zone", selection: $selectedZone,
             options: configuration.zoneLayout.zones.map {
                 .init(value: $0, title: String(localized: $0.title), systemImage: $0.systemImage)
             }, accessibilityIdentifier: PaddrAccessibility.identifier("zones", "selected-area"))
-        .help("Choose the trackpad area to configure.")
+        .help("Choose the zone to configure.")
     }
 }
 

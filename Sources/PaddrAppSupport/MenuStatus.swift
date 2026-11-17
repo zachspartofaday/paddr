@@ -88,7 +88,7 @@ public enum MenuStatus: Equatable, Sendable {
         case .requestingAccessibility: "Complete the Accessibility prompt, then return to Paddr."
         case .accessibilitySettings: "Enable Paddr in Accessibility, then return to the app."
         case .requestingInputMonitoring: "Complete the Input Monitoring prompt, then return to Paddr."
-        case .inputMonitoringSettings: "Enable Paddr in Input Monitoring (add it with + if it isn't listed), then relaunch Paddr."
+        case .inputMonitoringSettings: "Enable Paddr in Input Monitoring (add it with + if it isn’t listed), then relaunch Paddr."
         case .releasingOutputs: "Releasing mapped keys and mouse buttons…"
         case .stopped: "Output stopped."
         case let .failure(failure): failure.message

@@ -13,6 +13,13 @@ The later operator-approved [bespoke controls plan](PADDR_BESPOKE_CONTROLS_PLAN.
 supersedes this record's native-widget-only styling and 30-point pad-radius guidance.
 It preserves the palette, paired editors, workflow, footer and automatic sizing.
 
+Current refinement, 2026-11-17: the separate guide window is replaced by a setup
+checklist inside the configuration window, driven by the readiness next action
+and reopened from Help > Paddr Guide. Profile controls and Save & Apply move to
+the window toolbar, the footer becomes a floating bar, and the workspace card is
+removed; see the note at the top of the bespoke controls plan. Statements below
+about the guide window, the editing header and the footer band remain as history.
+
 ## Product brief
 
 Paddr helps a Steam Controller 2 owner turn two trackpads and four rear buttons

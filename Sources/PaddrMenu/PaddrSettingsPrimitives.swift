@@ -61,7 +61,6 @@ struct PaddrInsetDivider: View {
 struct PaddrSettingsRow<Control: View>: View {
     @Environment(\.paddrStacksSettingLabels) private var stacksLabels
     let title: LocalizedStringResource
-    let systemImage: String
     /// Picker rows and slider rows need different label columns; see `PaddrStyle.Width`.
     var labelWidth: CGFloat? = PaddrStyle.Width.labelColumn
     @ViewBuilder let control: () -> Control

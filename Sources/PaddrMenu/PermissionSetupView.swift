@@ -1,7 +1,7 @@
 import PaddrAppSupport
 import SwiftUI
 
-/// One permission flow is shared by the configuration window and the guide.
+/// One permission flow is shared by the status bar's setup sheet and the setup checklist.
 struct PermissionSetupContent: View {
     @Bindable var model: PaddrMenuModel
     var identifierPrefix: String = "permissions"

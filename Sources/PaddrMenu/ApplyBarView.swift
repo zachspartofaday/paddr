@@ -11,8 +11,13 @@ enum PaddrStatusKind: String, CaseIterable, Identifiable {
     var id: Self { self }
 }
 
+/// The status bar that floats over the bottom of the workspace: connection
+/// state, the next step, and the output switch. It is one of the window's two
+/// Liquid Glass surfaces; the toolbar is the other.
 struct ApplyBarView: View {
     @Bindable var model: PaddrMenuModel
+    /// The setup checklist carries the permission controls while it is showing.
+    var showsPermissionNotice = true
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var availableWidth: CGFloat = 0
     @State private var showsConnectionDetails = false
@@ -125,61 +130,65 @@ struct ApplyBarView: View {
             ? AnyLayout(HStackLayout(alignment: .top, spacing: PaddrStyle.Spacing.s5))
             : AnyLayout(VStackLayout(alignment: .leading, spacing: PaddrStyle.Spacing.s3))
 
-        VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
-            if !model.hasSystemAccess {
-                permissionNotice
-                Divider()
-            }
-            layout {
-                VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s2) {
-                    hardwareSummary
-                    if showsStatusMessage { statusMessage }
+        // One container lets the notice and the status row share sampling and
+        // merge as a single piece of glass instead of stacking two effects.
+        GlassEffectContainer(spacing: PaddrStyle.Spacing.s2) {
+            VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s2) {
+                if !model.hasSystemAccess, showsPermissionNotice {
+                    permissionNotice.paddrBarSurface()
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                layout {
+                    VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s2) {
+                        hardwareSummary
+                        if showsStatusMessage { statusMessage }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(alignment: .trailing, spacing: PaddrStyle.Spacing.s1) {
-                    HStack(spacing: PaddrStyle.Spacing.s3) {
-                        Text(outputValue)
-                            .paddrTypography(.caption)
-                            .foregroundStyle(model.readiness.output == .active ? PaddrStyle.activeText
-                                : model.readiness.output == .idle ? PaddrStyle.warningText : PaddrStyle.textSecondary)
-                            .accessibilityLabel(Text("Output status"))
-                            .accessibilityValue(Text(outputValue))
-                            .paddrAccessibilityID("status", "output")
-                        HStack(spacing: PaddrStyle.Spacing.s2) {
-                            // The visible label shares pointer activation with
-                            // the switch, which owns the single named AX target.
-                            Button("Enable output") { model.isEnabled.toggle() }
-                                .buttonStyle(.plain)
-                                .paddrTypography(.rowLabel)
-                                .focusable(false)
-                                .accessibilityHidden(true)
-                            PaddrTuningSwitch(title: outputToggleAccessibilityLabel, isOn: $model.isEnabled,
-                                accessibilityIdentifier: outputToggleAccessibilityIdentifier,
-                                help: outputToggleHelp)
-                                // Align the drawn track, excluding its invisible
-                                // focus/hit reservation, with Save & Apply.
-                                .padding(.trailing, -(PaddrStyle.Width.toggle - PaddrStyle.Control.TuningSwitch.track.width) / 2)
+                    VStack(alignment: .trailing, spacing: PaddrStyle.Spacing.s1) {
+                        HStack(spacing: PaddrStyle.Spacing.s3) {
+                            Text(outputValue)
+                                .paddrTypography(.caption)
+                                .foregroundStyle(model.readiness.output == .active ? PaddrStyle.activeText
+                                    : model.readiness.output == .idle ? PaddrStyle.warningText : PaddrStyle.textSecondary)
+                                .accessibilityLabel(Text("Output status"))
+                                .accessibilityValue(Text(outputValue))
+                                .paddrAccessibilityID("status", "output")
+                            HStack(spacing: PaddrStyle.Spacing.s2) {
+                                // The visible label shares pointer activation with
+                                // the switch, which owns the single named AX target.
+                                Button("Enable output") { model.isEnabled.toggle() }
+                                    .buttonStyle(.plain)
+                                    .paddrTypography(.rowLabel)
+                                    .focusable(false)
+                                    .accessibilityHidden(true)
+                                PaddrTuningSwitch(title: outputToggleAccessibilityLabel, isOn: $model.isEnabled,
+                                    accessibilityIdentifier: outputToggleAccessibilityIdentifier,
+                                    help: outputToggleHelp)
+                                    // Align the drawn track, excluding its invisible
+                                    // focus/hit reservation, with the workspace's trailing edge.
+                                    .padding(.trailing, -(PaddrStyle.Width.toggle - PaddrStyle.Control.TuningSwitch.track.width) / 2)
+                            }
+                            .disabled(!model.canToggleOutput)
+                            .help(Text(outputToggleHelp))
                         }
-                        .disabled(!model.canToggleOutput)
-                        .help(Text(outputToggleHelp))
+                        .frame(minHeight: PaddrStyle.Control.height)
+                        .fixedSize(horizontal: false, vertical: true)
+                        if showsPendingSaveHint {
+                            Text("Turning on saves your pending changes.")
+                                .paddrTypography(.caption)
+                                .foregroundStyle(PaddrStyle.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .paddrAccessibilityID("toolbar", "output", "save-hint")
+                        }
                     }
-                    .fixedSize(horizontal: false, vertical: true)
-                    if showsPendingSaveHint {
-                        Text("Turning on saves your pending changes.")
-                            .paddrTypography(.caption)
-                            .foregroundStyle(PaddrStyle.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .paddrAccessibilityID("toolbar", "output", "save-hint")
-                    }
+                    .frame(maxWidth: usesInlineLayout ? nil : .infinity, alignment: .trailing)
                 }
-                .frame(maxWidth: usesInlineLayout ? nil : .infinity, alignment: .trailing)
+                .paddrBarSurface()
             }
         }
-        .padding(.horizontal, PaddrStyle.Inset.chrome)
-        .padding(.vertical, PaddrStyle.Spacing.s4)
-        .background(PaddrStyle.canvas)
-        .overlay(alignment: .top) { Divider() }
+        .padding(.horizontal, PaddrStyle.Bar.margin)
+        .padding(.top, PaddrStyle.Spacing.s2)
+        .padding(.bottom, PaddrStyle.Bar.margin)
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width in
             guard width > 0 else { return }
             availableWidth = width
@@ -223,7 +232,7 @@ struct ApplyBarView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
             .paddrAccessibilityID("permissions", "summary")
-            Button("Open setup…") { showsPermissionSetup = true }
+            Button("Open Setup…") { showsPermissionSetup = true }
                 .paddrActionButton(.secondary)
                 .fixedSize()
                 .paddrAccessibilityID("permissions", "open-setup")
@@ -236,6 +245,8 @@ struct ApplyBarView: View {
         let showsBattery = model.controllerConnected
         let battery = batteryPresentation
         return PaddrWrappingHStack(horizontalSpacing: PaddrStyle.Spacing.s4, verticalSpacing: PaddrStyle.Spacing.s2) {
+            // A control shape separates the one thing here that opens something
+            // from the read-only battery value beside it.
             Button { showsConnectionDetails = true } label: {
                 HStack(spacing: PaddrStyle.Spacing.s2) {
                     Label(controllerSummary, systemImage: "gamecontroller")
@@ -245,23 +256,14 @@ struct ApplyBarView: View {
                         .foregroundStyle(PaddrStyle.textSecondary)
                         .accessibilityHidden(true)
                 }
-                .padding(.vertical, PaddrStyle.Spacing.s1)
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .paddrActionButton(.secondary)
+            .fixedSize()
             .accessibilityLabel("Connection details")
             .accessibilityValue(Text(controllerSummary))
             .help("Connection details")
             .paddrAccessibilityID("status", "details")
-            .popover(isPresented: $showsConnectionDetails) {
-                VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s2) {
-                    Text("Connection details")
-                        .paddrTypography(.sectionTitle)
-                        .accessibilityAddTraits(.isHeader)
-                    statusCells
-                }
-                .padding(PaddrStyle.Spacing.s4)
-            }
+            .popover(isPresented: $showsConnectionDetails) { connectionDetails }
             if showsBattery {
                 Label {
                     Text("Battery \(battery.compactValue)")
@@ -271,8 +273,8 @@ struct ApplyBarView: View {
                 }
                 .labelStyle(.titleAndIcon)
                 .fixedSize()
-                // Match the connection button's inset in this top-aligned wrapping row.
-                .padding(.vertical, PaddrStyle.Spacing.s1)
+                // Centre on the connection button in this top-aligned wrapping row.
+                .frame(minHeight: PaddrStyle.Control.height)
                 .foregroundStyle(batteryState.textColor)
                 .accessibilityLabel("Battery")
                 .accessibilityValue(Text(verbatim: battery.accessibilityValue))
@@ -303,32 +305,77 @@ struct ApplyBarView: View {
             .accessibilityLabel(model.status.message)
             .help(Text(model.status.message))
         } else {
-            Label(
-                model.readiness.nextAction.title,
-                systemImage: model.readiness.nextAction.systemImage
-            )
-            .paddrTypography(.caption)
-            .foregroundStyle(
-                model.readiness.nextAction == .releaseTrackpads
-                    ? PaddrStyle.warningText
-                    : PaddrStyle.textSecondary
-            )
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(model.readiness.nextAction.title))
-            .help(Text(model.readiness.nextAction.title))
-            .paddrAccessibilityID("status", "next-action")
+            if showsRefresh {
+                // The instruction names this control, so it sits beside it, and
+                // drops below when the line would otherwise run out of the bar.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: PaddrStyle.Spacing.s3) {
+                        nextActionLabel
+                        refreshButton.paddrAccessibilityID("status", "refresh")
+                    }
+                    VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s2) {
+                        nextActionLabel
+                        refreshButton.paddrAccessibilityID("status", "refresh")
+                    }
+                }
+            } else {
+                nextActionLabel
+            }
         }
     }
 
-    @ViewBuilder private var statusCells: some View {
-        ForEach(PaddrStatusKind.allCases) { statusCell(for: $0) }
+    private var nextActionLabel: some View {
+        Label(
+            model.readiness.nextAction.title,
+            systemImage: model.readiness.nextAction.systemImage
+        )
+        .paddrTypography(.caption)
+        .foregroundStyle(
+            model.readiness.nextAction == .releaseTrackpads
+                ? PaddrStyle.warningText
+                : PaddrStyle.textSecondary
+        )
+        // Wraps instead of running past the bar when the line is too long.
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(model.readiness.nextAction.title))
+        .help(Text(model.readiness.nextAction.title))
+        .paddrAccessibilityID("status", "next-action")
     }
 
-    @ViewBuilder private func statusCell(for kind: PaddrStatusKind) -> some View {
+    /// Only a missing puck that nothing is polling for needs a manual refresh.
+    var showsRefresh: Bool { model.readiness.nextAction == .refreshPuck }
+
+    private var refreshButton: some View {
+        Button("Refresh", action: model.refreshStatus)
+            .paddrActionButton(.secondary)
+            .fixedSize()
+            .help("Refresh controller and permission status")
+    }
+
+    private var connectionDetails: some View {
+        VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
+            Text("Connection details")
+                .paddrTypography(.sectionTitle)
+                .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s2) {
+                statusRows
+            }
+            refreshButton.paddrAccessibilityID("status", "details", "refresh")
+        }
+        .padding(PaddrStyle.Spacing.s4)
+        .foregroundStyle(PaddrStyle.textPrimary)
+    }
+
+    @ViewBuilder private var statusRows: some View {
+        ForEach(PaddrStatusKind.allCases) { statusRow(for: $0) }
+    }
+
+    @ViewBuilder private func statusRow(for kind: PaddrStatusKind) -> some View {
         switch kind {
         case .access:
             let isReady = model.readiness.access == .ready
-            StatusCell(
+            StatusDetailRow(
                 title: LocalizedStringResource("Access"),
                 value: isReady
                     ? LocalizedStringResource("Ready")
@@ -337,12 +384,11 @@ struct ApplyBarView: View {
                     ? "checkmark.shield.fill"
                     : "exclamationmark.shield",
                 state: isReady ? .ready : .problem,
-                isCompact: false,
                 identifier: "access"
             )
         case .puck:
             let isReady = model.readiness.puck == .connected
-            StatusCell(
+            StatusDetailRow(
                 title: LocalizedStringResource("Puck"),
                 value: isReady
                     ? LocalizedStringResource("Connected")
@@ -351,33 +397,30 @@ struct ApplyBarView: View {
                     ? "cable.connector"
                     : "cable.connector.slash",
                 state: isReady ? .ready : .problem,
-                isCompact: false,
                 identifier: "puck"
             )
         case .controller:
             let isReady = model.readiness.controller == .connected
-            StatusCell(
+            StatusDetailRow(
                 title: LocalizedStringResource("Controller"),
                 value: isReady
                     ? LocalizedStringResource("Connected")
                     : LocalizedStringResource("Not found"),
                 systemImage: isReady ? "gamecontroller.fill" : "gamecontroller",
                 state: isReady ? .ready : .problem,
-                isCompact: false,
                 identifier: "controller"
             )
         case .output:
             let isReady = model.readiness.output == .active
-            StatusCell(
+            StatusDetailRow(
                 title: LocalizedStringResource("Output"),
                 value: outputValue,
                 systemImage: outputSystemImage,
                 state: isReady ? .active : .neutral,
-                isCompact: false,
                 identifier: "output"
             )
         case .battery:
-            StatusCell(
+            StatusDetailRow(
                 title: LocalizedStringResource("Battery"),
                 value: batteryPresentation.compactValue,
                 systemImage: batteryPresentation.systemImage,

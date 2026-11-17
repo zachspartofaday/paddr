@@ -12,6 +12,8 @@ public struct PaddrReadinessInput: Equatable, Sendable {
     public let isReleasingOutput: Bool
     public let canToggleOutput: Bool
     public let isPreparingActivation: Bool
+    /// The reconnect probe is already polling for the puck.
+    public let isSearchingForPuck: Bool
 
     public init(
         isInitialized: Bool,
@@ -24,7 +26,8 @@ public struct PaddrReadinessInput: Equatable, Sendable {
         isRunning: Bool,
         isReleasingOutput: Bool,
         canToggleOutput: Bool,
-        isPreparingActivation: Bool = false
+        isPreparingActivation: Bool = false,
+        isSearchingForPuck: Bool = false
     ) {
         self.isInitialized = isInitialized
         self.puckConnected = puckConnected
@@ -37,6 +40,7 @@ public struct PaddrReadinessInput: Equatable, Sendable {
         self.isReleasingOutput = isReleasingOutput
         self.canToggleOutput = canToggleOutput
         self.isPreparingActivation = isPreparingActivation
+        self.isSearchingForPuck = isSearchingForPuck
     }
 }
 
@@ -71,6 +75,9 @@ public enum PaddrAccessReadiness: Equatable, Sendable {
 
 public enum PaddrReadinessNextAction: Equatable, Sendable {
     case waitForInitialization
+    /// The puck is missing and the reconnect probe will find it once it is plugged in.
+    case connectPuck
+    /// The puck is missing and nothing is polling for it, so a manual refresh is needed.
     case refreshPuck
     case requestInputMonitoring
     case connectController
@@ -84,6 +91,7 @@ public enum PaddrReadinessNextAction: Equatable, Sendable {
     public var title: LocalizedStringResource {
         switch self {
         case .waitForInitialization: "Preparing Paddr"
+        case .connectPuck: "Connect the puck"
         case .refreshPuck: "Connect the puck, then refresh"
         case .requestInputMonitoring: "Allow Input Monitoring"
         case .connectController: "Connect the controller through the puck"
@@ -99,7 +107,7 @@ public enum PaddrReadinessNextAction: Equatable, Sendable {
     public var systemImage: String {
         switch self {
         case .waitForInitialization: "hourglass"
-        case .refreshPuck: "cable.connector"
+        case .connectPuck, .refreshPuck: "cable.connector"
         case .requestInputMonitoring: "eye"
         case .connectController: "gamecontroller"
         case .requestAccessibility: "accessibility"
@@ -136,6 +144,10 @@ public struct PaddrReadinessResolution: Equatable, Sendable {
     public let output: PaddrOutputReadiness
     public let access: PaddrAccessReadiness
     public let nextAction: PaddrReadinessNextAction
+    /// What still has to be connected, whether or not that is the next action:
+    /// the puck first, because the controller connects through it. `nil` once
+    /// both are connected.
+    public let connectionAction: PaddrReadinessNextAction?
     public let outputDisabledReason: PaddrOutputDisabledReason?
 }
 
@@ -162,6 +174,17 @@ public enum PaddrReadinessResolver {
             output = .idle
         }
 
+        // Initialization probes for the puck itself, so it never needs a manual refresh.
+        let missingPuckAction: PaddrReadinessNextAction =
+            input.isSearchingForPuck || !input.isInitialized ? .connectPuck : .refreshPuck
+        let connectionAction: PaddrReadinessNextAction? = if !input.puckConnected {
+            missingPuckAction
+        } else if !input.controllerConnected {
+            .connectController
+        } else {
+            nil
+        }
+
         let nextAction: PaddrReadinessNextAction
         if !input.isInitialized {
             nextAction = .waitForInitialization
@@ -171,7 +194,7 @@ public enum PaddrReadinessResolver {
             // observation. Metadata writes beside an enabled session do not.
             nextAction = .waitForProfileOperation
         } else if !input.puckConnected {
-            nextAction = .refreshPuck
+            nextAction = missingPuckAction
         } else if !input.inputMonitoringGranted {
             nextAction = .requestInputMonitoring
         } else if !input.controllerConnected {
@@ -206,6 +229,7 @@ public enum PaddrReadinessResolver {
             output: output,
             access: access,
             nextAction: nextAction,
+            connectionAction: connectionAction,
             outputDisabledReason: disabledReason
         )
     }

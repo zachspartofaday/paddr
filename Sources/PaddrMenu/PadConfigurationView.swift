@@ -56,6 +56,81 @@ enum PointerTuningPresentation {
             ? String(localized: "No additional tuning enabled", locale: locale)
             : values.formatted(.list(type: .and).locale(locale))
     }
+
+    /// A tuning setting's name and the sentence that explains it.
+    struct Explanation {
+        let title: LocalizedStringResource
+        let detail: LocalizedStringResource
+    }
+
+    /// The settings inside the Pointer tuning disclosure, in display order.
+    static let explainedSettings: [PointerSetting] = [
+        .acceleration, .smoothing, .tapStabilization, .tapRadius, .pointerTracking
+    ]
+
+    /// One explanation per tuning setting, shown as the row's tooltip and in the
+    /// information popover that keyboard and assistive input can reach.
+    static func explanation(for setting: PointerSetting) -> Explanation? {
+        switch setting {
+        case .acceleration:
+            Explanation(title: "Pointer acceleration",
+                detail: "Higher values increase fast-motion gain. Turning acceleration off keeps your strength setting.")
+        case .smoothing:
+            Explanation(title: "Pointer smoothing",
+                detail: "Smooths slow pointer jitter while preserving fast movement. The slider controls smoothing strength.")
+        case .tapStabilization:
+            Explanation(title: "Tap stabilization",
+                detail: "Keeps the cursor fixed during a tap. Moving beyond the tolerance cancels the tap and resumes pointer tracking.")
+        case .tapRadius:
+            Explanation(title: "Center tap radius",
+                detail: "The radius starts at the pad center. Leaving it cancels the tap. At 0%, taps use the maximum-movement limit.")
+        case .pointerTracking:
+            Explanation(title: "Track pointer inside tap radius",
+                detail: "When on, pointer movement continues inside and across the center tap radius. When off, the radius also acts as a pointer dead zone.")
+        case .sensitivity, .tapAction:
+            nil
+        }
+    }
+}
+
+/// Where the Pointer tuning heading text sits, so its information button can
+/// centre on it from outside the disclosure label.
+private struct PointerTuningHeadingBoundsKey: PreferenceKey {
+    static var defaultValue: Anchor<CGRect>? { nil }
+
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
+        value = value ?? nextValue()
+    }
+}
+
+/// Explains every Pointer tuning setting from a control that takes keyboard
+/// focus; the same sentences remain on each row as hover tooltips.
+struct PointerTuningInfoButton: View {
+    let side: PadSide
+
+    var body: some View {
+        PaddrInfoButton(
+            title: "About pointer tuning",
+            help: String(localized: "Explains each pointer tuning setting."),
+            identifier: PaddrAccessibility.identifier("pad", side.rawValue, "pointer-tuning-info")
+        ) {
+            VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s3) {
+                ForEach(PointerTuningPresentation.explainedSettings, id: \.self) { setting in
+                    if let explanation = PointerTuningPresentation.explanation(for: setting) {
+                        VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s1) {
+                            Text(explanation.title)
+                                .paddrTypography(.sectionLabel)
+                            Text(explanation.detail)
+                                .paddrTypography(.caption)
+                                .foregroundStyle(PaddrStyle.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+            }
+        }
+    }
 }
 
 struct PadConfigurationView: View {
@@ -165,6 +240,7 @@ struct PadConfigurationView: View {
                         } label: {
                             Text("Pointer tuning")
                                 .paddrTypography(.sectionLabel)
+                                .anchorPreference(key: PointerTuningHeadingBoundsKey.self, value: .bounds) { $0 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
                         }
@@ -176,6 +252,18 @@ struct PadConfigurationView: View {
                     }
                     .accessibilityLabel(Text("Pointer tuning"))
                     .paddrAccessibilityID("pad", side.rawValue, "pointer-tuning")
+                    // A disclosure label merges into its one control, so the
+                    // information button is a sibling, centred on the heading text
+                    // at the trailing end of the heading row.
+                    .overlayPreferenceValue(PointerTuningHeadingBoundsKey.self) { anchor in
+                        GeometryReader { proxy in
+                            let heading = anchor.map { proxy[$0] }
+                            PointerTuningInfoButton(side: side)
+                                .frame(height: heading?.height)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                                .offset(y: heading?.minY ?? 0)
+                        }
+                    }
                     if !tuningExpanded {
                         Text(verbatim: PointerTuningPresentation.summary(configuration: configuration, locale: locale))
                             .paddrTypography(.caption)
@@ -200,6 +288,10 @@ struct PadConfigurationView: View {
         }
     }
 
+    private func explanationText(_ setting: PointerSetting) -> Text {
+        PointerTuningPresentation.explanation(for: setting).map { Text($0.detail) } ?? Text(verbatim: "")
+    }
+
     @ViewBuilder
     private func pointerSetting(_ setting: PointerSetting) -> some View {
         switch setting {
@@ -208,7 +300,6 @@ struct PadConfigurationView: View {
         case .acceleration:
             ToggleValueSliderRow(
                 title: "Pointer acceleration",
-                systemImage: "arrow.up.right.and.arrow.down.left",
                 isEnabled: accelerationEnabled,
                 value: $configuration.mouseAcceleration,
                 range: ConfigurationLimits.mouseAcceleration,
@@ -219,11 +310,10 @@ struct PadConfigurationView: View {
                 accessibilityIdentifier: PaddrAccessibility.identifier("pad", side.rawValue, "pointer-acceleration"),
                 sliderAccessibilityLabel: "Pointer Acceleration Strength"
             )
-            .help("Higher values increase fast-motion gain. Turning acceleration off keeps your strength setting.")
+            .help(explanationText(.acceleration))
         case .smoothing:
             ToggleValueSliderRow(
                 title: "Pointer smoothing",
-                systemImage: "waveform.path",
                 isEnabled: $configuration.pointerSmoothingEnabled,
                 value: $configuration.pointerSmoothingStrength,
                 range: ConfigurationLimits.pointerSmoothingStrength,
@@ -238,13 +328,12 @@ struct PadConfigurationView: View {
                 ),
                 sliderAccessibilityLabel: "Pointer Smoothing Strength"
             )
-            .help("Smooths slow pointer jitter while preserving fast movement. The slider controls smoothing strength.")
+            .help(explanationText(.smoothing))
         case .tapAction:
             TapActionPicker(selection: $configuration.tapKey)
         case .tapRadius:
             ValueSliderRow(
                 title: "Center tap radius",
-                systemImage: "scope",
                 value: $configuration.mouseDeadzone,
                 range: ConfigurationLimits.mouseDeadzone,
                 step: 0.01,
@@ -252,11 +341,10 @@ struct PadConfigurationView: View {
                     .percent.precision(.fractionLength(0))
                 )
             )
-            .help("The radius starts at the pad center. Leaving it cancels the tap. At 0%, taps use the maximum-movement limit.")
+            .help(explanationText(.tapRadius))
         case .pointerTracking:
             PaddrSettingsRow(
                 title: "Track pointer inside tap radius",
-                systemImage: "cursorarrow.motionlines",
                 labelWidth: nil
             ) {
                 PaddrTuningSwitch(
@@ -264,13 +352,12 @@ struct PadConfigurationView: View {
                     isOn: tracksPointerInsideTapRadius,
                     accessibilityIdentifier: PaddrAccessibility.identifier("pad", side.rawValue, "pointer-tracking")
                 )
-                .help("When on, pointer movement continues inside and across the center tap radius. When off, the radius also acts as a pointer dead zone.")
+                .help(explanationText(.pointerTracking))
                 .paddrAccessibilityID("pad", side.rawValue, "pointer-tracking")
             }
         case .tapStabilization:
             ToggleValueSliderRow(
                 title: "Tap stabilization",
-                systemImage: "hand.tap",
                 isEnabled: $configuration.tapStabilizationEnabled,
                 value: $configuration.tapStabilizationThresholdPoints,
                 range: ConfigurationLimits.tapStabilizationThresholdPoints,
@@ -286,7 +373,7 @@ struct PadConfigurationView: View {
                 ),
                 sliderAccessibilityLabel: "Tap Stabilization Tolerance"
             )
-            .help("Keeps the cursor fixed during a tap. Moving beyond the tolerance cancels the tap and resumes pointer tracking.")
+            .help(explanationText(.tapStabilization))
         }
     }
 
@@ -334,7 +421,6 @@ struct PadConfigurationView: View {
         let value = isScrollMode ? configuration.scrollSensitivity : configuration.sensitivity
         return ValueSliderRow(
             title: "Sensitivity",
-            systemImage: "speedometer",
             value: isScrollMode ? $configuration.scrollSensitivity : $configuration.sensitivity,
             range: isScrollMode ? ConfigurationLimits.scrollSensitivity : ConfigurationLimits.sensitivity,
             step: 0.1,
@@ -509,9 +595,7 @@ final class PaddrModeSegmentedControl: NSSegmentedControl {
         drawChrome()
     }
     private func drawChrome() {
-        if !controlAppearance.usesControlGlass {
-            PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius, color: PaddrStyle.workspace)
-        }
+        PaddrControlDrawing.fill(bounds, radius: PaddrStyle.Control.radius, color: PaddrStyle.controlFill)
         PaddrControlDrawing.stroke(bounds, radius: PaddrStyle.Control.radius,
             color: controlAppearance.controlStroke(enabled: isEnabled), width: PaddrStyle.Control.outlineWidth)
         for index in 0..<segmentCount {
@@ -549,17 +633,9 @@ enum PaddrModeGeometry {
 }
 
 struct PadModePicker: View {
-    @Environment(\.isEnabled) private var isEnabled
     @Binding var selection: PadMode
     let accessibilityIdentifier: String
     var body: some View {
         PaddrNativeModePicker(selection: $selection, accessibilityIdentifier: accessibilityIdentifier)
-            .background {
-                PaddrAppearanceReader { appearance in
-                    PaddrButtonSurface(prominent: false, enabled: isEnabled, appearance: appearance)
-                }
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-            }
     }
 }

@@ -2522,6 +2522,204 @@ final class MenuModelTests: XCTestCase {
         XCTAssertTrue(model.hasUnsavedChanges)
     }
 
+    func testRevertToSavedDiscardsOnlyTheDraftWithoutPersisting() async {
+        let state = readyState(receiver: nil)
+        var stored = PaddrConfiguration.default
+        stored.left.sensitivity = 4
+        stored.rearButtons.l4 = "f1"
+        state.loadedConfiguration = stored
+        let model = PaddrMenuModel(dependencies: dependencies(state: state))
+        await waitUntil(model: model) { model.isInitialized }
+
+        XCTAssertFalse(model.canRevertToSaved, "A clean draft has nothing to revert")
+        XCTAssertFalse(model.revertToSaved())
+
+        model.configuration.left.sensitivity = 7
+        model.configuration.rearButtons.r5 = "F4"
+        XCTAssertTrue(model.canRevertToSaved)
+
+        XCTAssertTrue(model.revertToSaved())
+        XCTAssertEqual(model.configuration, stored, "Every draft field returns to the saved value")
+        XCTAssertEqual(model.savedConfiguration, stored)
+        XCTAssertFalse(model.hasUnsavedChanges)
+        XCTAssertFalse(model.canRevertToSaved)
+        XCTAssertEqual(state.saveCallCount, 0, "Reverting must not persist or apply")
+    }
+
+    func testRevertToSavedClearsRestoredDefaultsGuidance() async {
+        let state = readyState(receiver: nil)
+        var stored = PaddrConfiguration.default
+        stored.left.sensitivity = 4
+        state.loadedConfiguration = stored
+        let model = PaddrMenuModel(dependencies: dependencies(state: state))
+        await waitUntil(model: model) { model.isInitialized }
+        let statusBeforeEditing = model.status
+
+        model.restoreDefaults()
+        XCTAssertEqual(model.status, .defaultsRestored)
+
+        XCTAssertTrue(model.revertToSaved())
+        XCTAssertEqual(model.configuration, stored)
+        XCTAssertEqual(
+            model.status,
+            statusBeforeEditing,
+            "“Save to apply them” must not outlive the restored draft"
+        )
+    }
+
+    func testRevertToSavedIsRefusedInEveryStateThatDoesNotOwnTheDraft() async {
+        // Before initialization.
+        let loading = readyState(receiver: nil)
+        let loadGate = BoundedTestGate()
+        loading.loadGate = loadGate
+        let uninitialized = PaddrMenuModel(dependencies: dependencies(state: loading))
+        XCTAssertFalse(uninitialized.canRevertToSaved)
+        XCTAssertFalse(uninitialized.revertToSaved())
+        loading.loadGate = nil
+        loadGate.signal()
+        await waitUntil(model: uninitialized) { uninitialized.isInitialized }
+
+        // While the quit prompt is deciding what happens to the draft.
+        uninitialized.configuration.left.sensitivity = 7
+        XCTAssertTrue(uninitialized.canRevertToSaved, "Control: an idle draft can be reverted")
+        XCTAssertTrue(uninitialized.beginTerminationDecision())
+        XCTAssertFalse(uninitialized.canRevertToSaved)
+        XCTAssertFalse(uninitialized.revertToSaved())
+        XCTAssertEqual(uninitialized.configuration.left.sensitivity, 7)
+        uninitialized.cancelTerminationDecision()
+        XCTAssertTrue(uninitialized.canRevertToSaved)
+
+        // While a save owns the draft.
+        let state = readyState(receiver: nil)
+        let model = PaddrMenuModel(dependencies: dependencies(state: state))
+        await waitUntil(model: model) { model.isInitialized }
+        let saved = model.savedConfiguration
+        model.configuration.left.sensitivity = 7
+        let saveGate = BoundedTestGate()
+        state.saveGate = saveGate
+        model.saveAndApply()
+        await waitUntil { state.saveCallCount == 1 }
+        XCTAssertNotEqual(model.configuration, model.savedConfiguration, "Control: the save has not landed")
+        XCTAssertFalse(model.canRevertToSaved)
+        XCTAssertFalse(model.revertToSaved())
+        state.saveGate = nil
+        saveGate.signal()
+        await waitUntil(model: model) { !model.hasUnsavedChanges }
+        XCTAssertEqual(model.configuration.left.sensitivity, 7, "The save, not a revert, decided the draft")
+        XCTAssertEqual(model.savedConfiguration, model.configuration)
+        XCTAssertNotEqual(model.savedConfiguration, saved)
+        XCTAssertFalse(model.canRevertToSaved)
+    }
+
+    func testRevertToSavedIsRefusedAfterTerminationBegins() async {
+        let state = readyState(receiver: "Fake")
+        let session = ManualEventSession()
+        let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
+        await waitUntil(model: model) { model.isInitialized }
+        await waitUntil(model: model) { await session.startCount == 1 }
+        model.configuration.left.sensitivity = 7
+        XCTAssertTrue(model.canRevertToSaved, "Control")
+
+        let finished = expectation(description: "termination finished")
+        XCTAssertTrue(model.stopForTermination { _ in finished.fulfill() })
+        XCTAssertFalse(model.canRevertToSaved)
+        XCTAssertFalse(model.revertToSaved())
+        XCTAssertEqual(model.configuration.left.sensitivity, 7)
+        await fulfillment(of: [finished], timeout: 5)
+        XCTAssertFalse(model.canRevertToSaved)
+    }
+
+    func testRevertToSavedClearsAFailedSaveMessageAboutTheDiscardedEdits() async {
+        let state = readyState(receiver: nil)
+        let model = PaddrMenuModel(dependencies: dependencies(state: state))
+        await waitUntil(model: model) { model.isInitialized }
+        let statusBeforeEditing = model.status
+        state.saveFailure = "disk full"
+        model.configuration.left.sensitivity = 7
+        model.saveAndApply()
+        await waitUntil(model: model) {
+            if case .failure(.configurationSave) = model.status { return true }
+            return false
+        }
+        await waitUntil(model: model) { model.canRevertToSaved }
+
+        XCTAssertTrue(model.revertToSaved())
+        XCTAssertEqual(model.status, statusBeforeEditing,
+            "“Your edits are still available” must not outlive the edits")
+    }
+
+    func testRevertToSavedReturnsTheStatusToTheRunningSession() async {
+        let state = readyState(receiver: "Fake receiver")
+        var stored = PaddrConfiguration.default
+        stored.left.sensitivity = 4
+        state.loadedConfiguration = stored
+        let session = ManualEventSession()
+        let model = PaddrMenuModel(dependencies: dependencies(state: state, session: session))
+        await waitUntil(model: model) { model.isInitialized }
+        await waitUntil(model: model) { await session.startCount == 1 }
+        model.isEnabled = true
+        await session.connect(receiver: "Fake receiver")
+        await waitUntil(model: model) { model.status == .active }
+
+        model.restoreDefaults()
+        XCTAssertEqual(model.status, .defaultsRestored)
+        XCTAssertTrue(model.revertToSaved())
+        XCTAssertEqual(model.status, .active)
+
+        await session.send(.controllerLost(.init(reportCount: 4, actionCount: 2)))
+        await waitUntil(model: model) { model.status == .waitingForController }
+        XCTAssertEqual(model.status, .waitingForController,
+            "The session reports again once the draft message is gone")
+
+        model.isEnabled = false
+        await session.stop()
+        await waitUntil(model: model) { !model.hasPendingLifecycleWork }
+    }
+
+    func testPuckSearchIsAnnouncedWhileTheReconnectLoopOrARestartWillProbe() async {
+        let state = readyState(receiver: nil)
+        let sleeper = ManualSleeper()
+        let model = PaddrMenuModel(dependencies: dependencies(
+            state: state, sleeper: sleeper, reconnectSleeper: sleeper))
+        await waitUntil(model: model) { model.isInitialized }
+        await waitUntil(model: model) { model.readiness.nextAction == .connectPuck }
+        XCTAssertTrue(model.isSearchingForPuck, "The reconnect loop polls while the puck is absent")
+
+        // A restart stops the loop, probes once, and starts the loop again. Nothing
+        // in between needs a manual refresh.
+        let probeCount = state.probeCallCount
+        let gate = BoundedTestGate()
+        state.probeGate = gate
+        model.isEnabled = true
+        await waitUntil { state.probeCallCount > probeCount }
+        XCTAssertTrue(model.isSearchingForPuck)
+        XCTAssertEqual(model.readiness.connectionAction, .connectPuck)
+        XCTAssertNotEqual(model.readiness.nextAction, .refreshPuck)
+        state.probeGate = nil
+        gate.signal()
+        await waitUntil(model: model) { model.status == .waitingForController }
+        XCTAssertTrue(model.isSearchingForPuck)
+        XCTAssertEqual(model.readiness.nextAction, .connectPuck)
+
+        // Termination cancels the probe for good.
+        let finished = expectation(description: "termination finished")
+        XCTAssertTrue(model.stopForTermination { _ in finished.fulfill() })
+        XCTAssertFalse(model.isSearchingForPuck)
+        await fulfillment(of: [finished], timeout: 5)
+        XCTAssertFalse(model.isSearchingForPuck)
+    }
+
+    func testAManualRefreshIsAskedForOnlyOnceNothingWillProbeForThePuck() async {
+        // This fixture's reconnect delay fails, which ends the loop after the first probe.
+        let state = readyState(receiver: nil)
+        let model = PaddrMenuModel(dependencies: dependencies(state: state))
+        await waitUntil(model: model) { model.isInitialized }
+        await waitUntil(model: model) { !model.hasPendingLifecycleWork }
+        XCTAssertFalse(model.isSearchingForPuck)
+        XCTAssertEqual(model.readiness.nextAction, .refreshPuck)
+        XCTAssertEqual(model.readiness.connectionAction, .refreshPuck)
+    }
+
     func testRearButtonDraftCommitsOnlyWithSuccessfulSaveAndApply() async {
         let state = readyState(receiver: nil)
         let model = PaddrMenuModel(dependencies: dependencies(state: state))

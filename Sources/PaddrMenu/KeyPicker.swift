@@ -23,6 +23,6 @@ struct OutputBindingPicker: View {
     var body: some View {
         PaddrMenuPicker(title: "Zone action", selection: $selection, options: options, width: width)
         .accessibilityLabel("Zone action")
-        .help("Assign a keyboard key, left click, or right click to this touch area.")
+        .help("Assign a keyboard key, left click, or right click to this zone.")
     }
 }

@@ -56,23 +56,188 @@ final class OnboardingTests: XCTestCase {
         assertDismissalTransition([.completed], expected: .completed)
     }
 
-    func testVisibleGuidePresentationFocusesInsteadOfCreatingDuplicate() {
-        var presentation = OnboardingWindowPresentation()
+    @MainActor
+    func testSetupPresentsAutomaticallyOnceAndHelpAlwaysReopensIt() {
+        let defaults = isolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: defaultsSuiteName(defaults)) }
+        let preferences = OnboardingPreferences(defaults: defaults)
+        let setup = SetupGuidePresentation(preferences: preferences)
+        XCTAssertFalse(setup.isPresented, "Setup waits for the application to ask for it")
 
-        XCTAssertEqual(presentation.requestPresentation(), .create)
-        XCTAssertTrue(presentation.isVisible)
-        XCTAssertEqual(presentation.requestPresentation(), .focusExisting)
-        XCTAssertTrue(presentation.isVisible)
+        setup.present(trigger: .automatic)
+        XCTAssertTrue(setup.isPresented, "A first launch shows setup inside the configuration window")
+        setup.present(trigger: .automatic)
+        XCTAssertTrue(setup.isPresented, "Asking again keeps the one checklist")
+
+        setup.dismiss(as: .skipped)
+        XCTAssertFalse(setup.isPresented)
+        XCTAssertEqual(preferences.dismissal, .skipped)
+
+        let nextLaunch = SetupGuidePresentation(preferences: preferences)
+        nextLaunch.present(trigger: .automatic)
+        XCTAssertFalse(nextLaunch.isPresented, "A recorded dismissal ends automatic presentation at the next launch")
+        setup.present(trigger: .automatic)
+        XCTAssertFalse(setup.isPresented, "A recorded dismissal ends automatic presentation")
+
+        setup.present(trigger: .help)
+        XCTAssertTrue(setup.isPresented, "Help > Paddr Guide always reopens setup")
+        setup.dismiss(as: .completed)
+        XCTAssertEqual(preferences.dismissal, .completed)
+
+        setup.present(trigger: .help)
+        setup.dismiss(as: .skipped)
+        XCTAssertEqual(preferences.dismissal, .completed, "Skipping a reopened guide keeps completion")
     }
 
-    func testClosedGuidePresentationCreatesFreshWindow() {
-        var presentation = OnboardingWindowPresentation()
-        XCTAssertEqual(presentation.requestPresentation(), .create)
+    @MainActor
+    func testClosingTheWindowEndsAutomaticSetupAsClosingTheGuideDid() {
+        let defaults = isolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: defaultsSuiteName(defaults)) }
+        let preferences = OnboardingPreferences(defaults: defaults)
+        let setup = SetupGuidePresentation(preferences: preferences)
 
-        presentation.didClose()
+        setup.windowDidClose()
+        XCTAssertNil(preferences.dismissal, "Closing a window that never showed setup records nothing")
 
-        XCTAssertFalse(presentation.isVisible)
-        XCTAssertEqual(presentation.requestPresentation(), .create)
+        setup.present(trigger: .automatic)
+        setup.windowDidClose()
+        XCTAssertFalse(setup.isPresented, "Reopening the window in the same session does not bring setup back")
+        XCTAssertEqual(preferences.dismissal, .skipped)
+
+        let nextLaunch = SetupGuidePresentation(preferences: preferences)
+        nextLaunch.present(trigger: .automatic)
+        XCTAssertFalse(nextLaunch.isPresented, "Setup is offered automatically once")
+        nextLaunch.present(trigger: .help)
+        XCTAssertTrue(nextLaunch.isPresented)
+    }
+
+    @MainActor
+    func testReachingActiveOutputEndsAutomaticSetupWithoutHidingTheChecklist() {
+        let defaults = isolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: defaultsSuiteName(defaults)) }
+        let preferences = OnboardingPreferences(defaults: defaults)
+        let setup = SetupGuidePresentation(preferences: preferences)
+        setup.present(trigger: .automatic)
+
+        setup.recordCompletion()
+        XCTAssertTrue(setup.isPresented, "The person still reading the checklist keeps it")
+        XCTAssertEqual(preferences.dismissal, .completed)
+
+        setup.windowDidClose()
+        XCTAssertEqual(preferences.dismissal, .completed, "Closing afterwards never downgrades completion")
+        let nextLaunch = SetupGuidePresentation(preferences: preferences)
+        nextLaunch.present(trigger: .automatic)
+        XCTAssertFalse(nextLaunch.isPresented)
+    }
+
+    @MainActor
+    func testEveryRequestForSetupIsCountedSoTheWindowCanBringItIntoView() {
+        let defaults = isolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: defaultsSuiteName(defaults)) }
+        let setup = SetupGuidePresentation(preferences: OnboardingPreferences(defaults: defaults))
+        XCTAssertEqual(setup.presentationCount, 0)
+        setup.present(trigger: .automatic)
+        XCTAssertEqual(setup.presentationCount, 1)
+        setup.present(trigger: .help)
+        XCTAssertEqual(setup.presentationCount, 2, "Asking again while it shows is still a request")
+        setup.dismiss(as: .skipped)
+        setup.present(trigger: .automatic)
+        XCTAssertEqual(setup.presentationCount, 2, "A refused automatic presentation is not a request")
+    }
+
+    func testConnectionGuidanceNamesThePuckFirstAndMatchesTheNextAction() {
+        let cases: [(PaddrReadinessInput, PaddrReadinessNextAction?)] = [
+            (readiness(puck: false, controller: false), .refreshPuck),
+            (readiness(puck: false, controller: false, searchingForPuck: true), .connectPuck),
+            (readiness(controller: false), .connectController),
+            (readiness(controller: false, searchingForPuck: true), .connectController),
+            (readiness(), nil),
+            // Access comes first as the next action, yet the connection step
+            // still says what is missing.
+            (readiness(controller: false, inputMonitoring: false), .connectController)
+        ]
+        for (input, expected) in cases {
+            let resolution = PaddrReadinessResolver.resolve(input)
+            XCTAssertEqual(resolution.connectionAction, expected, "\(input)")
+            if resolution.nextAction.setupStep == .connection {
+                XCTAssertEqual(resolution.connectionAction, resolution.nextAction, "\(input)")
+            }
+        }
+        let initializing = PaddrReadinessResolver.resolve(PaddrReadinessInput(
+            isInitialized: false, puckConnected: false, controllerConnected: false,
+            batteryAvailable: false, inputMonitoringGranted: true, accessibilityTrusted: true,
+            isEnabled: false, isRunning: false, isReleasingOutput: false, canToggleOutput: false))
+        XCTAssertEqual(initializing.nextAction, .waitForInitialization)
+        XCTAssertEqual(initializing.connectionAction, .connectPuck,
+            "Initialization probes for the puck itself, so it never asks for a refresh")
+    }
+
+    func testSetupChecklistMarksTheStepThatOwnsTheNextAction() {
+        let cases: [(PaddrReadinessInput, PaddrSetupStep?, [PaddrSetupStep])] = [
+            // (readiness, current step, done steps)
+            (readiness(puck: false, controller: false, inputMonitoring: false, accessibility: false,
+                enabled: false, running: false), .connection, []),
+            (readiness(controller: false, inputMonitoring: false, accessibility: false,
+                enabled: false, running: false), .access, []),
+            (readiness(controller: false, accessibility: false, enabled: false, running: false),
+                .connection, []),
+            (readiness(accessibility: false, enabled: false, running: false), .access, [.connection]),
+            (readiness(enabled: false, running: false), .output, [.access, .connection]),
+            (readiness(running: false), .output, [.access, .connection]),
+            (readiness(), nil, [.access, .connection, .output])
+        ]
+        for (input, expectedCurrent, expectedDone) in cases {
+            let checklist = PaddrSetupChecklist(
+                readiness: PaddrReadinessResolver.resolve(input), editsOwnProfile: false)
+            XCTAssertEqual(checklist.items.map(\.step), PaddrSetupStep.allCases)
+            XCTAssertEqual(checklist.items.filter { $0.state == .current }.map(\.step),
+                expectedCurrent.map { [$0] } ?? [], "\(input)")
+            XCTAssertEqual(checklist.items.filter { $0.state == .done }.map(\.step), expectedDone, "\(input)")
+            XCTAssertEqual(checklist.nextAction.setupStep, expectedCurrent, "\(input)")
+        }
+    }
+
+    func testSetupCompletesWhenOutputIsActiveWithoutRequiringAnOwnProfile() {
+        let active = PaddrReadinessResolver.resolve(readiness())
+        let onDefault = PaddrSetupChecklist(readiness: active, editsOwnProfile: false)
+        XCTAssertTrue(onDefault.isComplete, "Default is a working profile; editing one is optional")
+        XCTAssertEqual(onDefault.state(of: .profile), .pending)
+        XCTAssertEqual(PaddrSetupChecklist(readiness: active, editsOwnProfile: true).state(of: .profile), .done)
+
+        let waiting = PaddrReadinessResolver.resolve(readiness(running: false))
+        XCTAssertFalse(PaddrSetupChecklist(readiness: waiting, editsOwnProfile: true).isComplete,
+            "Setup is not complete until mapped output is active")
+    }
+
+    func testEveryNextActionBelongsToItsSetupStepAndWaitingStatesToNone() {
+        XCTAssertNil(PaddrReadinessNextAction.waitForInitialization.setupStep)
+        XCTAssertNil(PaddrReadinessNextAction.waitForProfileOperation.setupStep)
+        XCTAssertNil(PaddrReadinessNextAction.none.setupStep)
+        XCTAssertEqual(PaddrReadinessNextAction.connectPuck.setupStep, .connection)
+        XCTAssertEqual(PaddrReadinessNextAction.refreshPuck.setupStep, .connection)
+        XCTAssertEqual(PaddrReadinessNextAction.connectController.setupStep, .connection)
+        XCTAssertEqual(PaddrReadinessNextAction.requestInputMonitoring.setupStep, .access)
+        XCTAssertEqual(PaddrReadinessNextAction.requestAccessibility.setupStep, .access)
+        XCTAssertEqual(PaddrReadinessNextAction.releaseTrackpads.setupStep, .output)
+        XCTAssertEqual(PaddrReadinessNextAction.enableOutput.setupStep, .output)
+        XCTAssertEqual(PaddrReadinessNextAction.waitForOutputRelease.setupStep, .output,
+            "Releasing held input is the output step finishing, not a separate wait")
+    }
+
+    func testMissingPuckAsksForRefreshOnlyWhenNothingIsSearchingForIt() {
+        let manual = PaddrReadinessResolver.resolve(readiness(puck: false))
+        XCTAssertEqual(manual.nextAction, .refreshPuck)
+        XCTAssertEqual(String(localized: manual.nextAction.title), "Connect the puck, then refresh")
+
+        let searching = PaddrReadinessResolver.resolve(readiness(puck: false, searchingForPuck: true))
+        XCTAssertEqual(searching.nextAction, .connectPuck)
+        XCTAssertEqual(String(localized: searching.nextAction.title), "Connect the puck",
+            "The reconnect probe finds the puck, so the instruction must not ask for a refresh")
+
+        XCTAssertEqual(
+            PaddrReadinessResolver.resolve(readiness(searchingForPuck: true)).nextAction, .none,
+            "A connected puck is never reported as missing"
+        )
     }
 
     func testMinimizedCompanionWindowRetainsRegularActivation() {
@@ -90,40 +255,18 @@ final class OnboardingTests: XCTestCase {
         )
     }
 
-    func testPagerAdvancesAndBacktracksWithinFourPageBounds() {
-        var pager = OnboardingPager()
-        XCTAssertEqual(pager.pageIndex, 0)
-        XCTAssertEqual(pager.pageNumber, 1)
-        XCTAssertFalse(pager.canGoBack)
-        XCTAssertFalse(pager.isLastPage)
-
-        pager.goBack()
-        XCTAssertEqual(pager.pageIndex, 0)
-
-        for expectedIndex in 1..<OnboardingPager.pageCount {
-            pager.advance()
-            XCTAssertEqual(pager.pageIndex, expectedIndex)
-        }
-        XCTAssertTrue(pager.isLastPage)
-
-        pager.advance()
-        XCTAssertEqual(pager.pageIndex, OnboardingPager.pageCount - 1)
-
-        pager.goBack()
-        XCTAssertEqual(pager.pageIndex, OnboardingPager.pageCount - 2)
-        XCTAssertTrue(pager.canGoBack)
-    }
-
-    func testNewPagerResetsToWelcomePage() {
-        var priorPresentationPager = OnboardingPager()
-        priorPresentationPager.advance()
-        priorPresentationPager.advance()
-        XCTAssertEqual(priorPresentationPager.pageIndex, 2)
-
-        let reopenedPresentationPager = OnboardingPager()
-
-        XCTAssertEqual(reopenedPresentationPager.pageIndex, 0)
-        XCTAssertEqual(reopenedPresentationPager.pageNumber, 1)
+    private func readiness(
+        puck: Bool = true, controller: Bool = true, inputMonitoring: Bool = true,
+        accessibility: Bool = true, enabled: Bool = true, running: Bool = true,
+        searchingForPuck: Bool = false
+    ) -> PaddrReadinessInput {
+        PaddrReadinessInput(
+            isInitialized: true, puckConnected: puck, controllerConnected: controller,
+            batteryAvailable: controller, inputMonitoringGranted: inputMonitoring,
+            accessibilityTrusted: accessibility, isEnabled: enabled, isRunning: running,
+            isReleasingOutput: false, canToggleOutput: true,
+            isSearchingForPuck: searchingForPuck
+        )
     }
 
     private func assertDismissalTransition(

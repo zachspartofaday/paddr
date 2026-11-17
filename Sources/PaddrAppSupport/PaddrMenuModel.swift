@@ -86,6 +86,9 @@ public final class PaddrMenuModel {
     public private(set) var actionCount = 0
     public private(set) var needsInitialSave = false
     public private(set) var isInitialized = false
+    /// True while the one-second reconnect probe is looking for the puck, so the
+    /// interface does not ask for a manual refresh the probe makes unnecessary.
+    public private(set) var isSearchingForPuck = false
 
     @ObservationIgnored private let dependencies: MenuDependencies
     @ObservationIgnored private let outputGate = OutputGate(enabled: false)
@@ -129,13 +132,19 @@ public final class PaddrMenuModel {
     @ObservationIgnored private var statusRefreshTask: Task<Void, Never>?
     @ObservationIgnored private var statusRefreshEpoch: UInt64 = 0
     @ObservationIgnored private var receiverStateGeneration: UInt64 = 0
-    @ObservationIgnored private var lifecycleTask: Task<Void, Never>?
-    @ObservationIgnored private var reconnectTask: Task<Void, Never>?
+    @ObservationIgnored private var lifecycleTask: Task<Void, Never>? {
+        didSet { updateIsSearchingForPuck() }
+    }
+    @ObservationIgnored private var reconnectTask: Task<Void, Never>? {
+        didSet { updateIsSearchingForPuck() }
+    }
     @ObservationIgnored private var reconnectGeneration: UInt64 = 0
     @ObservationIgnored private var reconnectStatusGeneration: UInt64?
     @ObservationIgnored private var permissionRefreshTask: Task<Void, Never>?
     @ObservationIgnored private var terminationTask: Task<Void, Never>?
-    @ObservationIgnored private var terminationState = TerminationState.idle
+    @ObservationIgnored private var terminationState = TerminationState.idle {
+        didSet { updateIsSearchingForPuck() }
+    }
     private var terminationDecisionInProgress = false
     @ObservationIgnored private var terminationEpoch: UInt64 = 0
     @ObservationIgnored private var terminationCompletions: [@MainActor (Bool) -> Void] = []
@@ -256,7 +265,8 @@ public final class PaddrMenuModel {
                 isRunning: isRunning,
                 isReleasingOutput: isReleasingOutput,
                 canToggleOutput: canToggleOutput,
-                isPreparingActivation: activationCommitPending || replacesActiveConfiguration
+                isPreparingActivation: activationCommitPending || replacesActiveConfiguration,
+                isSearchingForPuck: isSearchingForPuck
             )
         )
     }
@@ -634,6 +644,36 @@ public final class PaddrMenuModel {
               !hasUnsavedChanges || discardChanges else { return false }
         configuration = .default
         publishStatus(.defaultsRestored)
+        return true
+    }
+
+    /// Whether the draft holds edits that can be discarded for the saved
+    /// profile. A save or other profile operation in flight owns the draft
+    /// until it finishes, so reverting waits for it.
+    public var canRevertToSaved: Bool {
+        terminationState == .idle
+            && !terminationDecisionInProgress
+            && isInitialized
+            && !replacesActiveConfiguration
+            && !profileOperationInProgress
+            && configuration != savedConfiguration
+    }
+
+    /// Discards draft edits and shows the profile as it was last saved.
+    /// Nothing is written and mapped output is untouched, because the saved
+    /// configuration is the one already in effect.
+    @discardableResult
+    public func revertToSaved() -> Bool {
+        guard canRevertToSaved else { return false }
+        configuration = savedConfiguration
+        if statusDescribesDraft {
+            // The message was about edits that no longer exist. It took the status
+            // from the session or reconnect loop, so hand it back to them.
+            publishStatus(operationalStatus)
+            if sessionID != nil { sessionStatusGeneration = currentStatusGeneration }
+            if reconnectTask != nil { reconnectStatusGeneration = currentStatusGeneration }
+            statusDidChange?()
+        }
         return true
     }
 
@@ -1366,6 +1406,16 @@ public final class PaddrMenuModel {
         }
     }
 
+    /// A lifecycle start always probes for the puck and leaves the reconnect loop
+    /// polling if it is absent, so both count as Paddr looking for it. Counting only
+    /// the loop would ask for a manual refresh during every restart. Termination
+    /// cancels both without replacing them.
+    private func updateIsSearchingForPuck() {
+        let isSearching = terminationState == .idle
+            && (lifecycleTask != nil || reconnectTask != nil)
+        if isSearchingForPuck != isSearching { isSearchingForPuck = isSearching }
+    }
+
     private func isReconnectCurrent(_ operation: UInt64, token: UInt64) -> Bool {
         isCurrent(operation) && sessionID == nil && reconnectGeneration == token
     }
@@ -1384,6 +1434,14 @@ public final class PaddrMenuModel {
             do { try await self.dependencies.sleep(.seconds(1)) }
             catch { return }
             self.refreshStatus()
+        }
+    }
+
+    /// Restored defaults and a draft that failed validation or saving.
+    private var statusDescribesDraft: Bool {
+        switch status {
+        case .defaultsRestored, .failure(.configurationInvalid), .failure(.configurationSave): true
+        default: false
         }
     }
 
