@@ -31,6 +31,8 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
 - Use "puck" and "zone" consistently, title-case menu commands and
   **Open Setup…**, show ready states in the success colour, and draw menu-bar
   status tints from the same status colours as the window.
+- Show that mapped input is still releasing, instead of **Off**, when output is
+  turned off while a save is restarting it.
 - Product screenshots in `docs/images` predate this layout.
 
 ## 2.1.0 — 2026-10-29

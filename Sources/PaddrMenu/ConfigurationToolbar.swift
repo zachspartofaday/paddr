@@ -69,11 +69,7 @@ struct ProfileActionsMenu: View {
                         Button(role: item.isDestructive ? .destructive : nil) {
                             commands.perform(item.id, in: model)
                         } label: {
-                            Image(systemName: item.systemImage)
-                            Text(item.title)
-                            // A menu shows a second text as the item's subtitle, so the
-                            // reason is visible and spoken without hovering.
-                            if let reason = item.disabledReason { Text(reason) }
+                            ProfileActionLabel(item: item)
                         }
                         .disabled(!item.isEnabled)
                         .help(item.disabledReason.map { Text($0) } ?? Text(verbatim: ""))
@@ -89,6 +85,19 @@ struct ProfileActionsMenu: View {
             ? Text("Duplicate Default to create an editable profile")
             : Text("Create, duplicate, rename, revert, or delete profiles"))
         .paddrAccessibilityID("profile", "actions")
+    }
+}
+
+/// A profile command as a menu shows it: symbol, title, and the reason when it
+/// is unavailable. A menu shows a second text as the item's subtitle, so the
+/// reason is visible and spoken without hovering.
+struct ProfileActionLabel: View {
+    let item: ProfileActionItem
+
+    var body: some View {
+        Image(systemName: item.systemImage)
+        Text(item.title)
+        if let reason = item.disabledReason { Text(reason) }
     }
 }
 

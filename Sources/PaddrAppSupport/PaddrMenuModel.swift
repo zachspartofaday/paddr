@@ -101,7 +101,10 @@ public final class PaddrMenuModel {
     @ObservationIgnored private var sessionTeardownCount = 0
     @ObservationIgnored private var pendingReleaseRevision: UInt64?
     @ObservationIgnored private var lifecycleEpoch: UInt64 = 0
-    @ObservationIgnored private var initializationTask: Task<Void, Never>?
+    @ObservationIgnored private var initializationTask: Task<Void, Never>? {
+        didSet { updateIsSearchingForPuck() }
+    }
+
     @ObservationIgnored private var configurationTask: Task<Void, Never>?
     @ObservationIgnored private var configurationTaskOutcomes: [UInt64: ConfigurationTaskOutcome] = [:]
     @ObservationIgnored private var configurationEpoch: UInt64 = 0
@@ -146,6 +149,9 @@ public final class PaddrMenuModel {
 
     @ObservationIgnored private var reconnectGeneration: UInt64 = 0
     @ObservationIgnored private var reconnectStatusGeneration: UInt64?
+    /// The claim on the status held by a lifecycle start that has not yet handed
+    /// over to a session or the reconnect loop. `nil` once it has.
+    @ObservationIgnored private var lifecycleStatusGeneration: UInt64?
     @ObservationIgnored private var permissionRefreshTask: Task<Void, Never>?
     @ObservationIgnored private var terminationTask: Task<Void, Never>?
     @ObservationIgnored private var terminationState = TerminationState.idle {
@@ -279,7 +285,7 @@ public final class PaddrMenuModel {
                 accessibilityTrusted: accessibilityTrusted,
                 isEnabled: isEnabled,
                 isRunning: isRunning,
-                isReleasingOutput: isReleasingOutput,
+                isReleasingOutput: isReleasingOutput || isStoppingReplacedSession,
                 canToggleOutput: canToggleOutput,
                 isPreparingActivation: activationCommitPending || replacesActiveConfiguration,
                 isSearchingForPuck: isSearchingForPuck
@@ -299,6 +305,8 @@ public final class PaddrMenuModel {
                 statusGeneration: initialStatusGeneration
             )
         }
+        // Property observers do not run during initialization.
+        updateIsSearchingForPuck()
     }
 
     isolated deinit {
@@ -684,8 +692,10 @@ public final class PaddrMenuModel {
         configuration = savedConfiguration
         if statusDescribesDraft {
             // The message was about edits that no longer exist. It took the status
-            // from the session or reconnect loop, so hand it back to them.
+            // from whatever is driving output, so hand it back: a start in flight,
+            // the session, or the reconnect loop.
             publishStatus(operationalStatus)
+            if lifecycleStatusGeneration != nil { lifecycleStatusGeneration = currentStatusGeneration }
             if sessionID != nil { sessionStatusGeneration = currentStatusGeneration }
             if reconnectTask != nil { reconnectStatusGeneration = currentStatusGeneration }
             statusDidChange?()
@@ -1158,6 +1168,15 @@ public final class PaddrMenuModel {
         }
     }
 
+    /// Output was turned off while a restart was still stopping the old worker.
+    /// The restart has already cleared the session, so nothing is pending for
+    /// `isReleasingOutput` and the switch stays available, but mapped input is
+    /// not released until that stop returns. The status says so; readiness must
+    /// agree with it instead of showing output as off.
+    private var isStoppingReplacedSession: Bool {
+        !isEnabled && status == .releasingOutputs
+    }
+
     private func resolvePendingRelease() {
         isReleasingOutput = false
         pendingReleaseRevision = nil
@@ -1174,12 +1193,12 @@ public final class PaddrMenuModel {
         let shouldCommitDraft = activationCommitPending
         lifecycleEpoch &+= 1
         let operation = lifecycleEpoch
+        lifecycleStatusGeneration = statusGeneration
         lifecycleTask?.cancel()
         lifecycleTask = Task { [weak self] in
             let context = await self?.start(
                 operation: operation,
                 commitDraft: shouldCommitDraft,
-                statusGeneration: statusGeneration,
                 sessionAlreadyStopped: sessionAlreadyStopped,
                 statusAlreadyRefreshed: statusAlreadyRefreshed
             )
@@ -1201,14 +1220,21 @@ public final class PaddrMenuModel {
         }
     }
 
+    /// Publishes as the current lifecycle start and keeps its claim on the status.
+    /// Only the current operation may call this, after its `isCurrent` check.
+    private func publishAsLifecycleStart(_ publication: () -> Void) {
+        lifecycleStatusGeneration = withStatusPublicationGeneration(
+            lifecycleStatusGeneration ?? currentStatusGeneration,
+            publication
+        )
+    }
+
     private func start(
         operation: UInt64,
         commitDraft: Bool,
-        statusGeneration initiatingStatusGeneration: UInt64,
         sessionAlreadyStopped: Bool,
         statusAlreadyRefreshed: Bool = false
     ) async -> (stream: AsyncStream<TrackpadSessionEvent>, sessionID: UUID)? {
-        var statusGeneration = initiatingStatusGeneration
         await initializationTask?.value
         await configurationTask?.value
         guard isCurrent(operation) else { return nil }
@@ -1237,31 +1263,37 @@ public final class PaddrMenuModel {
         if commitDraft {
             let committed = await commitConfigurationForActivation(
                 operation: operation,
-                statusGeneration: statusGeneration
+                statusGeneration: lifecycleStatusGeneration ?? currentStatusGeneration
             )
             guard isCurrent(operation) else { return nil }
             if committed { activationCommitPending = false }
         }
 
         if !statusAlreadyRefreshed {
-            statusGeneration = await refreshStatusNow(statusGeneration: statusGeneration)
+            let priorGeneration = lifecycleStatusGeneration ?? currentStatusGeneration
+            let refreshedGeneration = await refreshStatusNow(statusGeneration: priorGeneration)
             guard isCurrent(operation) else { return nil }
+            // The refresh only moves the claim on when it published. Otherwise keep
+            // whatever the claim is now: it may have been handed back meanwhile.
+            if refreshedGeneration != priorGeneration { lifecycleStatusGeneration = refreshedGeneration }
         }
 
         if isEnabled, !accessibilityTrusted {
             failEnable(
                 .accessibilityRequired,
                 operation: operation,
-                statusGeneration: statusGeneration
+                statusGeneration: lifecycleStatusGeneration ?? currentStatusGeneration
             )
         }
         guard receiverDescription != nil else {
             if isEnabled {
-                statusGeneration = withStatusPublicationGeneration(statusGeneration) {
-                    publishStatus(.waitingForController)
-                }
+                publishAsLifecycleStart { publishStatus(.waitingForController) }
             }
-            scheduleReconnect(operation: operation, statusGeneration: statusGeneration)
+            scheduleReconnect(
+                operation: operation,
+                statusGeneration: lifecycleStatusGeneration ?? currentStatusGeneration
+            )
+            lifecycleStatusGeneration = nil
             statusDidChange?()
             return nil
         }
@@ -1271,11 +1303,10 @@ public final class PaddrMenuModel {
         reportCount = 0
         actionCount = 0
         if isEnabled {
-            statusGeneration = withStatusPublicationGeneration(statusGeneration) {
-                publishStatus(.connecting)
-            }
+            publishAsLifecycleStart { publishStatus(.connecting) }
         }
-        sessionStatusGeneration = statusGeneration
+        sessionStatusGeneration = lifecycleStatusGeneration ?? currentStatusGeneration
+        lifecycleStatusGeneration = nil
         sessionConfiguration = savedConfiguration
         outputGate.setEnabled(isEnabled && accessibilityTrusted)
         let stream = await dependencies.session.start(
@@ -1422,13 +1453,13 @@ public final class PaddrMenuModel {
         }
     }
 
-    /// A lifecycle start always probes for the puck and leaves the reconnect loop
-    /// polling if it is absent, so both count as Paddr looking for it. Counting only
-    /// the loop would ask for a manual refresh during every restart. Termination
-    /// cancels both without replacing them.
+    /// Launch and every lifecycle start probe for the puck, and a start leaves the
+    /// reconnect loop polling if it is absent, so all three count as Paddr looking
+    /// for it. Counting only the loop would ask for a manual refresh during launch
+    /// and every restart. Termination cancels them without replacing them.
     private func updateIsSearchingForPuck() {
         let isSearching = terminationState == .idle
-            && (lifecycleTask != nil || reconnectTask != nil)
+            && (initializationTask != nil || lifecycleTask != nil || reconnectTask != nil)
         if isSearchingForPuck != isSearching { isSearchingForPuck = isSearching }
     }
 

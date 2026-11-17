@@ -264,12 +264,12 @@ private extension NSSize {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let model = PaddrMenuModel()
     private let setupGuide = SetupGuidePresentation()
     private let statusMenu = NSMenu()
     private var statusItem: NSStatusItem?
-    private var configurationWindowController: NSWindowController?
+    private var configurationWindowController: ConfigurationWindowController?
     private var isResolvingTerminationRequest = false
     private var terminationResolutionTask: Task<Void, Never>?
 
@@ -784,23 +784,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             return
         }
 
-        let window = PaddrFamilyWindowChrome.makeConfigurationWindow(
-            rootView: ConfigurationView(model: model, managesWindowSize: true, setupGuide: setupGuide)
-        )
-        window.delegate = self
-        PaddrFamilyWindowChrome.restoreConfigurationFrame(for: window)
-
-        let controller = NSWindowController(window: window)
+        let controller = ConfigurationWindowController(model: model, setupGuide: setupGuide) { [weak self] window in
+            self?.updateActivationPolicy(afterClosing: window)
+        }
+        if let window = controller.window {
+            PaddrFamilyWindowChrome.restoreConfigurationFrame(for: window)
+        }
         configurationWindowController = controller
         controller.showWindow(nil)
         NSApplication.shared.activate()
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow,
-              window === configurationWindowController?.window else { return }
-        setupGuide.windowDidClose()
-        updateActivationPolicy(afterClosing: window)
     }
 
     private func updateActivationPolicy(afterClosing closingWindow: NSWindow) {
