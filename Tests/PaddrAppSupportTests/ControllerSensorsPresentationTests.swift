@@ -739,7 +739,12 @@ final class ControllerSensorsPresentationTests: XCTestCase {
                 XCTAssertLessThan(tilt.accessibilityFrame().maxY, verticalSwitch.accessibilityFrame().minY,
                     "Holding angle and tilt follow the inversion row")
                 XCTAssertLessThan(holdingAngle.maxY, verticalSwitch.accessibilityFrame().minY,
-                    "Tilt sits beside the holding angle it depends on")
+                    "Holding angle follows the inversion row")
+                XCTAssertTrue(holdingAngle.minY < tilt.accessibilityFrame().maxY
+                    && tilt.accessibilityFrame().minY < holdingAngle.maxY,
+                    "Tilt sits on the same row as the holding angle it depends on")
+                XCTAssertNotEqual(holdingAngle.midX, tilt.accessibilityFrame().midX, accuracy: 40,
+                    "Holding angle and tilt occupy the two columns of that row")
                 let noiseFrame = try XCTUnwrap(elements["Noise threshold"]?.accessibilityFrame?())
                 XCTAssertLessThan(noiseFrame.maxY, tilt.accessibilityFrame().minY,
                     "Noise threshold has no partner and ends the grid on its own row")

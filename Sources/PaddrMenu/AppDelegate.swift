@@ -799,6 +799,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow,
               window === configurationWindowController?.window else { return }
+        setupGuide.windowDidClose()
         updateActivationPolicy(afterClosing: window)
     }
 

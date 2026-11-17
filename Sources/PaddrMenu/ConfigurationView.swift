@@ -18,13 +18,25 @@ struct ConfigurationView: View {
         return ceil(documentHeight + barHeight)
     }
 
+    private static let documentID = "paddr.configuration.document"
+
     var body: some View {
-        ScrollView {
-            ConfigurationContentView(
-                model: model, commands: commands, setupGuide: setupGuide,
-                initialTuningExpanded: initialTuningExpanded
-            )
-            .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { documentHeight = $0 }
+        ScrollViewReader { scroll in
+            ScrollView {
+                ConfigurationContentView(
+                    model: model, commands: commands, setupGuide: setupGuide,
+                    initialTuningExpanded: initialTuningExpanded
+                )
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { documentHeight = $0 }
+                .id(Self.documentID)
+            }
+            .onChange(of: setupGuide?.presentationCount) {
+                // The checklist opens at the top of the document. Asking for it
+                // from a scrolled window must show it, and say so to VoiceOver.
+                guard setupGuide?.isPresented == true else { return }
+                scroll.scrollTo(Self.documentID, anchor: .top)
+                AccessibilityNotification.Announcement(String(localized: "Set up Paddr")).post()
+            }
         }
         .scrollIndicators(.automatic)
         .safeAreaBar(edge: .bottom, spacing: 0) {

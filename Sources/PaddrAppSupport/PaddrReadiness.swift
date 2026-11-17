@@ -144,6 +144,10 @@ public struct PaddrReadinessResolution: Equatable, Sendable {
     public let output: PaddrOutputReadiness
     public let access: PaddrAccessReadiness
     public let nextAction: PaddrReadinessNextAction
+    /// What still has to be connected, whether or not that is the next action:
+    /// the puck first, because the controller connects through it. `nil` once
+    /// both are connected.
+    public let connectionAction: PaddrReadinessNextAction?
     public let outputDisabledReason: PaddrOutputDisabledReason?
 }
 
@@ -170,6 +174,17 @@ public enum PaddrReadinessResolver {
             output = .idle
         }
 
+        // Initialization probes for the puck itself, so it never needs a manual refresh.
+        let missingPuckAction: PaddrReadinessNextAction =
+            input.isSearchingForPuck || !input.isInitialized ? .connectPuck : .refreshPuck
+        let connectionAction: PaddrReadinessNextAction? = if !input.puckConnected {
+            missingPuckAction
+        } else if !input.controllerConnected {
+            .connectController
+        } else {
+            nil
+        }
+
         let nextAction: PaddrReadinessNextAction
         if !input.isInitialized {
             nextAction = .waitForInitialization
@@ -179,7 +194,7 @@ public enum PaddrReadinessResolver {
             // observation. Metadata writes beside an enabled session do not.
             nextAction = .waitForProfileOperation
         } else if !input.puckConnected {
-            nextAction = input.isSearchingForPuck ? .connectPuck : .refreshPuck
+            nextAction = missingPuckAction
         } else if !input.inputMonitoringGranted {
             nextAction = .requestInputMonitoring
         } else if !input.controllerConnected {
@@ -214,6 +229,7 @@ public enum PaddrReadinessResolver {
             output: output,
             access: access,
             nextAction: nextAction,
+            connectionAction: connectionAction,
             outputDisabledReason: disabledReason
         )
     }

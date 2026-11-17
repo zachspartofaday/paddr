@@ -53,6 +53,9 @@ package final class OnboardingPreferences {
 @Observable
 package final class SetupGuidePresentation {
     package private(set) var isPresented = false
+    /// Counts presentations, so the window can bring the checklist into view
+    /// each time it is asked for, including while it is already showing.
+    package private(set) var presentationCount = 0
     @ObservationIgnored private let preferences: OnboardingPreferences
 
     package init(preferences: OnboardingPreferences = OnboardingPreferences()) {
@@ -65,6 +68,20 @@ package final class SetupGuidePresentation {
             hasRecordedDismissal: preferences.hasRecordedDismissal
         ) else { return }
         isPresented = true
+        presentationCount += 1
+    }
+
+    /// Setup finished, so it is not offered automatically again. The checklist
+    /// stays up for the person still reading it.
+    package func recordCompletion() {
+        preferences.record(.completed)
+    }
+
+    /// Closing the window ends an unfinished presentation, as closing the
+    /// separate guide window once did.
+    package func windowDidClose() {
+        guard isPresented else { return }
+        dismiss(as: .skipped)
     }
 
     package func dismiss(as dismissal: OnboardingDismissal) {

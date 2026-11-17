@@ -616,8 +616,15 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         XCTAssertEqual(window.frame.maxY, top, accuracy: 0.5)
         let scroll = try XCTUnwrap(configurationScrollView(in: host))
         let document = try XCTUnwrap(scroll.documentView)
-        XCTAssertLessThanOrEqual(document.bounds.height, scroll.contentSize.height + 1,
-            "Expanded tuning and rear bindings must fit when the screen has room")
+        // The scroll view spans the window; the toolbar and the floating bar inset
+        // what is visible, so the document must fit between them.
+        let visibleHeight = scroll.contentSize.height
+            - scroll.contentInsets.top - scroll.contentInsets.bottom
+        XCTAssertLessThanOrEqual(document.bounds.height, visibleHeight + 1,
+            "Expanded tuning and rear bindings must fit above the floating bar when the screen has room")
+        let barHeight = await floatingBarHeight(for: model, width: window.contentLayoutRect.width)
+        XCTAssertGreaterThanOrEqual(scroll.contentInsets.bottom, barHeight - 1,
+            "The space reserved under the document is the whole bar, not part of it")
         if let path = ProcessInfo.processInfo.environment["PADDR_UI_EVIDENCE_DIR"] {
             try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
             try exportPNG(host, to: URL(fileURLWithPath: path).appendingPathComponent("managed-expanded-dark.png"))
@@ -1101,7 +1108,8 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
     func testPermissionRecoveryStaysWithOutputAndSuppressesCompetingConnectionAdvice() async throws {
         for granted in [false, true] {
             let model = try makeEditableMenuModel(hasSystemAccess: granted)
-            let initialized = await waitUntil { model.isInitialized }
+            // Access is read by the first status refresh, a turn after initialization.
+            let initialized = await waitUntil { model.isInitialized && model.hasSystemAccess == granted }
             XCTAssertTrue(initialized)
             XCTAssertEqual(ApplyBarView(model: model).showsStatusMessage, granted,
                 "Missing-puck guidance remains actionable once access is granted")
@@ -1305,6 +1313,12 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
             "The output bar floats over the scrolling workspace instead of ending it with a band")
         XCTAssertGreaterThanOrEqual(scroll.contentInsets.bottom, outputFrame.height,
             "The document can scroll clear of the bar that floats over it")
+        // Measured from the bar itself, not from the inset it is supposed to cause.
+        let barHeight = await floatingBarHeight(for: model, width: scroll.bounds.width)
+        XCTAssertGreaterThan(barHeight, outputFrame.height + PaddrStyle.Control.height,
+            "Control: without access the bar stacks its notice above the output row")
+        XCTAssertGreaterThanOrEqual(scroll.contentInsets.bottom, barHeight - 1,
+            "The reserved space covers the whole bar, including its permission notice")
 
         scroll.contentView.scroll(to: NSPoint(x: 0, y: max(0,
             document.bounds.height - scroll.contentSize.height + scroll.contentInsets.bottom)))
@@ -1319,6 +1333,14 @@ final class FamilyConsoleLayoutEvidenceTests: XCTestCase {
         let barTop = window.convertToScreen(scroll.convert(scroll.bounds, to: nil)).minY + scroll.contentInsets.bottom
         XCTAssertGreaterThanOrEqual(documentBottom, barTop - 1,
             "At the end of the document its last row sits above the bar, not under it")
+    }
+
+    /// The floating bar's own height at a width, hosted apart from any scroll view.
+    private func floatingBarHeight(for model: PaddrMenuModel, width: CGFloat) async -> CGFloat {
+        let bar = NSHostingView(rootView: ApplyBarView(model: model).frame(width: width))
+        bar.frame = NSRect(x: 0, y: 0, width: width, height: 600)
+        await settle(bar)
+        return bar.fittingSize.height
     }
 
     func testConfigurationControlsStayHorizontallyContainedAtMinimumWindowWidth() async {

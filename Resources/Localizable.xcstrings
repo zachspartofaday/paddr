@@ -32,7 +32,7 @@
       "comment": "Readiness action shown when the puck is present but the controller is not."
     },
     "Connect the puck, then refresh": {
-      "comment": "Readiness action shown when the puck transport is unavailable."
+      "comment": "Readiness action shown when the puck is missing and nothing is polling for it."
     },
     "Enable or disable mapped output": {
       "comment": "Help text for the Mapped output switch in the bottom status bar."
@@ -101,7 +101,7 @@
       "comment": "Recovery instruction after a configuration save failure."
     },
     "Paddr. %arg. %arg. %arg. %arg.": {
-      "comment": "Menu-bar status item summary in output, controller, transport, profile order."
+      "comment": "Menu-bar status item summary in output, controller, puck, profile order."
     },
     "Preparing Paddr": {
       "comment": "Readiness state shown while the model initializes."
@@ -242,7 +242,7 @@
       }
     },
     "Action": {
-      "comment": "Label for the output assigned to the selected trackpad area.",
+      "comment": "Label for the output assigned to the selected trackpad zone.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1195,7 +1195,7 @@
     "Profile names must be nonempty and unique, ignoring case.": {},
     "Profiles": {},
     "Puck": {
-      "comment": "Short receiver status title for the puck indicator.",
+      "comment": "Short status title for the puck indicator.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2026,7 +2026,7 @@
       "comment": "Persistent setup banner when Accessibility has not been granted."
     },
     "Controller not connected": {
-      "comment": "Visible controller connection summary in the output footer."
+      "comment": "Visible controller connection summary in the floating status bar."
     },
     "Output is off.": {
       "comment": "Output status when mapped actions are disabled."
@@ -2053,31 +2053,31 @@
       "comment": "Accessible output-switch help; the argument is the current disabled reason, followed by the pending-save effect."
     },
     "Allow access to use your mappings": {
-      "comment": "Native configuration footer and window layout controls.",
+      "comment": "Floating status bar and window layout controls.",
       "extractionState": "manual"
     },
     "Input Monitoring and Accessibility are needed. You can keep editing.": {
-      "comment": "Native configuration footer and window layout controls.",
+      "comment": "Floating status bar and window layout controls.",
       "extractionState": "manual"
     },
     "Input Monitoring is needed to read your controller. You can keep editing.": {
-      "comment": "Native configuration footer and window layout controls.",
+      "comment": "Floating status bar and window layout controls.",
       "extractionState": "manual"
     },
     "Accessibility is needed to send your mapped actions. You can keep editing.": {
-      "comment": "Native configuration footer and window layout controls.",
+      "comment": "Floating status bar and window layout controls.",
       "extractionState": "manual"
     },
     "Access is ready.": {
-      "comment": "Native configuration footer and window layout controls.",
+      "comment": "Floating status bar and window layout controls.",
       "extractionState": "manual"
     },
     "Output status": {
-      "comment": "Native configuration footer and window layout controls.",
+      "comment": "Floating status bar and window layout controls.",
       "extractionState": "manual"
     },
     "Reset Window Size": {
-      "comment": "Native configuration footer and window layout controls.",
+      "comment": "Floating status bar and window layout controls.",
       "extractionState": "manual"
     },
     "Pointer Acceleration Strength": {
@@ -2409,13 +2409,13 @@
     "Revert to saved?": {
       "comment": "Title of the confirmation shown before unsaved draft changes are discarded."
     },
-    "This discards your unsaved changes and shows the profile as it was last saved. Mapped output is not affected.": {
+    "This discards your unsaved changes and shows the profile as it was last saved. Output is not affected.": {
       "comment": "Message of the Revert to Saved confirmation."
     },
     "Create, duplicate, rename, revert, or delete profiles": {
       "comment": "Tooltip for the profile actions menu in the toolbar."
     },
-    "Save this profile and apply it to mapped output": {
+    "Save this profile and apply it to output": {
       "comment": "Tooltip for Save & Apply while there are unsaved changes."
     },
     "There are no unsaved changes": {
@@ -2462,6 +2462,18 @@
     },
     "Edited": {
       "comment": "Window subtitle shown beside the title while the profile has unsaved changes."
+    },
+    "Save this profile first": {
+      "comment": "Tooltip on a disabled profile command while a recovered profile still needs its first save."
+    },
+    "Saving is unavailable right now": {
+      "comment": "Tooltip for Save & Apply while it is disabled for a reason other than a pending save."
+    },
+    "Output is on. It starts once the steps above are done.": {
+      "comment": "Setup checklist detail when output is enabled but an earlier step is unfinished."
+    },
+    "Layout": {
+      "comment": "Label for the zone layout picker."
     }
   },
   "version": "1.0"

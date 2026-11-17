@@ -4,7 +4,7 @@
 
 ## Setup
 
-On first launch the configuration window opens with a setup checklist above the workspace. It lists four steps: allow access, connect the puck and controller, edit your own profile, and enable output. Completed steps are checked, and the next step offers its action in place, such as the permission buttons, **Duplicate to Edit** or **Enable Output**. Choose **Skip Setup** to hide it, or **Done** once output is active; the editing step is optional. **Help > Paddr Guide** shows the checklist again at any time.
+On first launch the configuration window opens with a setup checklist above the workspace. It lists four steps: allow access, connect the puck and controller, edit your own profile, and enable output. Completed steps are checked, and the next step offers its action in place, such as the permission buttons, **Duplicate to Edit** or **Enable Output**. Choose **Skip Setup** to hide it, or **Done** once output is active; the editing step is optional. Paddr offers the checklist automatically until you dismiss it, close the window, or reach active output. **Help > Paddr Guide**, or **Paddr Guide…** in the menu-bar menu, shows it again at any time and scrolls it into view.
 
 ## Trackpads and rear buttons
 
@@ -30,7 +30,7 @@ Rear buttons start at **None** in new profiles and profiles created before rear-
 
 ## Profiles
 
-Profiles own the complete left/right configuration and keep a stable internal ID when renamed. Select a profile with the picker in the window toolbar. The profile actions menu beside it creates, duplicates, renames and deletes profiles, restores defaults, and reverts a draft; an unavailable action explains why on hover. Profile names cannot themselves be UUIDs, keeping name-or-ID selection unambiguous. Switching with unsaved edits asks before discarding them. **Revert to Saved** asks for confirmation, then discards only the unsaved draft: the saved profile and active output are unchanged. Quitting with an unsaved draft offers **Save & Quit**, **Cancel**, or **Quit Without Saving**; a failed save cancels the quit and leaves the draft available. Deleting the active user profile confirms and activates Default first.
+Profiles own the complete left/right configuration and keep a stable internal ID when renamed. Select a profile with the picker in the window toolbar. The profile actions menu beside it creates, duplicates, renames and deletes profiles, restores defaults, and reverts a draft; an unavailable action says why. Profile names cannot themselves be UUIDs, keeping name-or-ID selection unambiguous. Switching with unsaved edits asks before discarding them. **Revert to Saved** asks for confirmation, then discards only the unsaved draft: the saved profile and active output are unchanged. Quitting with an unsaved draft offers **Save & Quit**, **Cancel**, or **Quit Without Saving**; a failed save cancels the quit and leaves the draft available. Deleting the active user profile confirms and activates Default first.
 
 Default is read-only. While it is selected, a notice at the top of the workspace says so and offers **Duplicate to Edit**.
 

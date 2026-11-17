@@ -35,6 +35,9 @@ struct ProfilePicker: View {
         // A toolbar cannot wrap a long name; the full name stays in the menu
         // and in the help text.
         .frame(maxWidth: PaddrStyle.Width.control)
+        // The system pill hugs a pop-up's text; this gives the name the same
+        // room at each end that Save & Apply's label has.
+        .padding(.horizontal, PaddrStyle.Spacing.s2)
         .disabled(!model.canManageProfiles)
         .accessibilityLabel("Profile")
         .accessibilityValue(Text(verbatim: presentation.accessibilityValue))
@@ -63,9 +66,14 @@ struct ProfileActionsMenu: View {
             ForEach(presentation.sections.indices, id: \.self) { index in
                 Section {
                     ForEach(presentation.sections[index]) { item in
-                        Button(item.title, systemImage: item.systemImage,
-                            role: item.isDestructive ? .destructive : nil) {
+                        Button(role: item.isDestructive ? .destructive : nil) {
                             commands.perform(item.id, in: model)
+                        } label: {
+                            Image(systemName: item.systemImage)
+                            Text(item.title)
+                            // A menu shows a second text as the item's subtitle, so the
+                            // reason is visible and spoken without hovering.
+                            if let reason = item.disabledReason { Text(reason) }
                         }
                         .disabled(!item.isEnabled)
                         .help(item.disabledReason.map { Text($0) } ?? Text(verbatim: ""))
@@ -73,6 +81,7 @@ struct ProfileActionsMenu: View {
                 }
             }
         }
+        .padding(.horizontal, PaddrStyle.Spacing.s1)
         .disabled(!model.canManageProfiles)
         .accessibilityLabel("Profile actions")
         .accessibilityValue(isDefaultProfile ? Text("Default is read-only") : Text("Editable profile"))
@@ -95,10 +104,21 @@ struct SaveAndApplyButton: View {
             .disabled(!model.canSaveAndApply)
             .keyboardShortcut("s", modifiers: .command)
             .accessibilityValue(model.hasUnsavedChanges ? Text("Unsaved changes") : Text("Saved"))
-            .help(model.hasUnsavedChanges
-                ? Text("Save this profile and apply it to mapped output")
-                : Text("There are no unsaved changes"))
+            .help(Text(Self.help(
+                canSave: model.canSaveAndApply,
+                hasUnsavedChanges: model.hasUnsavedChanges,
+                isSaving: model.hasPendingConfigurationPersistence
+            )))
             .paddrAccessibilityID("profile", "save-apply")
+    }
+
+    /// What the button does, or why it is unavailable.
+    static func help(
+        canSave: Bool, hasUnsavedChanges: Bool, isSaving: Bool
+    ) -> LocalizedStringResource {
+        if canSave { return "Save this profile and apply it to output" }
+        if !hasUnsavedChanges { return "There are no unsaved changes" }
+        return isSaving ? "Wait for the profile operation to finish" : "Saving is unavailable right now"
     }
 }
 

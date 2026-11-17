@@ -13,7 +13,11 @@ struct ConfigurationContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: PaddrStyle.cardSpacing) {
             if let setupGuide, setupGuide.isPresented {
-                SetupChecklistView(model: model, commands: commands) { setupGuide.dismiss(as: $0) }
+                SetupChecklistView(
+                    model: model, commands: commands,
+                    onComplete: setupGuide.recordCompletion,
+                    onDismiss: setupGuide.dismiss(as:)
+                )
             } else if model.activeProfileID == .default {
                 // The checklist carries the same notice as its profile step.
                 ReadOnlyProfileNotice(model: model, commands: commands)

@@ -305,28 +305,42 @@ struct ApplyBarView: View {
             .accessibilityLabel(model.status.message)
             .help(Text(model.status.message))
         } else {
-            PaddrWrappingHStack(horizontalSpacing: PaddrStyle.Spacing.s3, verticalSpacing: PaddrStyle.Spacing.s2) {
-                Label(
-                    model.readiness.nextAction.title,
-                    systemImage: model.readiness.nextAction.systemImage
-                )
-                .paddrTypography(.caption)
-                .foregroundStyle(
-                    model.readiness.nextAction == .releaseTrackpads
-                        ? PaddrStyle.warningText
-                        : PaddrStyle.textSecondary
-                )
-                .frame(minHeight: showsRefresh ? PaddrStyle.Control.height : nil)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Text(model.readiness.nextAction.title))
-                .help(Text(model.readiness.nextAction.title))
-                .paddrAccessibilityID("status", "next-action")
-                if showsRefresh {
-                    // The instruction names this control, so it sits beside it.
-                    refreshButton.paddrAccessibilityID("status", "refresh")
+            if showsRefresh {
+                // The instruction names this control, so it sits beside it, and
+                // drops below when the line would otherwise run out of the bar.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: PaddrStyle.Spacing.s3) {
+                        nextActionLabel
+                        refreshButton.paddrAccessibilityID("status", "refresh")
+                    }
+                    VStack(alignment: .leading, spacing: PaddrStyle.Spacing.s2) {
+                        nextActionLabel
+                        refreshButton.paddrAccessibilityID("status", "refresh")
+                    }
                 }
+            } else {
+                nextActionLabel
             }
         }
+    }
+
+    private var nextActionLabel: some View {
+        Label(
+            model.readiness.nextAction.title,
+            systemImage: model.readiness.nextAction.systemImage
+        )
+        .paddrTypography(.caption)
+        .foregroundStyle(
+            model.readiness.nextAction == .releaseTrackpads
+                ? PaddrStyle.warningText
+                : PaddrStyle.textSecondary
+        )
+        // Wraps instead of running past the bar when the line is too long.
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(model.readiness.nextAction.title))
+        .help(Text(model.readiness.nextAction.title))
+        .paddrAccessibilityID("status", "next-action")
     }
 
     /// Only a missing puck that nothing is polling for needs a manual refresh.

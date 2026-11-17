@@ -4,9 +4,9 @@ import SwiftUI
 /// The only vocabulary `PaddrMenu` text uses for a font. Every role carries its own
 /// weight, so no call site follows `paddrTypography(_:)` with an ad-hoc `bold()`.
 enum PaddrTextRole {
-    /// Guide header.
+    /// Permission setup sheet header.
     case pageTitle
-    /// Pad-card and guide-page titles.
+    /// Pad-card and setup checklist titles.
     case cardTitle
     /// Titles for preview and settings regions within a card.
     case sectionTitle
@@ -48,7 +48,7 @@ enum PaddrButtonRole {
 
 enum PaddrStyle {
     /// The one spacing scale. `s1` separates an icon from its label, `s2` two controls,
-    /// `s3` two rows, `s4` two bands or a panel edge, `s5` the guide's bands.
+    /// `s3` two rows, `s4` two bands or a panel edge, `s5` workspace columns and permission bands.
     enum Spacing {
         static let s1: CGFloat = 4
         static let s2: CGFloat = 8

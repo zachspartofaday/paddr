@@ -132,18 +132,19 @@ public final class PaddrMenuModel {
     @ObservationIgnored private var statusRefreshTask: Task<Void, Never>?
     @ObservationIgnored private var statusRefreshEpoch: UInt64 = 0
     @ObservationIgnored private var receiverStateGeneration: UInt64 = 0
-    @ObservationIgnored private var lifecycleTask: Task<Void, Never>?
+    @ObservationIgnored private var lifecycleTask: Task<Void, Never>? {
+        didSet { updateIsSearchingForPuck() }
+    }
     @ObservationIgnored private var reconnectTask: Task<Void, Never>? {
-        didSet {
-            let isSearching = reconnectTask != nil
-            if isSearchingForPuck != isSearching { isSearchingForPuck = isSearching }
-        }
+        didSet { updateIsSearchingForPuck() }
     }
     @ObservationIgnored private var reconnectGeneration: UInt64 = 0
     @ObservationIgnored private var reconnectStatusGeneration: UInt64?
     @ObservationIgnored private var permissionRefreshTask: Task<Void, Never>?
     @ObservationIgnored private var terminationTask: Task<Void, Never>?
-    @ObservationIgnored private var terminationState = TerminationState.idle
+    @ObservationIgnored private var terminationState = TerminationState.idle {
+        didSet { updateIsSearchingForPuck() }
+    }
     private var terminationDecisionInProgress = false
     @ObservationIgnored private var terminationEpoch: UInt64 = 0
     @ObservationIgnored private var terminationCompletions: [@MainActor (Bool) -> Void] = []
@@ -647,13 +648,14 @@ public final class PaddrMenuModel {
     }
 
     /// Whether the draft holds edits that can be discarded for the saved
-    /// profile. The conditions match the ones under which the draft accepts
-    /// an edit at all.
+    /// profile. A save or other profile operation in flight owns the draft
+    /// until it finishes, so reverting waits for it.
     public var canRevertToSaved: Bool {
         terminationState == .idle
             && !terminationDecisionInProgress
             && isInitialized
             && !replacesActiveConfiguration
+            && !profileOperationInProgress
             && configuration != savedConfiguration
     }
 
@@ -664,11 +666,13 @@ public final class PaddrMenuModel {
     public func revertToSaved() -> Bool {
         guard canRevertToSaved else { return false }
         configuration = savedConfiguration
-        if status == .defaultsRestored {
-            // "Save to apply them" no longer describes the draft.
-            preservingCurrentOperationalStatusAuthority {
-                publishStatus(operationalStatus)
-            }
+        if statusDescribesDraft {
+            // The message was about edits that no longer exist. It took the status
+            // from the session or reconnect loop, so hand it back to them.
+            publishStatus(operationalStatus)
+            if sessionID != nil { sessionStatusGeneration = currentStatusGeneration }
+            if reconnectTask != nil { reconnectStatusGeneration = currentStatusGeneration }
+            statusDidChange?()
         }
         return true
     }
@@ -1402,6 +1406,16 @@ public final class PaddrMenuModel {
         }
     }
 
+    /// A lifecycle start always probes for the puck and leaves the reconnect loop
+    /// polling if it is absent, so both count as Paddr looking for it. Counting only
+    /// the loop would ask for a manual refresh during every restart. Termination
+    /// cancels both without replacing them.
+    private func updateIsSearchingForPuck() {
+        let isSearching = terminationState == .idle
+            && (lifecycleTask != nil || reconnectTask != nil)
+        if isSearchingForPuck != isSearching { isSearchingForPuck = isSearching }
+    }
+
     private func isReconnectCurrent(_ operation: UInt64, token: UInt64) -> Bool {
         isCurrent(operation) && sessionID == nil && reconnectGeneration == token
     }
@@ -1420,6 +1434,14 @@ public final class PaddrMenuModel {
             do { try await self.dependencies.sleep(.seconds(1)) }
             catch { return }
             self.refreshStatus()
+        }
+    }
+
+    /// Restored defaults and a draft that failed validation or saving.
+    private var statusDescribesDraft: Bool {
+        switch status {
+        case .defaultsRestored, .failure(.configurationInvalid), .failure(.configurationSave): true
+        default: false
         }
     }
 

@@ -30,10 +30,17 @@ struct ReadOnlyProfileNotice: View {
             Button("Duplicate to Edit") { commands.perform(.duplicate, in: model) }
                 .paddrActionButton(.primary)
                 .fixedSize()
-                .disabled(model.hasUnsavedChanges || !model.canManageProfiles)
-                .help("Duplicate Default to create an editable profile")
+                .disabled(disabledReason != nil)
+                .help(disabledReason.map { Text($0) }
+                    ?? Text("Duplicate Default to create an editable profile"))
                 .paddrAccessibilityID("profile", "duplicate-to-edit")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The same gate as the Duplicate command in the profile actions menu.
+    var disabledReason: LocalizedStringResource? {
+        guard model.canManageProfiles else { return "Wait for the profile operation to finish" }
+        return ProfileActionsPresentation(model: model).item(.duplicate)?.disabledReason
     }
 }

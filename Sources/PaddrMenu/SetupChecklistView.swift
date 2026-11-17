@@ -6,6 +6,8 @@ import SwiftUI
 struct SetupChecklistView: View {
     let model: PaddrMenuModel
     let commands: ProfileCommands
+    /// Called when output becomes active, whether or not the checklist is then dismissed.
+    var onComplete: @MainActor () -> Void = {}
     let onDismiss: @MainActor (OnboardingDismissal) -> Void
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -30,6 +32,9 @@ struct SetupChecklistView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Set up Paddr")
         .paddrAccessibilityID("setup")
+        .onChange(of: checklist.isComplete, initial: true) { _, isComplete in
+            if isComplete { onComplete() }
+        }
     }
 
     private func header(isComplete: Bool) -> some View {
@@ -107,16 +112,9 @@ struct SetupChecklistView: View {
         }
     }
 
-    /// The puck is named first because the controller connects through it.
-    private var connectionGuidance: PaddrReadinessNextAction {
-        guard model.readiness.puck == .connected else {
-            return model.isSearchingForPuck ? .connectPuck : .refreshPuck
-        }
-        return .connectController
-    }
-
     @ViewBuilder private var connectionDetail: some View {
-        let guidance = connectionGuidance
+        // The resolver's own answer, so this step and the status bar always agree.
+        let guidance = model.readiness.connectionAction ?? .connectController
         caption(guidance.title)
         if guidance == .refreshPuck {
             Button("Refresh", action: model.refreshStatus)
@@ -128,10 +126,12 @@ struct SetupChecklistView: View {
 
     @ViewBuilder
     private func outputDetail(nextAction: PaddrReadinessNextAction) -> some View {
-        if model.isEnabled, nextAction.setupStep == .output {
+        if !model.isEnabled {
+            caption("Turn on output, then release both trackpads so mapped input starts from neutral.")
+        } else if nextAction.setupStep == .output || nextAction.setupStep == nil {
             caption(nextAction.title, isWarning: nextAction == .releaseTrackpads)
         } else {
-            caption("Turn on output, then release both trackpads so mapped input starts from neutral.")
+            caption("Output is on. It starts once the steps above are done.")
         }
         if !model.isEnabled {
             Button("Enable Output") { model.isEnabled = true }
@@ -170,7 +170,7 @@ struct SetupChecklistView: View {
     static func symbol(for state: PaddrSetupStepState) -> String {
         switch state {
         case .done: "checkmark.circle.fill"
-        case .current: "arrow.right.circle.fill"
+        case .current: "arrow.forward.circle.fill"
         case .pending: "circle"
         }
     }

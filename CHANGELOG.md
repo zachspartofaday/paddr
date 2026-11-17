@@ -5,7 +5,7 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
 ## Unreleased
 
 - Move the profile picker, profile actions and **Save & Apply** into the window
-  toolbar on the system's Liquid Glass, and give Save & Apply Command-S. The
+  toolbar on the system's Liquid Glass; Save & Apply keeps Command-S. The
   window uses its standard title and shows **Edited** while a draft is unsaved.
 - Float connection, battery and **Enable output** in a Liquid Glass bar over
   the workspace, which now sits directly on the window surface. Reduce
@@ -15,7 +15,8 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
 - Replace the separate guide window with a setup checklist inside the
   configuration window. It marks the next step among access, connection, an
   editable profile and output, offers that step's action in place, and reopens
-  from Help > Paddr Guide.
+  from Help > Paddr Guide or the menu-bar menu. Closing the window or reaching
+  active output ends its automatic presentation.
 - Add **Revert to Saved** to the profile actions, with confirmation, to discard
   only the unsaved draft. Disabled profile actions name their reason.
 - Show a read-only notice with **Duplicate to Edit** in the workspace while

@@ -48,7 +48,7 @@ You'll need an **Apple silicon Mac running macOS 27 or later** and a **Steam Con
 3. Choose **Duplicate to Edit** for the built-in Default profile, configure your mappings, and choose **Save & Apply**.
 4. Turn on **Enable output**, then release the pads, assigned rear buttons and assigned grips so output can activate. For gyro aiming, choose **Calibrate** and follow the hold-still prompt.
 
-Saving does not enable output. Closing the window leaves Paddr in the menu bar; reopen the setup checklist from **Help > Paddr Guide** at any time.
+Saving does not enable output. Closing the window leaves Paddr in the menu bar; reopen the setup checklist from **Paddr Guide…** in the menu-bar menu, or from **Help > Paddr Guide** while the window is open.
 
 ## Guides and development
 

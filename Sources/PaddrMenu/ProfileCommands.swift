@@ -39,8 +39,10 @@ struct ProfileActionsPresentation {
         canEditActiveProfile: Bool,
         canRevertToSaved: Bool
     ) {
-        let draftReason: LocalizedStringResource? = hasUnsavedChanges
-            ? "Save or revert your changes first" : nil
+        // A recovered profile needs saving although its draft has no edits, so
+        // the advice never offers a revert that the Revert command then refuses.
+        let draftReason: LocalizedStringResource? = !hasUnsavedChanges ? nil
+            : canRevertToSaved ? "Save or revert your changes first" : "Save this profile first"
         let editReason: LocalizedStringResource? = canEditActiveProfile ? nil
             : isDefaultProfile ? "Default is read-only" : "Wait for the profile operation to finish"
 
@@ -108,6 +110,10 @@ final class ProfileCommands {
     }
 
     func perform(_ action: ProfileAction, in model: PaddrMenuModel) {
+        // The menu disables these too; the command holds the gate itself so no
+        // other caller, or a menu built before the state changed, can run past it.
+        guard model.canManageProfiles,
+              ProfileActionsPresentation(model: model).item(action)?.isEnabled == true else { return }
         switch action {
         case .new:
             nameDraft = String(localized: "New Profile")
@@ -239,7 +245,7 @@ struct ProfileDialogs: ViewModifier {
                     model.revertToSaved()
                 }
             } message: {
-                Text("This discards your unsaved changes and shows the profile as it was last saved. Mapped output is not affected.")
+                Text("This discards your unsaved changes and shows the profile as it was last saved. Output is not affected.")
             }
             .alert("Discard unsaved changes?", isPresented: $commands.showsDiscardConfirmation) {
                 Button("Cancel", role: .cancel) { resolveSelection(discardChanges: false) }

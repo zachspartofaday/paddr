@@ -142,6 +142,212 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertEqual(window.subtitle, "")
     }
 
+    /// The production window around an editable two-profile model.
+    private func makeProfileWindowFixture(
+        setupGuide: SetupGuidePresentation? = nil, saveProfiles: (@Sendable (ConfigurationProfileDocument) throws -> Void)? = nil
+    ) async throws -> (model: PaddrMenuModel, window: NSWindow) {
+        var document = ConfigurationProfileDocument.default
+        let profile = try document.createProfile(named: "Editable")
+        _ = try document.createProfile(named: "Other")
+        try document.activateProfile(id: profile.id)
+        let loadedDocument = document
+        let model = PaddrMenuModel(dependencies: MenuDependencies(
+            session: InertSession(),
+            loadProfiles: { ConfigurationProfileLoadResult(document: loadedDocument) },
+            saveProfiles: saveProfiles ?? { _ in },
+            probeReceiver: { nil },
+            accessibilityTrusted: { _ in true },
+            openPrivacySettings: { _ in },
+            sleep: { duration in try await Task.sleep(for: duration) },
+            reconnectDelay: { _ in throw CancellationError() }
+        ))
+        let didInitialize = await waitUntil { model.isInitialized }
+        XCTAssertTrue(didInitialize)
+        let window = PaddrFamilyWindowChrome.makeConfigurationWindow(
+            rootView: ConfigurationView(model: model, setupGuide: setupGuide)
+                .environment(\.accessibilityEnabled, true))
+        window.makeKeyAndOrderFront(nil)
+        await settle(window)
+        return (model, window)
+    }
+
+    /// The menu a toolbar item offers, found by one of its commands.
+    private func toolbarMenu(in window: NSWindow, containing title: String) -> NSMenu? {
+        (window.toolbar?.items ?? []).compactMap { $0.menuFormRepresentation?.submenu }
+            .first { $0.items.contains { $0.title == title } }
+    }
+
+    private func sheetButtons(of window: NSWindow) -> [NSButton] {
+        func buttons(_ view: NSView) -> [NSButton] {
+            ((view as? NSButton).map { [$0] } ?? []) + view.subviews.flatMap(buttons)
+        }
+        return window.attachedSheet?.contentView.map(buttons) ?? []
+    }
+
+    /// Chooses a command from the toolbar menu that currently offers it. SwiftUI
+    /// rebuilds these menus as state changes, so the menu is looked up each time.
+    private func choose(_ title: String, in window: NSWindow) throws {
+        let menu = try XCTUnwrap(toolbarMenu(in: window, containing: title), title)
+        menu.performActionForItem(at: try XCTUnwrap(menu.items.firstIndex { $0.title == title }, title))
+    }
+
+    func testToolbarPickerAsksBeforeDiscardingADraftAndFollowsTheAnswer() async throws {
+        let (model, window) = try await makeProfileWindowFixture()
+        defer { window.close() }
+        model.configuration.left.sensitivity = 9
+        func picker() -> NSMenu? { toolbarMenu(in: window, containing: "Other") }
+        func checked() -> [String] { (picker()?.items ?? []).filter { $0.state == .on }.map(\.title) }
+        XCTAssertEqual(picker()?.items.map(\.title), ["Default", "Editable", "Other"])
+        XCTAssertEqual(checked(), ["Editable"], "Control")
+
+        try choose("Other", in: window)
+        await settle(window)
+        XCTAssertEqual(model.activeProfile.name, "Editable", "The draft blocks the switch until it is confirmed")
+        XCTAssertEqual(sheetButtons(of: window).map(\.title), ["Discard Changes", "Cancel"])
+        try XCTUnwrap(sheetButtons(of: window).first { $0.title == "Cancel" }).performClick(nil)
+        await settle(window)
+        XCTAssertNil(window.attachedSheet)
+        XCTAssertEqual(model.activeProfile.name, "Editable")
+        XCTAssertTrue(model.hasUnsavedChanges, "Cancelling keeps the draft")
+        XCTAssertEqual(checked(), ["Editable"],
+            "The picker shows the profile that is still active after a cancelled switch")
+
+        try choose("Other", in: window)
+        await settle(window)
+        try XCTUnwrap(sheetButtons(of: window).first { $0.title == "Discard Changes" }).performClick(nil)
+        let switched = await waitUntil { model.activeProfile.name == "Other" && !model.hasUnsavedChanges }
+        XCTAssertTrue(switched, "Discarding performs the switch")
+        await settle(window)
+        XCTAssertEqual(checked(), ["Other"])
+    }
+
+    func testRevertToSavedRunsFromTheToolbarMenuOnlyThroughItsConfirmation() async throws {
+        let (model, window) = try await makeProfileWindowFixture()
+        defer { window.close() }
+        func item(_ title: String) throws -> NSMenuItem {
+            try XCTUnwrap(toolbarMenu(in: window, containing: title)?.items.first { $0.title == title })
+        }
+        XCTAssertFalse(try item("Revert to Saved").isEnabled, "A clean profile has nothing to revert")
+
+        let saved = model.configuration
+        model.configuration.left.sensitivity = 9
+        await settle(window)
+        XCTAssertTrue(try item("Revert to Saved").isEnabled)
+
+        try choose("Revert to Saved", in: window)
+        await settle(window)
+        XCTAssertEqual(sheetButtons(of: window).map(\.title), ["Revert to Saved", "Cancel"])
+        XCTAssertEqual(model.configuration.left.sensitivity, 9, "Asking does not discard anything")
+        try XCTUnwrap(sheetButtons(of: window).first { $0.title == "Cancel" }).performClick(nil)
+        await settle(window)
+        XCTAssertNil(window.attachedSheet)
+        XCTAssertEqual(model.configuration.left.sensitivity, 9, "Cancel keeps the draft")
+
+        try choose("Revert to Saved", in: window)
+        await settle(window)
+        try XCTUnwrap(sheetButtons(of: window).first { $0.title == "Revert to Saved" }).performClick(nil)
+        await settle(window)
+        XCTAssertEqual(model.configuration, saved)
+        XCTAssertFalse(model.hasUnsavedChanges)
+        XCTAssertFalse(try item("Revert to Saved").isEnabled)
+    }
+
+    func testRenderedProfileMenuDisablesExactlyTheGatedCommands() async throws {
+        let (model, window) = try await makeProfileWindowFixture()
+        defer { window.close() }
+        func menu() -> NSMenu? { toolbarMenu(in: window, containing: "Delete Profile") }
+        func disabled() -> [String] {
+            (menu()?.items ?? []).filter { !$0.title.isEmpty && !$0.isEnabled }.map(\.title)
+        }
+        XCTAssertEqual(menu()?.items.map(\.title).filter { !$0.isEmpty },
+            ["New Profile", "Duplicate Profile", "Rename Profile", "Revert to Saved", "Restore Defaults",
+             "Delete Profile"])
+        XCTAssertEqual(disabled(), ["Revert to Saved"])
+
+        model.configuration.left.sensitivity = 9
+        await settle(window)
+        XCTAssertEqual(disabled(), ["New Profile", "Duplicate Profile", "Delete Profile"],
+            "A draft blocks the commands that would replace it")
+        let profileCount = model.profiles.count
+        try choose("New Profile", in: window)
+        try choose("Delete Profile", in: window)
+        await settle(window)
+        XCTAssertNil(window.attachedSheet, "A disabled command opens nothing")
+        XCTAssertEqual(model.profiles.count, profileCount)
+        XCTAssertEqual(model.activeProfile.name, "Editable")
+
+        try choose("Rename Profile", in: window)
+        await settle(window)
+        XCTAssertNotNil(window.attachedSheet, "Control: an enabled command runs")
+    }
+
+    func testToolbarKeepsEveryControlVisibleAtTheMinimumWidthAndSavesWithCommandS() async throws {
+        let (model, window) = try await makeProfileWindowFixture()
+        defer { window.close() }
+        PaddrFamilyWindowChrome.setUsableLayoutSize(PaddrStyle.Metrics.minimumWindowSize, for: window)
+        model.configuration.left.sensitivity = 9
+        await settle(window)
+        XCTAssertEqual(window.frame.width, PaddrStyle.Metrics.minimumWindowSize.width, accuracy: 0.5)
+        XCTAssertEqual(window.subtitle, "Edited", "Control: the title is at its widest")
+        let toolbar = try XCTUnwrap(window.toolbar)
+        XCTAssertEqual(toolbar.items.count, 4)
+        XCTAssertEqual(toolbar.visibleItems?.map(\.itemIdentifier), toolbar.items.map(\.itemIdentifier),
+            "Nothing collapses into the overflow menu at the narrowest window")
+
+        func commandS() throws -> NSEvent {
+            try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.command],
+                timestamp: 0, windowNumber: window.windowNumber, context: nil, characters: "s",
+                charactersIgnoringModifiers: "s", isARepeat: false, keyCode: 1))
+        }
+        XCTAssertTrue(window.performKeyEquivalent(with: try commandS()))
+        let saved = await waitUntil { !model.hasUnsavedChanges }
+        XCTAssertTrue(saved, "Command-S saves from the toolbar item")
+        XCTAssertEqual(model.savedConfiguration.left.sensitivity, 9)
+        await settle(window)
+        XCTAssertFalse(window.performKeyEquivalent(with: try commandS()),
+            "With nothing to save the shortcut is not claimed")
+    }
+
+    func testAskingForSetupShowsItInTheWindowAndScrollsItIntoView() async throws {
+        let suiteName = "MenuViewPresentationTests.setup-window.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let setup = SetupGuidePresentation(preferences: OnboardingPreferences(defaults: defaults))
+        let (_, window) = try await makeProfileWindowFixture(setupGuide: setup)
+        defer { window.close() }
+        PaddrFamilyWindowChrome.setUsableLayoutSize(PaddrStyle.Metrics.minimumWindowSize, for: window)
+        let content = try XCTUnwrap(window.contentView)
+        await settle(content)
+        let scroll = try XCTUnwrap(descendants(of: NSScrollView.self, in: content).first { $0.documentView != nil })
+        let document = try XCTUnwrap(scroll.documentView)
+        let withoutSetup = document.bounds.height
+        let top = scroll.contentView.bounds.origin.y
+
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: top + 240))
+        scroll.reflectScrolledClipView(scroll.contentView)
+        await settle(content)
+        XCTAssertEqual(scroll.contentView.bounds.origin.y, top + 240, accuracy: 1, "Control: the window is scrolled")
+
+        setup.present(trigger: .help)
+        let grew = await waitUntil { document.bounds.height > withoutSetup + 100 }
+        XCTAssertTrue(grew, "The checklist joins the window's document")
+        await settle(content)
+        XCTAssertEqual(scroll.contentView.bounds.origin.y, top, accuracy: 1,
+            "Asking for setup from a scrolled window brings the checklist into view")
+
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: top + 240))
+        scroll.reflectScrolledClipView(scroll.contentView)
+        await settle(content)
+        setup.present(trigger: .help)
+        await settle(content)
+        XCTAssertEqual(scroll.contentView.bounds.origin.y, top, accuracy: 1,
+            "Asking again while it is showing scrolls back to it")
+
+        setup.dismiss(as: .skipped)
+        let shrank = await waitUntil { abs(document.bounds.height - withoutSetup) < 1 }
+        XCTAssertTrue(shrank, "Dismissing removes it from the document")
+    }
+
     func testConfigurationToolbarHoldsProfileControlsAndTheSingleSaveAction() async throws {
         var document = ConfigurationProfileDocument.default
         let profile = try document.createProfile(named: "Editable")
@@ -239,6 +445,25 @@ final class MenuViewPresentationTests: XCTestCase {
                 "Default is read-only")
         }
 
+        let recovered = ProfileActionsPresentation(isDefaultProfile: false, hasUnsavedChanges: true,
+            canEditActiveProfile: true, canRevertToSaved: false)
+        XCTAssertEqual(recovered.item(.new)?.disabledReason.map { String(localized: $0) },
+            "Save this profile first",
+            "A profile that only needs saving is never told to revert edits it does not have")
+        XCTAssertEqual(recovered.item(.revertToSaved)?.disabledReason.map { String(localized: $0) },
+            "There are no unsaved changes to revert")
+
+        let busy = ProfileActionsPresentation(isDefaultProfile: false, hasUnsavedChanges: false,
+            canEditActiveProfile: false, canRevertToSaved: false)
+        for action in [ProfileAction.rename, .restoreDefaults, .delete] {
+            XCTAssertEqual(busy.item(action)?.disabledReason.map { String(localized: $0) },
+                "Wait for the profile operation to finish")
+        }
+        let readOnlyDraft = ProfileActionsPresentation(isDefaultProfile: true, hasUnsavedChanges: true,
+            canEditActiveProfile: false, canRevertToSaved: true)
+        XCTAssertEqual(readOnlyDraft.item(.delete)?.disabledReason.map { String(localized: $0) },
+            "Default is read-only", "What can never be done outranks what must be done first")
+
         for isDefault in [false, true] {
             for hasChanges in [false, true] {
                 for canEdit in [false, true] {
@@ -256,6 +481,21 @@ final class MenuViewPresentationTests: XCTestCase {
                 }
             }
         }
+    }
+
+    func testSaveAndApplyHelpSaysWhatItDoesOrWhyItCannot() {
+        func help(canSave: Bool, hasUnsavedChanges: Bool, isSaving: Bool) -> String {
+            String(localized: SaveAndApplyButton.help(
+                canSave: canSave, hasUnsavedChanges: hasUnsavedChanges, isSaving: isSaving))
+        }
+        XCTAssertEqual(help(canSave: true, hasUnsavedChanges: true, isSaving: false),
+            "Save this profile and apply it to output")
+        XCTAssertEqual(help(canSave: false, hasUnsavedChanges: false, isSaving: false),
+            "There are no unsaved changes")
+        XCTAssertEqual(help(canSave: false, hasUnsavedChanges: true, isSaving: true),
+            "Wait for the profile operation to finish")
+        XCTAssertEqual(help(canSave: false, hasUnsavedChanges: true, isSaving: false),
+            "Saving is unavailable right now")
     }
 
     func testRevertToSavedAsksBeforeDiscardingAndOnlyWhenThereIsADraft() async {
@@ -587,6 +827,9 @@ final class MenuViewPresentationTests: XCTestCase {
             "The step that owns the next action is the one marked next")
         XCTAssertNotNil(accessibilityElement(in: host, identifier: "paddr.setup.input-monitoring.request"),
             "The permission step offers its action in place")
+        let stoppedSearching = await waitUntil { !model.isSearchingForPuck }
+        XCTAssertTrue(stoppedSearching, "This fixture's reconnect loop ends after its first probe")
+        await settle(host)
         XCTAssertNotNil(accessibilityElement(in: host, identifier: "paddr.setup.refresh"),
             "A missing puck that nothing polls for offers Refresh beside the instruction")
         XCTAssertNotNil(accessibilityElement(in: host, identifier: "paddr.setup.enable-output"))
@@ -642,6 +885,185 @@ final class MenuViewPresentationTests: XCTestCase {
         await settle(host)
         XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.profile.read-only-notice"),
             "An editable profile needs no notice")
+    }
+
+    func testReadOnlyNoticeWaitsForAProfileOperationAndSaysSo() async throws {
+        let store = BlockingProfileStore()
+        let model = PaddrMenuModel(dependencies: dependencies(store: store))
+        defer { store.releaseSave() }
+        let didInitialize = await waitUntil { model.isInitialized }
+        XCTAssertTrue(didInitialize)
+        let commands = ProfileCommands()
+        let host = NSHostingView(rootView: ConfigurationContentView(model: model, commands: commands)
+            .environment(\.accessibilityEnabled, true))
+        host.frame = NSRect(origin: .zero, size: NSSize(
+            width: PaddrStyle.Metrics.defaultWindowSize.width, height: 1200))
+        await settle(host)
+        func duplicate() -> AnyObject? { accessibilityElement(in: host, identifier: "paddr.profile.duplicate-to-edit") }
+        XCTAssertEqual(try XCTUnwrap(duplicate()).isAccessibilityEnabled?(), true, "Control")
+        XCTAssertNil(ReadOnlyProfileNotice(model: model, commands: commands).disabledReason)
+
+        XCTAssertTrue(model.duplicateActiveProfile())
+        let blocked = await waitUntil { store.didStartSave }
+        XCTAssertTrue(blocked)
+        XCTAssertFalse(model.canManageProfiles, "Control: the first duplication is still saving")
+        await settle(host)
+        if let button = duplicate() {
+            XCTAssertEqual(button.isAccessibilityEnabled?(), false,
+                "A second duplication cannot start while the first is in flight")
+        }
+        XCTAssertEqual(
+            ReadOnlyProfileNotice(model: model, commands: commands).disabledReason.map { String(localized: $0) },
+            "Wait for the profile operation to finish")
+        let profileCount = model.profiles.count
+        commands.perform(.duplicate, in: model)
+        XCTAssertEqual(model.profiles.count, profileCount, "The command itself refuses, not only the button")
+
+        store.releaseSave()
+        let finished = await waitUntil { model.canManageProfiles && model.activeProfileID != .default }
+        XCTAssertTrue(finished)
+    }
+
+    func testSetupRecordsCompletionWhenOutputBecomesActiveAndKeepsTheChecklist() async throws {
+        let suiteName = "MenuViewPresentationTests.setup-complete.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = OnboardingPreferences(defaults: defaults)
+        let setup = SetupGuidePresentation(preferences: preferences)
+        setup.present(trigger: .automatic)
+        let store = BlockingProfileStore()
+        store.releaseSave()
+        let session = PresentationSession()
+        let model = PaddrMenuModel(dependencies: dependencies(store: store, session: session, receiver: "Fake puck"))
+        let didInitialize = await waitUntil { model.isInitialized }
+        XCTAssertTrue(didInitialize)
+        let started = await waitUntil { await session.startCount == 1 }
+        XCTAssertTrue(started)
+
+        let host = NSHostingView(rootView: ConfigurationContentView(
+            model: model, commands: ProfileCommands(), setupGuide: setup)
+            .environment(\.accessibilityEnabled, true))
+        host.frame = NSRect(origin: .zero, size: NSSize(
+            width: PaddrStyle.Metrics.defaultWindowSize.width, height: 1400))
+        await settle(host)
+        let dismiss = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.setup.dismiss"))
+        XCTAssertEqual(dismiss.accessibilityLabel?(), "Skip Setup")
+        XCTAssertNil(preferences.dismissal, "Control: nothing is recorded while setup is unfinished")
+
+        // Output on but no controller yet: the output step must not ask to turn it on again.
+        model.isEnabled = true
+        await settle(host)
+        XCTAssertNil(accessibilityElement(in: host, identifier: "paddr.setup.enable-output"))
+        XCTAssertTrue(accessibilityTexts(in: host).contains("Output is on. It starts once the steps above are done."))
+        XCTAssertFalse(accessibilityTexts(in: host).contains {
+            $0.hasPrefix("Turn on output, then release both trackpads")
+        })
+        XCTAssertNil(preferences.dismissal)
+
+        await session.send(.waitingForController("Fake puck"))
+        await session.send(.controllerConnected)
+        await session.send(.outputArmed)
+        let active = await waitUntil { model.readiness.output == .active }
+        XCTAssertTrue(active)
+        await settle(host)
+        XCTAssertEqual(preferences.dismissal, .completed,
+            "Reaching active output ends automatic setup even if Done is never pressed")
+        XCTAssertTrue(setup.isPresented, "The checklist stays for the person reading it")
+        XCTAssertEqual(try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.setup.dismiss"))
+            .accessibilityLabel?(), "Done")
+        XCTAssertTrue(accessibilityTexts(in: host).contains("Output is active."))
+
+        model.isEnabled = false
+        _ = await session.stop()
+    }
+
+    func testSetupChecklistStaysInsideTheNarrowestWindowWithoutAccess() async throws {
+        let suiteName = "MenuViewPresentationTests.setup-narrow.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let setup = SetupGuidePresentation(preferences: OnboardingPreferences(defaults: defaults))
+        setup.present(trigger: .automatic)
+        let model = PaddrMenuModel(dependencies: MenuDependencies(
+            session: InertSession(),
+            loadProfiles: { ConfigurationProfileLoadResult(document: .default) },
+            saveProfiles: { _ in },
+            probeReceiver: { nil },
+            accessibilityTrusted: { _ in false },
+            inputMonitoringAccess: { _ in .denied },
+            openPrivacySettings: { _ in },
+            sleep: { duration in try await Task.sleep(for: duration) },
+            reconnectDelay: { _ in throw CancellationError() }
+        ))
+        let didInitialize = await waitUntil { model.isInitialized && !model.isSearchingForPuck }
+        XCTAssertTrue(didInitialize, "This fixture's reconnect loop ends after its first probe")
+        let width = PaddrStyle.Metrics.minimumWindowSize.width
+        let host = NSHostingView(rootView: ConfigurationContentView(
+            model: model, commands: ProfileCommands(), setupGuide: setup)
+            .environment(\.accessibilityEnabled, true))
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: NSSize(width: width, height: 1800)),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.contentView = host
+        window.orderFront(nil)
+        await settle(host)
+
+        let bounds = window.convertToScreen(host.convert(host.bounds, to: nil))
+        var checked: [String] = []
+        for element in accessibilityElements(in: host, where: { $0.hasPrefix("paddr.setup") || $0.hasPrefix("paddr.profile") }) {
+            let identifier = element.accessibilityIdentifier?() ?? ""
+            guard let frame = element.accessibilityFrame?(), frame.width > 0 else { continue }
+            checked.append(identifier)
+            XCTAssertGreaterThanOrEqual(frame.minX, bounds.minX - 0.5, identifier)
+            XCTAssertLessThanOrEqual(frame.maxX, bounds.maxX + 0.5, identifier)
+        }
+        for required in ["paddr.setup", "paddr.setup.dismiss", "paddr.setup.input-monitoring.request",
+                         "paddr.setup.refresh", "paddr.profile.duplicate-to-edit", "paddr.setup.enable-output"] {
+            XCTAssertTrue(checked.contains(required), "\(required) is laid out and measured")
+        }
+    }
+
+    func testBarGuidanceWrapsBelowItsRefreshInsteadOfLeavingANarrowBar() async throws {
+        let store = BlockingProfileStore()
+        store.releaseSave()
+        let model = PaddrMenuModel(dependencies: dependencies(store: store))
+        // This fixture's reconnect loop ends after its first probe, which is the
+        // only state that asks for a manual refresh.
+        let needsRefresh = await waitUntil { model.readiness.nextAction == .refreshPuck }
+        XCTAssertTrue(needsRefresh)
+
+        func frames(width: CGFloat) async throws -> (host: CGRect, label: CGRect, refresh: CGRect) {
+            let host = NSHostingView(rootView: ApplyBarView(model: model).frame(width: width)
+                .environment(\.accessibilityEnabled, true))
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: 400),
+                styleMask: [.titled], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            defer { window.close() }
+            window.contentView = host
+            window.orderFront(nil)
+            await settle(host)
+            let label = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.status.next-action"))
+            let refresh = try XCTUnwrap(accessibilityElement(in: host, identifier: "paddr.status.refresh"))
+            return (window.convertToScreen(host.convert(host.bounds, to: nil)),
+                    try XCTUnwrap(label.accessibilityFrame?()), try XCTUnwrap(refresh.accessibilityFrame?()))
+        }
+
+        let wide = try await frames(width: PaddrStyle.Metrics.defaultWindowSize.width)
+        XCTAssertEqual(wide.label.midY, wide.refresh.midY, accuracy: 1, "With room, Refresh sits beside its instruction")
+        XCTAssertLessThan(wide.label.maxX, wide.refresh.minX)
+
+        // Narrower than the instruction and its button on one line.
+        let narrowWidth = wide.label.width + PaddrStyle.Inset.window * 2
+        let narrow = try await frames(width: narrowWidth)
+        XCTAssertGreaterThanOrEqual(narrow.label.minX, narrow.host.minX - 0.5)
+        XCTAssertLessThanOrEqual(narrow.label.maxX, narrow.host.maxX + 0.5, "The instruction stays inside the bar")
+        XCTAssertLessThanOrEqual(narrow.refresh.maxX, narrow.host.maxX + 0.5, "Refresh stays inside the bar")
+        XCTAssertLessThan(narrow.refresh.maxY, narrow.label.minY, "Refresh drops below the instruction")
+
+        // Too narrow for the instruction itself: it wraps onto more lines.
+        let tight = try await frames(width: wide.label.width * 0.6 + PaddrStyle.Inset.window * 2)
+        XCTAssertLessThanOrEqual(tight.label.maxX, tight.host.maxX + 0.5)
+        XCTAssertGreaterThan(tight.label.height, wide.label.height * 1.5, "The instruction wraps instead of clipping")
     }
 
     func testDualPadWorkflowMountsTwoPadModeControls() {
@@ -1647,6 +2069,33 @@ final class MenuViewPresentationTests: XCTestCase {
         }
         collect(view)
         return matches
+    }
+
+    private func accessibilityElements(in view: NSView, where matches: (String) -> Bool) -> [AnyObject] {
+        var visited = Set<ObjectIdentifier>()
+        var found: [AnyObject] = []
+        func collect(_ object: AnyObject) {
+            guard visited.insert(ObjectIdentifier(object)).inserted else { return }
+            if let identifier = object.accessibilityIdentifier?(), matches(identifier) { found.append(object) }
+            for child in object.accessibilityChildren?() as? [Any] ?? [] { collect(child as AnyObject) }
+        }
+        collect(view)
+        return found
+    }
+
+    /// Every label and static-text value in the tree.
+    private func accessibilityTexts(in view: NSView) -> [String] {
+        var visited = Set<ObjectIdentifier>()
+        var texts: [String] = []
+        func collect(_ object: AnyObject) {
+            guard visited.insert(ObjectIdentifier(object)).inserted else { return }
+            for attribute in ["accessibilityLabel", "accessibilityValue"] {
+                if let text = accessibilityText(object, attribute), !text.isEmpty { texts.append(text) }
+            }
+            for child in object.accessibilityChildren?() as? [Any] ?? [] { collect(child as AnyObject) }
+        }
+        collect(view)
+        return texts
     }
 
     /// Toolbar items and window state update a run-loop turn after the content.
