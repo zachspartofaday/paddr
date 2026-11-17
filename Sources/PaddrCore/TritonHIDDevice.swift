@@ -317,6 +317,9 @@ public final class TritonHIDDevice: TrackpadHIDStreaming {
             return nil
         }
 
+        // The set holds IOHIDDevice values, and a cast to a Core Foundation
+        // type cannot be conditional.
+        // swiftlint:disable:next force_cast
         let candidates = (deviceSet as NSSet).map { $0 as! IOHIDDevice }.compactMap { device -> (IOHIDDevice, UInt16, TritonInterfaceSummary, Int?)? in
             guard let productID = integerProperty(device, key: kIOHIDProductIDKey).map(UInt16.init),
                   let maximum = integerProperty(device, key: kIOHIDMaxInputReportSizeKey)

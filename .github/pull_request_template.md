@@ -7,6 +7,7 @@
 - [ ] `swift test -Xswiftc -warnings-as-errors`
 - [ ] `scripts/check-localization.sh`
 - [ ] arm64 release build with warnings as errors
+- [ ] `swiftformat . --lint` and `swiftlint lint --strict`
 - [ ] Relevant manual controller/UI checks described below
 
 Manual checks:

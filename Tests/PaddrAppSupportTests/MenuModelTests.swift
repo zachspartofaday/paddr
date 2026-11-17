@@ -1840,7 +1840,7 @@ final class MenuModelTests: XCTestCase {
         XCTAssertTrue(model.hasUnsavedChanges)
     }
 
-    func testRelaunchLoadsConfigurationSavedByEnable() async {
+    func testRelaunchLoadsConfigurationSavedByEnable() async throws {
         let state = readyState(receiver: nil)
         let model = PaddrMenuModel(dependencies: dependencies(state: state))
         await waitUntil(model: model) { model.isInitialized }
@@ -1850,7 +1850,7 @@ final class MenuModelTests: XCTestCase {
 
         model.isEnabled = true
         await waitUntil(model: model) { model.status == .waitingForController }
-        state.loadedConfiguration = try! XCTUnwrap(state.savedConfiguration)
+        state.loadedConfiguration = try XCTUnwrap(state.savedConfiguration)
 
         let relaunched = PaddrMenuModel(dependencies: dependencies(state: state))
         await waitUntil(model: relaunched) { relaunched.isInitialized }
@@ -1860,7 +1860,7 @@ final class MenuModelTests: XCTestCase {
         XCTAssertFalse(relaunched.hasUnsavedChanges)
     }
 
-    func testBothPadsRemainZonesAcrossSaveAndRelaunch() async {
+    func testBothPadsRemainZonesAcrossSaveAndRelaunch() async throws {
         let state = readyState(receiver: nil)
         let model = PaddrMenuModel(dependencies: dependencies(state: state))
         await waitUntil(model: model) { model.isInitialized }
@@ -1873,7 +1873,7 @@ final class MenuModelTests: XCTestCase {
 
         model.saveAndApply()
         await waitUntil(model: model) { model.status == .configurationSaved }
-        let saved = try! XCTUnwrap(state.savedConfiguration)
+        let saved = try XCTUnwrap(state.savedConfiguration)
         XCTAssertEqual(saved.left.mode, .dpad)
         XCTAssertEqual(saved.left.zoneLayout, .horizontalTwo)
         XCTAssertEqual(saved.left.dpadKeys.left, "q")

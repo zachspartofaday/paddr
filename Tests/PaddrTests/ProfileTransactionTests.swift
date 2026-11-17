@@ -87,7 +87,7 @@ final class ProfileTransactionTests: XCTestCase {
         let destination = directory.appendingPathComponent("export.json")
         try ConfigurationProfileStore.save(.default, to: source)
         let client = ConfigurationProfileStoreClient(url: source)
-        var document = try client.loadInput().profileDocument!
+        var document = try XCTUnwrap(client.loadInput().profileDocument)
         _ = try document.createProfile(named: "Exported")
         try Data("deliberately replaced".utf8).write(to: destination)
         try client.save(document, to: destination)

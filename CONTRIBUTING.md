@@ -42,7 +42,11 @@ swift build -c release -Xswiftc -warnings-as-errors --arch arm64 --product Paddr
 scripts/test-cli.sh "$(swift build -c release --arch arm64 --show-bin-path)/PaddrCLI"
 scripts/test-release-identity.sh
 scripts/test-release-production.sh
+swiftformat . --lint
+swiftlint lint --strict
 ```
+
+Layout is owned by SwiftFormat and diagnostics by SwiftLint; both read their settings from the repository root (`.swiftformat`, `.swiftlint.yml`) and both must report nothing. Run `swiftformat .` to apply the layout. Do not use `swiftlint --fix`. The settings were written against SwiftFormat 0.64 and SwiftLint 0.65.1, and each lists its rules explicitly so a newer tool does not start rewriting or flagging code on its own.
 
 To assemble a local ad-hoc app without touching the repository's `dist` directory:
 
@@ -60,7 +64,7 @@ If your change affects a physical launch path, say what you tested manually. Use
 
 Before opening a pull request:
 
-- run the test, localization, and release-build commands above;
+- run the test, localization, release-build, format, and lint commands above;
 - keep generated build products, credentials, certificates, private keys, and unredacted captures out of the repository;
 - update README or contributor documentation when behavior or workflow changes; and
 - describe anything you could not test directly, especially physical-controller and assistive-technology behavior.

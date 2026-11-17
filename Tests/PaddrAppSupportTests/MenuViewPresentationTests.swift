@@ -414,7 +414,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertEqual(model.status, .configurationSaved)
     }
 
-    func testProfileActionsKeepItemGatesAndNameTheReasonForEveryDisabledCommand() {
+    func testProfileActionsKeepItemGatesAndNameTheReasonForEveryDisabledCommand() throws {
         let clean = ProfileActionsPresentation(isDefaultProfile: false, hasUnsavedChanges: false,
                                                canEditActiveProfile: true, canRevertToSaved: false)
         XCTAssertEqual(clean.items.map(\.id),
@@ -437,7 +437,7 @@ final class MenuViewPresentationTests: XCTestCase {
                                                   canEditActiveProfile: false, canRevertToSaved: false)
         XCTAssertEqual(readOnly.items.prefix(2).map(\.id), [.duplicate, .new],
                        "Duplicating Default leads while Default is active")
-        XCTAssertEqual(String(localized: try! XCTUnwrap(readOnly.item(.duplicate)).title),
+        XCTAssertEqual(String(localized: try XCTUnwrap(readOnly.item(.duplicate)).title),
                        "Duplicate Default to Edit")
         for action in [ProfileAction.rename, .restoreDefaults, .delete] {
             XCTAssertEqual(readOnly.item(action)?.disabledReason.map { String(localized: $0) },

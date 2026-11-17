@@ -501,9 +501,11 @@ final class BespokeControlInteractionTests: XCTestCase {
                     let bitmap = try raster(host)
                     var expected: NSColor?
                     window.effectiveAppearance.performAsCurrentDrawingAppearance {
-                        let fill = NSColor(enabled ? PaddrStyle.controlTint : PaddrStyle.boundary)
-                            .usingColorSpace(.sRGB)!
-                        let background = NSColor(PaddrStyle.workspace).usingColorSpace(.sRGB)!
+                        // Left nil, `expected` fails the unwrap below.
+                        guard let fill = NSColor(enabled ? PaddrStyle.controlTint : PaddrStyle.boundary)
+                            .usingColorSpace(.sRGB),
+                            let background = NSColor(PaddrStyle.workspace).usingColorSpace(.sRGB)
+                        else { return }
                         let alpha: CGFloat = enabled ? 1 : 0.55
                         expected = NSColor(srgbRed: fill.redComponent * alpha + background.redComponent * (1 - alpha),
                                            green: fill.greenComponent * alpha + background.greenComponent * (1 - alpha),
