@@ -12,5 +12,5 @@ setUpAppearance();
 
 if (!reducedMotion.matches) {
   setUpPreviews(reducedMotion);
-  setUpSteps();
+  setUpSteps(reducedMotion);
 }
