@@ -685,7 +685,6 @@
         }
       }
     },
-    "Editable profile": {},
     "Enable Paddr in Accessibility, then return to the app.": {
       "localizations": {
         "en": {
@@ -1190,7 +1189,6 @@
       }
     },
     "Profile": {},
-    "Profile actions": {},
     "Profile name": {},
     "Profile names must be nonempty and unique, ignoring case.": {},
     "Profiles": {},
@@ -2412,8 +2410,8 @@
     "This discards your unsaved changes and shows the profile as it was last saved. Output is not affected.": {
       "comment": "Message of the Revert to Saved confirmation."
     },
-    "Create, duplicate, rename, revert, or delete profiles": {
-      "comment": "Tooltip for the profile actions menu in the toolbar."
+    "Switch, create, duplicate, rename, revert, or delete profiles": {
+      "comment": "Tooltip for the profile menu in the toolbar."
     },
     "Save this profile and apply it to output": {
       "comment": "Tooltip for Save & Apply while there are unsaved changes."

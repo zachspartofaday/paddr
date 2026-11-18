@@ -22,7 +22,7 @@ struct ProfileActionItem: Identifiable {
     let disabledReason: LocalizedStringResource?
 }
 
-/// The profile actions menu as data, so every disabled command carries the
+/// The commands in the profile menu as data, so every disabled command carries the
 /// reason the interface shows for it.
 struct ProfileActionsPresentation {
     let sections: [[ProfileActionItem]]
@@ -180,6 +180,9 @@ struct ProfilePickerPresentation: Equatable {
     }
 
     let options: [Option]
+    /// What the control shows as its own label: the profile being edited, or
+    /// the one being switched to.
+    let selectedLabel: String
     let accessibilityValue: String
 
     @MainActor
@@ -199,6 +202,7 @@ struct ProfilePickerPresentation: Equatable {
         switch selection {
         case .active:
             options = profiles.map { Option(id: $0.id, label: $0.name) }
+            selectedLabel = activeProfileName
             accessibilityValue = activeProfileName
 
         case let .switching(to: pendingID, named: pendingName):
@@ -216,6 +220,7 @@ struct ProfilePickerPresentation: Equatable {
                 presentedOptions.append(Option(id: pendingID, label: pendingLabel))
             }
             options = presentedOptions
+            selectedLabel = pendingLabel
             accessibilityValue = String(
                 localized: "Switching to \(pendingName)",
                 comment: "Profile selector accessibility value while the selected profile is being saved"

@@ -3,7 +3,7 @@
 Current refinement, 2026-11-17: Liquid Glass moves from workspace controls to
 window chrome. Menus, mode pickers, tuning switches and secondary buttons draw
 one opaque `PaddrStyle.controlFill`, the same in every accessibility setting.
-The system toolbar carries the profile picker, profile actions and Save & Apply.
+The system toolbar carries the profile menu and Save & Apply.
 Connection, battery and **Enable output** float over the workspace in one
 `GlassEffectContainer` bar placed with `safeAreaBar(edge: .bottom)`; Reduce
 Transparency and Increase Contrast replace its glass with an opaque bordered
