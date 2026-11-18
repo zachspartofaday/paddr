@@ -88,6 +88,11 @@ enum PaddrStyle {
         static let segmentRadius: CGFloat = radius - segmentInset
         static let bindingPlateHeight: CGFloat = 24
         static let bindingPlateRadius: CGFloat = 5
+        /// The widest a key plate is drawn; a layout with less room narrows it.
+        static let bindingPlateWidth: CGFloat = 78
+        static let bindingPlateCompactWidth: CGFloat = 38
+        /// The least space between a key plate and its zone's dividers or the pad's edge.
+        static let bindingPlateClearance: CGFloat = 6
         enum TuningSwitch {
             static let track = CGSize(width: 44, height: 24)
             static let thumb = CGSize(width: 18, height: 18)

@@ -4,9 +4,11 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
 
 ## Unreleased
 
-- Move the profile picker, profile actions and **Save & Apply** into the window
-  toolbar on the system's Liquid Glass; Save & Apply keeps Command-S. The
-  window uses its standard title and shows **Edited** while a draft is unsaved.
+- Move profiles and **Save & Apply** into the window toolbar on the system's
+  Liquid Glass; Save & Apply keeps Command-S. One profile menu shows the
+  profile being edited and holds both the profiles to switch to and the
+  commands that manage them. The window uses its standard title and shows
+  **Edited** while a draft is unsaved.
 - Float connection, battery and **Enable output** in a Liquid Glass bar over
   the workspace, which now sits directly on the window surface. Reduce
   Transparency and Increase Contrast replace the glass with an opaque bordered
@@ -17,8 +19,8 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
   editable profile and output, offers that step's action in place, and reopens
   from Help > Paddr Guide or the menu-bar menu. Closing the window or reaching
   active output ends its automatic presentation.
-- Add **Revert to Saved** to the profile actions, with confirmation, to discard
-  only the unsaved draft. Disabled profile actions name their reason.
+- Add **Revert to Saved** to the profile menu, with confirmation, to discard
+  only the unsaved draft. Unavailable profile commands name their reason.
 - Show a read-only notice with **Duplicate to Edit** in the workspace while
   Default is selected.
 - Put **Refresh** beside the instruction that asks for it and in Connection
@@ -33,6 +35,8 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
   status tints from the same status colours as the window.
 - Show that mapped input is still releasing, instead of **Off**, when output is
   turned off while a save is restarting it.
+- Keep the key plates on the four-way zone map clear of the zone dividers and
+  the pad's edge.
 - Product screenshots in `docs/images` predate this layout.
 
 ## 2.1.0 — 2026-10-29

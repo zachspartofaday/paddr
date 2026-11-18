@@ -172,46 +172,6 @@ struct ZonePadMap: View {
         }
     }
 
-    private func labelPoint(for zone: ButtonZone, in bounds: CGRect) -> CGPoint {
-        let position: CGPoint
-        switch layout {
-        case .radialFour:
-            position = switch zone {
-            case .up: CGPoint(x: 0.5, y: 0.23)
-            case .right: CGPoint(x: 0.77, y: 0.5)
-            case .down: CGPoint(x: 0.5, y: 0.77)
-            default: CGPoint(x: 0.23, y: 0.5)
-            }
-        case .fourCorners:
-            position = switch zone {
-            case .topLeft: CGPoint(x: 0.25, y: 0.25)
-            case .topRight: CGPoint(x: 0.75, y: 0.25)
-            case .bottomRight: CGPoint(x: 0.75, y: 0.75)
-            default: CGPoint(x: 0.25, y: 0.75)
-            }
-        case .horizontalTwo:
-            position = CGPoint(x: zone == .left ? 0.25 : 0.75, y: 0.5)
-        case .verticalTwo:
-            position = CGPoint(x: 0.5, y: zone == .up ? 0.25 : 0.75)
-        case .gridNine:
-            let columns: [ButtonZone: CGFloat] = [
-                .topLeft: 1.0 / 6.0, .left: 1.0 / 6.0, .bottomLeft: 1.0 / 6.0,
-                .up: 0.5, .center: 0.5, .down: 0.5,
-                .topRight: 5.0 / 6.0, .right: 5.0 / 6.0, .bottomRight: 5.0 / 6.0,
-            ]
-            let rows: [ButtonZone: CGFloat] = [
-                .topLeft: 1.0 / 6.0, .up: 1.0 / 6.0, .topRight: 1.0 / 6.0,
-                .left: 0.5, .center: 0.5, .right: 0.5,
-                .bottomLeft: 5.0 / 6.0, .down: 5.0 / 6.0, .bottomRight: 5.0 / 6.0,
-            ]
-            position = CGPoint(x: columns[zone] ?? 0.5, y: rows[zone] ?? 0.5)
-        }
-        return CGPoint(
-            x: bounds.minX + bounds.width * position.x,
-            y: bounds.minY + bounds.height * position.y
-        )
-    }
-
     private func drawLabel(
         for zone: ButtonZone,
         selected: Bool,
@@ -219,14 +179,23 @@ struct ZonePadMap: View {
         appearance: PaddrAppearance,
         context: inout GraphicsContext
     ) {
-        let point = labelPoint(for: zone, in: bounds)
-        let plateWidth: CGFloat = layout == .gridNine ? 38 : 78
+        let clearance = PaddrStyle.Control.bindingPlateClearance
+        let plateWidth = ZoneMapGeometry.plateWidth(
+            preferred: layout == .gridNine
+                ? PaddrStyle.Control.bindingPlateCompactWidth
+                : PaddrStyle.Control.bindingPlateWidth,
+            plateHeight: PaddrStyle.Control.bindingPlateHeight,
+            layout: layout, in: bounds, clearance: clearance
+        )
         let label = OutputBindingText.text(for: configuration[bindingFor: zone])
             .font(PaddrTextRole.bindingPlate.font)
             .foregroundStyle(selected ? PaddrStyle.selectedZoneCaptionForeground : PaddrStyle.textSecondary)
         let resolved = context.resolve(label)
         let labelSize = resolved.measure(in: CGSize(width: plateWidth - 4, height: .greatestFiniteMagnitude))
         let plateSize = CGSize(width: plateWidth, height: max(PaddrStyle.Control.bindingPlateHeight, ceil(labelSize.height) + 4))
+        let point = ZoneMapGeometry.plateCenter(
+            for: zone, plateSize: plateSize, layout: layout, in: bounds, clearance: clearance
+        )
         let plateRect = CGRect(
             x: point.x - plateSize.width / 2,
             y: point.y - plateSize.height / 2,

@@ -38,7 +38,7 @@ struct ReadOnlyProfileNotice: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// The same gate as the Duplicate command in the profile actions menu.
+    /// The same gate as the Duplicate command in the profile menu.
     var disabledReason: LocalizedStringResource? {
         guard model.canManageProfiles else { return "Wait for the profile operation to finish" }
         return ProfileActionsPresentation(model: model).item(.duplicate)?.disabledReason

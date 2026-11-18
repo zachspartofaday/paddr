@@ -190,13 +190,14 @@ final class MenuViewPresentationTests: XCTestCase {
         menu.performActionForItem(at: try XCTUnwrap(menu.items.firstIndex { $0.title == title }, title))
     }
 
-    func testToolbarPickerAsksBeforeDiscardingADraftAndFollowsTheAnswer() async throws {
+    func testProfileMenuAsksBeforeDiscardingADraftAndFollowsTheAnswer() async throws {
         let (model, window) = try await makeProfileWindowFixture()
         defer { window.close() }
         model.configuration.left.sensitivity = 9
         func picker() -> NSMenu? { toolbarMenu(in: window, containing: "Other") }
         func checked() -> [String] { (picker()?.items ?? []).filter { $0.state == .on }.map(\.title) }
-        XCTAssertEqual(picker()?.items.map(\.title), ["Default", "Editable", "Other"])
+        XCTAssertEqual(picker()?.items.map(\.title).filter { !$0.isEmpty }.prefix(4),
+                       ["Profile", "Default", "Editable", "Other"], "The profiles come first, under their heading")
         XCTAssertEqual(checked(), ["Editable"], "Control")
 
         try choose("Other", in: window)
@@ -209,7 +210,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertEqual(model.activeProfile.name, "Editable")
         XCTAssertTrue(model.hasUnsavedChanges, "Cancelling keeps the draft")
         XCTAssertEqual(checked(), ["Editable"],
-                       "The picker shows the profile that is still active after a cancelled switch")
+                       "The menu shows the profile that is still active after a cancelled switch")
 
         try choose("Other", in: window)
         await settle(window)
@@ -255,18 +256,25 @@ final class MenuViewPresentationTests: XCTestCase {
         let (model, window) = try await makeProfileWindowFixture()
         defer { window.close() }
         func menu() -> NSMenu? { toolbarMenu(in: window, containing: "Delete Profile") }
+        let profiles = ["Default", "Editable", "Other"]
+        let commands = ["New Profile", "Duplicate Profile", "Rename Profile", "Revert to Saved", "Restore Defaults",
+                        "Delete Profile"]
         func disabled() -> [String] {
-            (menu()?.items ?? []).filter { !$0.title.isEmpty && !$0.isEnabled }.map(\.title)
+            (menu()?.items ?? []).filter { commands.contains($0.title) && !$0.isEnabled }.map(\.title)
         }
-        XCTAssertEqual(menu()?.items.map(\.title).filter { !$0.isEmpty },
-                       ["New Profile", "Duplicate Profile", "Rename Profile", "Revert to Saved", "Restore Defaults",
-                        "Delete Profile"])
+        func selectable() -> [String] {
+            (menu()?.items ?? []).filter { profiles.contains($0.title) && $0.isEnabled }.map(\.title)
+        }
+        XCTAssertEqual(menu()?.items.map(\.title).filter { !$0.isEmpty }, ["Profile"] + profiles + commands,
+                       "One menu: the profiles to switch to, then the commands that manage them")
         XCTAssertEqual(disabled(), ["Revert to Saved"])
+        XCTAssertEqual(selectable(), profiles)
 
         model.configuration.left.sensitivity = 9
         await settle(window)
         XCTAssertEqual(disabled(), ["New Profile", "Duplicate Profile", "Delete Profile"],
                        "A draft blocks the commands that would replace it")
+        XCTAssertEqual(selectable(), profiles, "Switching stays available; it asks before discarding the draft")
         let profileCount = model.profiles.count
         try choose("New Profile", in: window)
         try choose("Delete Profile", in: window)
@@ -289,7 +297,7 @@ final class MenuViewPresentationTests: XCTestCase {
         XCTAssertEqual(window.frame.width, PaddrStyle.Metrics.minimumWindowSize.width, accuracy: 0.5)
         XCTAssertEqual(window.subtitle, "Edited", "Control: the title is at its widest")
         let toolbar = try XCTUnwrap(window.toolbar)
-        XCTAssertEqual(toolbar.items.count, 4)
+        XCTAssertEqual(toolbar.items.count, 3, "The profile menu, the flexible space, and Save & Apply")
         XCTAssertEqual(toolbar.visibleItems?.map(\.itemIdentifier), toolbar.items.map(\.itemIdentifier),
                        "Nothing collapses into the overflow menu at the narrowest window")
 
@@ -380,24 +388,24 @@ final class MenuViewPresentationTests: XCTestCase {
         }
         let order = toolbar.items.map { item -> String in
             if item.itemIdentifier == .flexibleSpace { return "space" }
-            for identifier in ["paddr.profile.selector", "paddr.profile.actions", "paddr.profile.save-apply"] {
+            for identifier in ["paddr.profile.menu", "paddr.profile.save-apply"] {
                 if let view = item.view, accessibilityElement(in: view, identifier: identifier) != nil {
                     return identifier
                 }
             }
             return "unknown"
         }
-        XCTAssertEqual(order,
-                       ["paddr.profile.selector", "paddr.profile.actions", "space", "paddr.profile.save-apply"],
-                       "Profile controls share the principal position; the one save action stands alone at the trailing edge")
+        XCTAssertEqual(order, ["paddr.profile.menu", "space", "paddr.profile.save-apply"],
+                       "One profile control holds the principal position; the one save action stands alone at the trailing edge")
         XCTAssertNil(accessibilityElement(in: try XCTUnwrap(window.contentView), identifier: "paddr.profile.save-apply"),
                      "The workspace carries no second header band")
 
-        let picker = try XCTUnwrap(toolbarElement("paddr.profile.selector"))
-        XCTAssertEqual(picker.accessibilityLabel?(), "Profile")
-        let actions = try XCTUnwrap(toolbarElement("paddr.profile.actions"))
-        // A toolbar menu button reports its name as the title.
-        XCTAssertEqual(accessibilityText(actions, "accessibilityTitle"), "Profile actions")
+        let profileMenu = try XCTUnwrap(toolbarElement("paddr.profile.menu"))
+        // A toolbar menu button reports its name as the title; the value is the profile being edited.
+        XCTAssertEqual(profileMenu.accessibilityRole?(), .menuButton)
+        XCTAssertEqual(accessibilityText(profileMenu, "accessibilityTitle"), "Profile")
+        XCTAssertEqual(accessibilityText(profileMenu, "accessibilityValue"), "Editable")
+        XCTAssertEqual(profileMenu.accessibilityHelp?(), "Switch, create, duplicate, rename, revert, or delete profiles")
 
         let save = try XCTUnwrap(toolbarElement("paddr.profile.save-apply"))
         XCTAssertEqual(save.accessibilityLabel?(), "Save & Apply")
@@ -2722,6 +2730,8 @@ final class MenuViewPresentationTests: XCTestCase {
         let presentation = ProfilePickerPresentation(model: model)
         let pendingOption = try XCTUnwrap(presentation.options.first { $0.id == pendingID })
         XCTAssertEqual(pendingOption.label, "Switching to \(expectedName)…")
+        XCTAssertEqual(presentation.selectedLabel, "Switching to \(expectedName)…",
+                       "The toolbar control names the profile it is switching to")
         XCTAssertEqual(presentation.accessibilityValue, "Switching to \(expectedName)")
     }
 

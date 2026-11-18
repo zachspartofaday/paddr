@@ -9,63 +9,34 @@ struct ConfigurationToolbar: ToolbarContent {
     let commands: ProfileCommands
 
     var body: some ToolbarContent {
-        // What is being edited sits in the middle; the one commit action stands
-        // alone at the trailing edge.
-        ToolbarItemGroup(placement: .principal) {
-            ProfilePicker(model: model, commands: commands)
-            ProfileActionsMenu(model: model, commands: commands)
-        }
+        // What is being edited sits in the middle as one control; the one commit
+        // action stands alone at the trailing edge.
+        ToolbarItem(placement: .principal) { ProfileMenu(model: model, commands: commands) }
         ToolbarItem(placement: .primaryAction) { SaveAndApplyButton(model: model) }
     }
 }
 
-struct ProfilePicker: View {
+/// One control for the profile: its name is the label, and the menu holds the
+/// profiles to switch to followed by the commands that manage them. A picker
+/// and a separate ellipsis menu read as two unrelated controls.
+struct ProfileMenu: View {
     let model: PaddrMenuModel
     let commands: ProfileCommands
 
     var body: some View {
-        let presentation = ProfilePickerPresentation(model: model)
+        let picker = ProfilePickerPresentation(model: model)
+        let actions = ProfileActionsPresentation(model: model)
 
-        Picker("Profile", selection: selection) {
-            ForEach(presentation.options) { option in
-                Text(verbatim: option.label).tag(option.id)
+        Menu {
+            Picker("Profile", selection: selection) {
+                ForEach(picker.options) { option in
+                    Text(verbatim: option.label).tag(option.id)
+                }
             }
-        }
-        .pickerStyle(.menu)
-        // A toolbar cannot wrap a long name; the full name stays in the menu
-        // and in the help text.
-        .frame(maxWidth: PaddrStyle.Width.control)
-        // The system pill hugs a pop-up's text; this gives the name the same
-        // room at each end that Save & Apply's label has.
-        .padding(.horizontal, PaddrStyle.Spacing.s2)
-        .disabled(!model.canManageProfiles)
-        .accessibilityLabel("Profile")
-        .accessibilityValue(Text(verbatim: presentation.accessibilityValue))
-        .help(Text(verbatim: presentation.accessibilityValue))
-        .paddrAccessibilityID("profile", "selector")
-    }
-
-    private var selection: Binding<ConfigurationProfileID> {
-        Binding(
-            get: { model.profileSelectionPresentation.selectedProfileID },
-            set: { commands.select($0, in: model) }
-        )
-    }
-}
-
-struct ProfileActionsMenu: View {
-    let model: PaddrMenuModel
-    let commands: ProfileCommands
-
-    private var isDefaultProfile: Bool { model.activeProfileID == .default }
-
-    var body: some View {
-        let presentation = ProfileActionsPresentation(model: model)
-
-        Menu("Profile actions", systemImage: "ellipsis.circle") {
-            ForEach(presentation.sections.indices, id: \.self) { index in
+            .pickerStyle(.inline)
+            ForEach(actions.sections.indices, id: \.self) { index in
                 Section {
-                    ForEach(presentation.sections[index]) { item in
+                    ForEach(actions.sections[index]) { item in
                         Button(role: item.isDestructive ? .destructive : nil) {
                             commands.perform(item.id, in: model)
                         } label: {
@@ -76,15 +47,28 @@ struct ProfileActionsMenu: View {
                     }
                 }
             }
+        } label: {
+            Text(verbatim: picker.selectedLabel)
         }
-        .padding(.horizontal, PaddrStyle.Spacing.s1)
+        // A toolbar cannot wrap a long name; the full name stays in the menu.
+        .frame(maxWidth: PaddrStyle.Width.control)
+        // The system pill hugs a menu's text; this gives the name the same
+        // room at each end that Save & Apply's label has.
+        .padding(.horizontal, PaddrStyle.Spacing.s2)
         .disabled(!model.canManageProfiles)
-        .accessibilityLabel("Profile actions")
-        .accessibilityValue(isDefaultProfile ? Text("Default is read-only") : Text("Editable profile"))
-        .help(isDefaultProfile
+        .accessibilityLabel("Profile")
+        .accessibilityValue(Text(verbatim: picker.accessibilityValue))
+        .help(model.activeProfileID == .default
             ? Text("Duplicate Default to create an editable profile")
-            : Text("Create, duplicate, rename, revert, or delete profiles"))
-        .paddrAccessibilityID("profile", "actions")
+            : Text("Switch, create, duplicate, rename, revert, or delete profiles"))
+        .paddrAccessibilityID("profile", "menu")
+    }
+
+    private var selection: Binding<ConfigurationProfileID> {
+        Binding(
+            get: { model.profileSelectionPresentation.selectedProfileID },
+            set: { commands.select($0, in: model) }
+        )
     }
 }
 
