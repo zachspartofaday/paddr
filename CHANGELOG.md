@@ -35,6 +35,8 @@ User-visible changes to Paddr are recorded here. Release entries describe confir
   status tints from the same status colours as the window.
 - Show that mapped input is still releasing, instead of **Off**, when output is
   turned off while a save is restarting it.
+- Keep the key plates on the four-way zone map clear of the zone dividers and
+  the pad's edge.
 - Product screenshots in `docs/images` predate this layout.
 
 ## 2.1.0 — 2026-10-29
